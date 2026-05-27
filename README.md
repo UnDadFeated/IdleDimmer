@@ -1,5 +1,11 @@
 # WinDimmer64 (v1.0.8)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/UnDadFeated/WinDimmer64?include_prereleases&style=flat)](https://github.com/UnDadFeated/WinDimmer64/releases)
+[![Downloads](https://img.shields.io/github/downloads/UnDadFeated/WinDimmer64/total?style=flat)](https://github.com/UnDadFeated/WinDimmer64/releases)
+[![Platform](https://img.shields.io/badge/Windows-11%20|%2010-blue?logo=windows)](https://github.com/UnDadFeated/WinDimmer64)
+[![Size](https://img.shields.io/badge/size-%3C200KB-brightgreen)](https://github.com/UnDadFeated/WinDimmer64/releases)
+
 A lightweight, modern, and high-performance screen dimming and OLED burn-in prevention utility designed specifically for Windows 11 (x64) in native C++.
 
 Unlike the default Windows display options that only support physically turning off external monitors after idle periods, WinDimmer64 provides beautiful layered transparency overlays that dynamically dim screens to save energy and protect OLED displays, waking up instantly when user activity is detected.
