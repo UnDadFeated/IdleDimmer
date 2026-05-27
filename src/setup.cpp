@@ -17,7 +17,7 @@
 static const wchar_t* APP_NAME = L"WinDimmer64";
 static const wchar_t* INSTALL_DIR = L"WinDimmer64";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinDimmer64";
-static const wchar_t* VER = L"1.2.0";
+static const wchar_t* VER = L"1.2.2";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
@@ -55,10 +55,19 @@ static bool ExtractApp(const wchar_t* dest) {
 static void KillRunning() {
     HWND hwnd = FindWindowW(L"WinDimmer64MainClass", NULL);
     if (hwnd) {
+        DWORD pid;
+        GetWindowThreadProcessId(hwnd, &pid);
         PostMessageW(hwnd, WM_CLOSE, 0, 0);
         for (int i = 0; i < 50; i++) {
             if (!IsRunning()) return;
             Sleep(100);
+        }
+        // Force kill if app didn't close (e.g. close-to-tray mode)
+        HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+        if (hProc) {
+            TerminateProcess(hProc, 1);
+            CloseHandle(hProc);
+            Sleep(300);
         }
     }
 }
