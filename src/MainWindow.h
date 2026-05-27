@@ -100,10 +100,17 @@ private:
     // Drag-drop tracking
     bool m_isDraggingAny = false;
 
-    // Undo features
+    //     // Undo features
     RECT m_undoRect = { 0 };
     std::vector<AppConfig> m_undoStack;
     bool m_canUndo = false;
     int m_changeCount = 0;
     void PushUndoState();
+
+    // Update checking
+    bool m_updateChecked = false;
+    bool m_updateAvailable = false;
+    std::wstring m_latestVersion;
+    static DWORD WINAPI CheckForUpdatesThread(LPVOID lpParam);
+    void OnUpdateCheckComplete();
 };

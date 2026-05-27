@@ -3,6 +3,7 @@
 #include <dwmapi.h>
 #include <shellapi.h>
 #include <strsafe.h>
+#include <winhttp.h>
 
 #ifndef D2DERR_RECREATED
 #define D2DERR_RECREATED ((HRESULT)0x8898000CL)
@@ -11,8 +12,10 @@
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "winhttp.lib")
 
 #define WM_TRAYICON (WM_USER + 100)
+#define WM_UPDATE_CHECK (WM_USER + 101)
 #define ID_TRAY_EXIT 1001
 #define ID_TRAY_SHOW 1002
 
@@ -42,6 +45,8 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     m_undoStack.clear();
     m_canUndo = false;
     m_changeCount = 0;
+
+    CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
 
     // Register MainWindow Class
     WNDCLASSEXW wc = { 0 };
@@ -597,12 +602,21 @@ void MainWindow::OnPaint() {
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 
     // Version Number in footer right
-    const wchar_t* versionStr = L"v1.0.9";
+    wchar_t versionFull[64] = { 0 };
+    if (m_updateChecked) {
+        if (m_updateAvailable) {
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.0.9");
+        } else {
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.0.9");
+        }
+    } else {
+        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.0.9");
+    }
     m_pRenderTarget->DrawText(
-        versionStr, 6,
+        versionFull, static_cast<UINT32>(wcslen(versionFull)),
         m_pTextFormatDetail,
-        D2D1::RectF(m_windowWidth - 85.0f, footerY + 10.0f, m_windowWidth - 35.0f, footerY + 28.0f),
-        m_pBrushTextMuted
+        D2D1::RectF(m_windowWidth - 170.0f, footerY + 10.0f, m_windowWidth - 25.0f, footerY + 28.0f),
+        m_updateAvailable ? m_pBrushAccent : m_pBrushTextMuted
     );
 
     HRESULT hr = m_pRenderTarget->EndDraw();
@@ -716,6 +730,62 @@ void MainWindow::PushUndoState() {
     m_undoStack.push_back(m_config);
     m_canUndo = true;
     m_changeCount = static_cast<int>(m_undoStack.size());
+}
+
+DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
+    MainWindow* self = reinterpret_cast<MainWindow*>(lpParam);
+    
+    HINTERNET hSession = WinHttpOpen(L"WinDimmer64/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, nullptr, nullptr, 0);
+    if (hSession) {
+        HINTERNET hConnect = WinHttpConnect(hSession, L"api.github.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+        if (hConnect) {
+            HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET",
+                L"/repos/UnDadFeated/WinDimmer64/releases/latest", nullptr, nullptr, nullptr,
+                WINHTTP_FLAG_SECURE);
+            if (hRequest) {
+                if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, nullptr, 0, 0, 0)) {
+                    if (WinHttpReceiveResponse(hRequest, nullptr)) {
+                        DWORD size = 0;
+                        WinHttpQueryDataAvailable(hRequest, &size);
+                        if (size > 0) {
+                            std::vector<char> buf(size + 1);
+                            DWORD read = 0;
+                            if (WinHttpReadData(hRequest, buf.data(), size, &read)) {
+                                buf[read] = 0;
+                                const char* tag = strstr(buf.data(), "\"tag_name\":\"v");
+                                if (tag) {
+                                    tag += 12;
+                                    const char* end = strchr(tag, '\"');
+                                    if (end) {
+                                        int len = static_cast<int>(end - tag);
+                                        if (len > 0 && len < 20) {
+                                            wchar_t ver[32] = { 0 };
+                                            MultiByteToWideChar(CP_UTF8, 0, tag, len, ver, 32);
+                                            self->m_latestVersion = ver;
+                                            // Compare "1.0.9" with retrieved version
+                                            if (wcscmp(ver, L"1.0.9") > 0)
+                                                self->m_updateAvailable = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                WinHttpCloseHandle(hRequest);
+            }
+            WinHttpCloseHandle(hConnect);
+        }
+        WinHttpCloseHandle(hSession);
+    }
+    
+    self->m_updateChecked = true;
+    PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, 0, 0);
+    return 0;
+}
+
+void MainWindow::OnUpdateCheckComplete() {
+    InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
 void MainWindow::HandleLButtonDown(int x, int y) {
@@ -1271,6 +1341,10 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                 self->SyncMonitorsWithConfig();
                 self->UpdateLayout();
                 InvalidateRect(hwnd, nullptr, TRUE);
+                return 0;
+            }
+            case WM_UPDATE_CHECK: {
+                self->OnUpdateCheckComplete();
                 return 0;
             }
             case WM_TRAYICON: {
