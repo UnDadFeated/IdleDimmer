@@ -587,12 +587,14 @@ void MainWindow::OnPaint() {
     } else {
         StringCchCopyW(undoLabel, ARRAYSIZE(undoLabel), L"Undo Changes");
     }
+    m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
     m_pRenderTarget->DrawText(
         undoLabel, static_cast<UINT32>(wcslen(undoLabel)),
         m_pTextFormatDetail,
         D2D1::RectF(m_undoRect.left, footerY + 10.0f, m_undoRect.right, footerY + 28.0f),
         m_canUndo ? m_pBrushAccent : m_pBrushTextMuted
     );
+    m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 
     // Version Number in footer right
     const wchar_t* versionStr = L"v1.0.8";
