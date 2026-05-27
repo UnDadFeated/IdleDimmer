@@ -1,4 +1,4 @@
-# WinDimmer64 (v1.0.6)
+# WinDimmer64 (v1.0.7)
 
 A lightweight, modern, and high-performance screen dimming and OLED burn-in prevention utility designed specifically for Windows 11 (x64) in native C++.
 

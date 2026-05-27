@@ -101,7 +101,6 @@ private:
     bool m_isDraggingAny = false;
 
     // Undo features
-    RECT m_undoRect = { 0 };
     std::vector<AppConfig> m_undoStack;
     bool m_canUndo = false;
     int m_changeCount = 0;

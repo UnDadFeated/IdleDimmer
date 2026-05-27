@@ -212,12 +212,6 @@ void MainWindow::UpdateLayout() {
     m_sliders.clear();
     m_checkboxes.clear();
 
-    // Setup Undo button bounds in the top-right header region
-    m_undoRect.left = m_windowWidth - 110;
-    m_undoRect.top = 18;
-    m_undoRect.right = m_windowWidth - 20;
-    m_undoRect.bottom = 38;
-
     const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
 
     // Start yOffset below the header
@@ -300,10 +294,9 @@ void MainWindow::UpdateLayout() {
     // ── DIMMING section ──
     yOffset += 16; // space for section header label
     AddCheckbox(L"DimmingEnabled", m_config.dimmingEnabled, &m_config.dimmingEnabled, L"Active Dimming", 0, yOffset);
-    AddCheckbox(L"GroupDim", m_config.groupDim, &m_config.groupDim, L"Group All Monitors", 1, yOffset);
+    AddCheckbox(L"IdleDimEnabled", m_config.idleDimEnabled, &m_config.idleDimEnabled, L"Dim When Away", 1, yOffset);
     yOffset += 22;
-    AddCheckbox(L"IdleDimEnabled", m_config.idleDimEnabled, &m_config.idleDimEnabled, L"Dim When Away", 0, yOffset);
-    AddCheckbox(L"IdleTurnOff", m_config.idleTurnOff, &m_config.idleTurnOff, L"Turn Off When Away", 1, yOffset);
+    AddCheckbox(L"IdleTurnOff", m_config.idleTurnOff, &m_config.idleTurnOff, L"Turn Off When Away", 0, yOffset);
     yOffset += 22;
 
     // ── DISPLAY section ──
@@ -320,9 +313,20 @@ void MainWindow::UpdateLayout() {
     yOffset += 8; // gap between sections
     yOffset += 16; // space for section header label
     AddCheckbox(L"CloseToTray", m_config.closeToTray, &m_config.closeToTray, L"Close to Tray", 0, yOffset);
-    AddCheckbox(L"ShowInTaskbar", m_config.showInTaskbar, &m_config.showInTaskbar, L"Show in Taskbar", 1, yOffset);
+    AddCheckbox(L"StartWithWindows", m_config.startWithWindows, &m_config.startWithWindows, L"Start with Windows", 1, yOffset);
     yOffset += 22;
-    AddCheckbox(L"StartWithWindows", m_config.startWithWindows, &m_config.startWithWindows, L"Start with Windows", 0, yOffset);
+
+    // Undo entry (action, not a toggle)
+    {
+        UICheckbox cb;
+        cb.settingName = L"Undo";
+        cb.label = L"Undo Changes";
+        cb.rect.left = 25;
+        cb.rect.top = yOffset;
+        cb.rect.right = 25 + 34;
+        cb.rect.bottom = yOffset + 18;
+        m_checkboxes.push_back(cb);
+    }
     yOffset += 22;
 
     if (m_config.idleDimEnabled) {
@@ -389,28 +393,6 @@ void MainWindow::OnPaint() {
 
     // Clear screen
     m_pRenderTarget->Clear(m_pBrushBg->GetColor());
-
-    // Draw Title Header
-    m_pRenderTarget->DrawText(
-        L"WinDimmer64", 12,
-        m_pTextFormatTitle,
-        D2D1::RectF(20.0f, 15.0f, 300.0f, 45.0f),
-        m_pBrushText
-    );
-
-    // Draw interactive Undo Changes button on the top-right
-    wchar_t undoLabel[32] = { 0 };
-    if (m_changeCount > 0) {
-        StringCchPrintfW(undoLabel, ARRAYSIZE(undoLabel), L"Undo (%d)", m_changeCount);
-    } else {
-        StringCchCopyW(undoLabel, ARRAYSIZE(undoLabel), L"Undo Changes");
-    }
-    m_pRenderTarget->DrawText(
-        undoLabel, static_cast<UINT32>(wcslen(undoLabel)),
-        m_pTextFormatDetail,
-        D2D1::RectF(m_undoRect.left, m_undoRect.top, m_undoRect.right, m_undoRect.bottom),
-        m_canUndo ? m_pBrushAccent : m_pBrushTextMuted
-    );
 
     // Render interactive cards & sliders
     for (const auto& slider : m_sliders) {
@@ -540,6 +522,23 @@ void MainWindow::OnPaint() {
 
     // Render high-tech sliding toggle switches
     for (const auto& cb : m_checkboxes) {
+        if (cb.settingName == L"Undo") {
+            // Undo is an action button, not a toggle
+            wchar_t undoLabel[32] = { 0 };
+            if (m_changeCount > 0) {
+                StringCchPrintfW(undoLabel, ARRAYSIZE(undoLabel), L"Undo (%d)", m_changeCount);
+            } else {
+                StringCchCopyW(undoLabel, ARRAYSIZE(undoLabel), L"Undo Changes");
+            }
+            m_pRenderTarget->DrawText(
+                undoLabel, static_cast<UINT32>(wcslen(undoLabel)),
+                m_pTextFormatDetail,
+                D2D1::RectF(cb.rect.right + 10.0f, cb.rect.top + 1.0f, m_windowWidth - 20.0f, cb.rect.bottom + 15.0f),
+                m_canUndo ? m_pBrushAccent : m_pBrushTextMuted
+            );
+            continue;
+        }
+
         D2D1_ROUNDED_RECT switchTrack = D2D1::RoundedRect(
             D2D1::RectF(cb.rect.left, cb.rect.top, cb.rect.right, cb.rect.bottom),
             9.0f, 9.0f
@@ -606,7 +605,7 @@ void MainWindow::OnPaint() {
     );
 
     // Version Number in footer right
-    const wchar_t* versionStr = L"v1.0.6";
+    const wchar_t* versionStr = L"v1.0.7";
     m_pRenderTarget->DrawText(
         versionStr, 6,
         m_pTextFormatDetail,
@@ -728,46 +727,6 @@ void MainWindow::PushUndoState() {
 }
 
 void MainWindow::HandleLButtonDown(int x, int y) {
-    // Intercept Undo click
-    if (m_canUndo && x >= m_undoRect.left && x <= m_undoRect.right && y >= m_undoRect.top && y <= m_undoRect.bottom) {
-        m_config = m_undoStack.back();
-        m_undoStack.pop_back();
-        m_canUndo = !m_undoStack.empty();
-        m_changeCount = static_cast<int>(m_undoStack.size());
-
-        // Re-synchronize monitors to loaded settings
-        SyncMonitorsWithConfig();
-
-        // Refresh dynamic overlay levels
-        const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
-        for (const auto& mon : activeMons) {
-            for (const auto& savedMon : m_config.monitors) {
-                if (savedMon.id == mon.id) {
-                    DimmerManager::Instance().SetMonitorDim(mon.id, savedMon.value);
-                    DimmerManager::Instance().SetMonitorEnabled(mon.id, savedMon.enabled);
-                    break;
-                }
-            }
-        }
-        DimmerManager::Instance().SetWarmTint(m_config.warmTint);
-        DimmerManager::Instance().SetFocusMode(m_config.focusMode);
-        DimmerManager::Instance().SetShowBoundaries(m_config.showBoundaries);
-        if (!m_config.idleDimEnabled) {
-            DimmerManager::Instance().SetIdleState(false);
-        }
-        DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
-
-        // Dynamically toggle DWM theme bar
-        BOOL useDark = !m_config.lightMode;
-        DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
-        SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-
-        UpdateLayout();
-        SaveSettings();
-        InvalidateRect(m_hwnd, nullptr, FALSE);
-        return;
-    }
-
     for (auto& slider : m_sliders) {
         float trackLeft = slider.rect.left + 20.0f;
         float trackRight = slider.rect.right - 20.0f;
@@ -856,14 +815,41 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 }
             } else if (cb.settingName == L"CloseToTray") {
                 // Handled dynamically
-            } else if (cb.settingName == L"ShowInTaskbar") {
-                LONG_PTR style = GetWindowLongPtrW(m_hwnd, GWL_STYLE);
-                if (cb.checked) {
-                    SetWindowLongPtrW(m_hwnd, GWL_STYLE, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
-                } else {
-                    SetWindowLongPtrW(m_hwnd, GWL_STYLE, WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
+            } else if (cb.settingName == L"Undo") {
+                if (m_canUndo) {
+                    m_config = m_undoStack.back();
+                    m_undoStack.pop_back();
+                    m_canUndo = !m_undoStack.empty();
+                    m_changeCount = static_cast<int>(m_undoStack.size());
+
+                    SyncMonitorsWithConfig();
+
+                    const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
+                    for (const auto& mon : activeMons) {
+                        for (const auto& savedMon : m_config.monitors) {
+                            if (savedMon.id == mon.id) {
+                                DimmerManager::Instance().SetMonitorDim(mon.id, savedMon.value);
+                                DimmerManager::Instance().SetMonitorEnabled(mon.id, savedMon.enabled);
+                                break;
+                            }
+                        }
+                    }
+                    DimmerManager::Instance().SetWarmTint(m_config.warmTint);
+                    DimmerManager::Instance().SetFocusMode(m_config.focusMode);
+                    DimmerManager::Instance().SetShowBoundaries(m_config.showBoundaries);
+                    if (!m_config.idleDimEnabled) {
+                        DimmerManager::Instance().SetIdleState(false);
+                    }
+                    DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
+
+                    BOOL useDark = !m_config.lightMode;
+                    DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
+                    SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+                    UpdateLayout();
+                    SaveSettings();
+                    InvalidateRect(m_hwnd, nullptr, FALSE);
                 }
-                SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
             } else if (cb.settingName == L"ShowBoundaries") {
                 DimmerManager::Instance().SetShowBoundaries(cb.checked);
             } else if (cb.settingName == L"StartWithWindows") {

@@ -18,7 +18,7 @@ struct AppConfig {
     bool focusMode = false;
     
     // Idle Energy & OLED Saver
-    bool idleDimEnabled = false;
+    bool idleDimEnabled = true;
     int idleMinutes = 5; // 1 to 60 minutes
     int idleDimLevel = 90; // 0% to 100% dimming
     bool idleTurnOff = false;
@@ -27,7 +27,7 @@ struct AppConfig {
     bool masterEnabled = true;
     bool lightMode = false;
     bool dimmingEnabled = false; // Default to false so it does NOT dim on startup!
-    bool groupDim = false; // Sync all monitors to drag together
+    bool groupDim = true;
     std::vector<MonitorConfig> monitors;
 };
 

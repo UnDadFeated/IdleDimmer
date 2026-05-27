@@ -2,6 +2,14 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.0.7] - 2026-05-27
+
+### Updates
+* **UI Cleanup**: Removed redundant "Group All Monitors" toggle (master slider already syncs all displays). Removed "Show in Taskbar" option. Removed "WinDimmer64" header title (already in the window titlebar). Moved "Undo" counter into the APPLICATION section for a cleaner top area. Tighter overall layout with fewer toggles.
+
+### Bug Fixes
+* **Idle Dimming Default**: Idle dimming is now enabled by default so monitors dim during inactivity without requiring manual setup.
+
 ## [1.0.6] - 2026-05-27
 
 ### New Features
