@@ -765,12 +765,12 @@ void MainWindow::OnPaint() {
     wchar_t versionFull[64] = { 0 };
     if (m_updateChecked) {
         if (m_updateAvailable) {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.2.1");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.2.2");
         } else {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.2.1");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.2.2");
         }
     } else {
-        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.2.1");
+        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.2.2");
     }
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
     m_pRenderTarget->DrawText(
@@ -943,7 +943,7 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                                             MultiByteToWideChar(CP_UTF8, 0, tag, len, ver, 32);
                                             self->m_latestVersion = ver;
                                             // Compare "1.0.9" with retrieved version
-                                            if (wcscmp(ver, L"1.2.1") > 0)
+                                            if (wcscmp(ver, L"1.2.2") > 0)
                                                 self->m_updateAvailable = true;
                                         }
                                     }

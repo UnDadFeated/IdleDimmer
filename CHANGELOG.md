@@ -2,6 +2,18 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.2.2] - 2026-05-27
+
+### Bug Fixes
+* **Truncated section headers**: "SCREEN DIMMIN" and "SCREEN DISPLA" fixed — character counts were off by one in the `DrawText` calls.
+* **Panel title overlap**: "BYPASS APPS" text rect now stops short of the `[+ Add]` button so both are visible.
+* **Window off-screen**: When toggling the right-side panel, the window position is now clamped to screen bounds.
+* **Start minimized**: When both "Start with Windows" and "Close to Tray" are enabled, the app now starts silently in the system tray.
+
+### Updates
+* **Blocked Apps renamed**: Arrow label and panel header now say "Bypass Apps".
+* **Cleaner default blocklist**: Browsers and chat apps stripped from defaults — only media players remain. Saved config unaffected.
+
 ## [1.2.1] - 2026-05-27
 
 ### New Features
