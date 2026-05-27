@@ -3,6 +3,7 @@ AGENTS.md
 
 # Build Artifacts
 WinDimmer64.exe
+WinDimmer64.old
 *.o
 *.res
 *.obj
