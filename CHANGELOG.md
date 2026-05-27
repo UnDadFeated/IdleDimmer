@@ -6,6 +6,7 @@ All notable changes to the WinDimmer64 project are documented here.
 
 ### Bug Fixes
 * **Cursor disappears after idle wake**: Fixed a bitmap ownership bug in `CreateDimmedCursor` — the new mask bitmap was deleted immediately after `CreateIconIndirect`, corrupting the cursor. The mask is now kept alive (owned by the cursor, cleaned up by the system via `DestroyCursor`).
+* **Squished "Bypass Apps" label**: The arrow label text rect was only 21px wide — far too narrow for 11 characters. Moved the arrow left to make room and widened the text rect to 93px.
 
 ## [1.2.2] - 2026-05-27
 
