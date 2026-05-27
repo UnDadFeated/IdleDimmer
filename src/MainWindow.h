@@ -104,4 +104,5 @@ private:
     RECT m_undoRect = { 0 };
     AppConfig m_backupConfig;
     bool m_canUndo = false;
+    int m_changeCount = 0;
 };

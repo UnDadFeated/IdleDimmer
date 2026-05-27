@@ -41,6 +41,7 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     LoadSettings();
     m_backupConfig = m_config;
     m_canUndo = false;
+    m_changeCount = 0;
 
     // Register MainWindow Class
     WNDCLASSEXW wc = { 0 };
@@ -398,8 +399,14 @@ void MainWindow::OnPaint() {
     );
 
     // Draw interactive Undo Changes button on the top-right
+    wchar_t undoLabel[32] = { 0 };
+    if (m_changeCount > 0) {
+        StringCchPrintfW(undoLabel, ARRAYSIZE(undoLabel), L"Undo (%d)", m_changeCount);
+    } else {
+        StringCchCopyW(undoLabel, ARRAYSIZE(undoLabel), L"Undo Changes");
+    }
     m_pRenderTarget->DrawText(
-        L"Undo Changes", 12,
+        undoLabel, static_cast<UINT32>(wcslen(undoLabel)),
         m_pTextFormatDetail,
         D2D1::RectF(m_undoRect.left, m_undoRect.top, m_undoRect.right, m_undoRect.bottom),
         m_canUndo ? m_pBrushAccent : m_pBrushTextMuted
@@ -599,7 +606,7 @@ void MainWindow::OnPaint() {
     );
 
     // Version Number in footer right
-    const wchar_t* versionStr = L"v1.0.4";
+    const wchar_t* versionStr = L"v1.0.5";
     m_pRenderTarget->DrawText(
         versionStr, 6,
         m_pTextFormatDetail,
@@ -719,6 +726,7 @@ void MainWindow::HandleLButtonDown(int x, int y) {
     if (m_canUndo && x >= m_undoRect.left && x <= m_undoRect.right && y >= m_undoRect.top && y <= m_undoRect.bottom) {
         m_config = m_backupConfig;
         m_canUndo = false;
+        m_changeCount = 0;
 
         // Re-synchronize monitors to loaded settings
         SyncMonitorsWithConfig();
@@ -765,6 +773,7 @@ void MainWindow::HandleLButtonDown(int x, int y) {
             slider.isDragging = true;
             m_isDraggingAny = true;
             m_canUndo = true; // State changed
+            m_changeCount++;
             SetCapture(m_hwnd);
             HandleMouseMove(x, y); // Immediately position thumb to mouse
             break;
@@ -776,6 +785,7 @@ void MainWindow::HandleLButtonDown(int x, int y) {
         if (x >= cb.rect.left && x <= cb.rect.right && y >= cb.rect.top && y <= cb.rect.bottom) {
             cb.checked = !cb.checked;
             m_canUndo = true; // State changed
+            m_changeCount++;
             
             // Dynamic configuration binding assignment
             if (cb.pValue) {

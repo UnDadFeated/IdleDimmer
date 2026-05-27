@@ -2,6 +2,15 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.0.5] - 2026-05-27
+
+### New Features
+* **App Icon**: Embedded a custom multi-resolution icon (16–256 px) into the binary. The window, tray, and taskbar now show the dimmer icon instead of the default Windows application icon.
+* **Change Counter**: The "Undo Changes" button now shows the number of changes made since the session started (e.g. "Undo (3)"). The count resets after clicking undo.
+
+### Updates
+* **Removed Settings Separator**: Removed the horizontal divider line that cut through the DIMMING section header label in the settings panel.
+
 ## [1.0.4] - 2026-05-27
 
 ### Bug Fixes
