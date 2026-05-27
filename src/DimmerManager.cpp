@@ -265,37 +265,26 @@ void DimmerManager::CheckVideoPlayback() {
     bool detected = false;
     HWND hFore = GetForegroundWindow();
     if (hFore) {
-        RECT fwRect;
-        if (GetWindowRect(hFore, &fwRect)) {
-            HMONITOR hMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
-            MONITORINFO mi = { sizeof(mi) };
-            if (GetMonitorInfoW(hMon, &mi)) {
-                if (fwRect.left <= mi.rcMonitor.left &&
-                    fwRect.top <= mi.rcMonitor.top &&
-                    fwRect.right >= mi.rcMonitor.right &&
-                    fwRect.bottom >= mi.rcMonitor.bottom) {
-                    wchar_t exe[128] = { 0 };
-                    DWORD pid = 0;
-                    GetWindowThreadProcessId(hFore, &pid);
-                    HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-                    if (hProc) {
-                        DWORD size = 128;
-                        QueryFullProcessImageNameW(hProc, 0, exe, &size);
-                        CloseHandle(hProc);
-                    }
-                    if (exe[0]) {
-                        const wchar_t* mediaPlayers[] = {
-                            L"chrome.exe", L"msedge.exe", L"firefox.exe", L"opera.exe", L"brave.exe",
-                            L"vlc.exe", L"mpc-hc.exe", L"mpc-hc64.exe", L"mpc-be.exe", L"mpc-be64.exe",
-                            L"potplayer.exe", L"wmplayer.exe", L"groove.exe"
-                        };
-                        for (auto name : mediaPlayers) {
-                            if (!_wcsicmp(exe, name)) {
-                                detected = true;
-                                break;
-                            }
-                        }
-                    }
+        wchar_t exe[128] = { 0 };
+        DWORD pid = 0;
+        GetWindowThreadProcessId(hFore, &pid);
+        HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+        if (hProc) {
+            DWORD size = 128;
+            QueryFullProcessImageNameW(hProc, 0, exe, &size);
+            CloseHandle(hProc);
+        }
+        if (exe[0]) {
+            const wchar_t* mediaPlayers[] = {
+                L"chrome.exe", L"msedge.exe", L"firefox.exe", L"opera.exe", L"brave.exe",
+                L"vlc.exe", L"mpc-hc.exe", L"mpc-hc64.exe", L"mpc-be.exe", L"mpc-be64.exe",
+                L"potplayer.exe", L"wmplayer.exe", L"groove.exe", L"Plex.exe", L"PlexScriptHost.exe",
+                L"Spotify.exe", L"Discord.exe"
+            };
+            for (auto name : mediaPlayers) {
+                if (lstrcmpiW(exe, name) == 0) {
+                    detected = true;
+                    break;
                 }
             }
         }
