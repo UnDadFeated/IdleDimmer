@@ -169,7 +169,6 @@ HCURSOR DimmerManager::CreateDimmedCursor() {
         return CopyIcon(hOriginal);
 
     if (!ii.hbmColor) {
-        // Monochrome cursor, return a copy
         HCURSOR hCopy = CopyIcon(hOriginal);
         DeleteObject(ii.hbmColor);
         if (ii.hbmMask) DeleteObject(ii.hbmMask);
@@ -197,23 +196,7 @@ HCURSOR DimmerManager::CreateDimmedCursor() {
         ch[2] = 0; // R
     }
 
-    BITMAPINFO bmi = { 0 };
-    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    bmi.bmiHeader.biWidth = bm.bmWidth;
-    bmi.bmiHeader.biHeight = bm.bmHeight;
-    bmi.bmiHeader.biPlanes = 1;
-    bmi.bmiHeader.biBitCount = 32;
-    bmi.bmiHeader.biCompression = BI_RGB;
-
-    void* pBits = nullptr;
-    HBITMAP hbmColor = CreateDIBSection(nullptr, &bmi, DIB_RGB_COLORS, &pBits, nullptr, 0);
-    if (!hbmColor || !pBits) {
-        if (hbmColor) DeleteObject(hbmColor);
-        DeleteObject(ii.hbmColor);
-        if (ii.hbmMask) DeleteObject(ii.hbmMask);
-        return CopyIcon(hOriginal);
-    }
-    memcpy(pBits, pixels.data(), pixelCount * static_cast<size_t>(sizeof(DWORD)));
+    SetBitmapBits(ii.hbmColor, pixelCount * static_cast<int>(sizeof(DWORD)), pixels.data());
 
     HBITMAP hbmMask = nullptr;
     if (ii.hbmMask) {
@@ -230,14 +213,12 @@ HCURSOR DimmerManager::CreateDimmedCursor() {
     iiNew.fIcon = FALSE;
     iiNew.xHotspot = ii.xHotspot;
     iiNew.yHotspot = ii.yHotspot;
-    iiNew.hbmColor = hbmColor;
+    iiNew.hbmColor = ii.hbmColor;
     iiNew.hbmMask = hbmMask;
 
     HCURSOR hDimmed = CreateIconIndirect(&iiNew);
 
-    DeleteObject(ii.hbmColor);
     if (ii.hbmMask) DeleteObject(ii.hbmMask);
-    DeleteObject(hbmColor);
     DeleteObject(hbmMask);
 
     return hDimmed;
