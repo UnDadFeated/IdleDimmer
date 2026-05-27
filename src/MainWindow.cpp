@@ -242,8 +242,8 @@ void MainWindow::UpdateLayout() {
         mcb.label = L""; // Master uses standard title text
         mcb.rect.left = master.rect.left + 15;
         mcb.rect.top = master.rect.top + 15;
-        mcb.rect.right = mcb.rect.left + 20;
-        mcb.rect.bottom = mcb.rect.top + 20;
+        mcb.rect.right = mcb.rect.left + 34;
+        mcb.rect.bottom = mcb.rect.top + 18;
         m_checkboxes.push_back(mcb);
 
         yOffset += 100;
@@ -270,8 +270,8 @@ void MainWindow::UpdateLayout() {
         cb.label = L"";
         cb.rect.left = slider.rect.left + 15;
         cb.rect.top = slider.rect.top + 15;
-        cb.rect.right = cb.rect.left + 20;
-        cb.rect.bottom = cb.rect.top + 20;
+        cb.rect.right = cb.rect.left + 34;
+        cb.rect.bottom = cb.rect.top + 18;
         m_checkboxes.push_back(cb);
 
         yOffset += 90;
@@ -288,7 +288,7 @@ void MainWindow::UpdateLayout() {
     ctt.label = L"Close button hides to tray";
     ctt.rect.left = 25;
     ctt.rect.top = yOffset;
-    ctt.rect.right = ctt.rect.left + 18;
+    ctt.rect.right = ctt.rect.left + 34;
     ctt.rect.bottom = ctt.rect.top + 18;
     m_checkboxes.push_back(ctt);
 
@@ -300,7 +300,7 @@ void MainWindow::UpdateLayout() {
     sit.label = L"Show in taskbar";
     sit.rect.left = 260;
     sit.rect.top = yOffset;
-    sit.rect.right = sit.rect.left + 18;
+    sit.rect.right = sit.rect.left + 34;
     sit.rect.bottom = sit.rect.top + 18;
     m_checkboxes.push_back(sit);
 
@@ -314,7 +314,7 @@ void MainWindow::UpdateLayout() {
     sbd.label = L"Show boundary diagnostics";
     sbd.rect.left = 25;
     sbd.rect.top = yOffset;
-    sbd.rect.right = sbd.rect.left + 18;
+    sbd.rect.right = sbd.rect.left + 34;
     sbd.rect.bottom = sbd.rect.top + 18;
     m_checkboxes.push_back(sbd);
 
@@ -326,7 +326,7 @@ void MainWindow::UpdateLayout() {
     sww.label = L"Start with Windows";
     sww.rect.left = 260;
     sww.rect.top = yOffset;
-    sww.rect.right = sww.rect.left + 18;
+    sww.rect.right = sww.rect.left + 34;
     sww.rect.bottom = sww.rect.top + 18;
     m_checkboxes.push_back(sww);
 
@@ -340,7 +340,7 @@ void MainWindow::UpdateLayout() {
     wt.label = L"Eye-Saver Warm Amber Tint";
     wt.rect.left = 25;
     wt.rect.top = yOffset;
-    wt.rect.right = wt.rect.left + 18;
+    wt.rect.right = wt.rect.left + 34;
     wt.rect.bottom = wt.rect.top + 18;
     m_checkboxes.push_back(wt);
 
@@ -352,7 +352,7 @@ void MainWindow::UpdateLayout() {
     fm.label = L"Focused Screen Highlight";
     fm.rect.left = 260;
     fm.rect.top = yOffset;
-    fm.rect.right = fm.rect.left + 18;
+    fm.rect.right = fm.rect.left + 34;
     fm.rect.bottom = fm.rect.top + 18;
     m_checkboxes.push_back(fm);
 
@@ -366,7 +366,7 @@ void MainWindow::UpdateLayout() {
     ide.label = L"Dim screen when idle";
     ide.rect.left = 25;
     ide.rect.top = yOffset;
-    ide.rect.right = ide.rect.left + 18;
+    ide.rect.right = ide.rect.left + 34;
     ide.rect.bottom = ide.rect.top + 18;
     m_checkboxes.push_back(ide);
 
@@ -378,7 +378,7 @@ void MainWindow::UpdateLayout() {
     ito.label = L"Turn off screen on idle";
     ito.rect.left = 260;
     ito.rect.top = yOffset;
-    ito.rect.right = ito.rect.left + 18;
+    ito.rect.right = ito.rect.left + 34;
     ito.rect.bottom = ito.rect.top + 18;
     m_checkboxes.push_back(ito);
 
@@ -392,7 +392,7 @@ void MainWindow::UpdateLayout() {
     lm.label = L"Light Mode Theme Toggle";
     lm.rect.left = 25;
     lm.rect.top = yOffset;
-    lm.rect.right = lm.rect.left + 18;
+    lm.rect.right = lm.rect.left + 34;
     lm.rect.bottom = lm.rect.top + 18;
     m_checkboxes.push_back(lm);
 
@@ -485,7 +485,13 @@ void MainWindow::OnPaint() {
             8.0f, 8.0f
         );
         m_pRenderTarget->FillRoundedRectangle(cardRect, m_pBrushCard);
-        m_pRenderTarget->DrawRoundedRectangle(cardRect, m_pBrushCardBorder, 1.2f);
+        
+        // Active border glow! Glow with accent color if active, otherwise standard card border
+        m_pRenderTarget->DrawRoundedRectangle(
+            cardRect, 
+            slider.active ? m_pBrushAccent : m_pBrushCardBorder, 
+            slider.active ? 1.6f : 1.2f
+        );
 
         // Find associated name and value string
         std::wstring displayName;
@@ -531,7 +537,7 @@ void MainWindow::OnPaint() {
             slider.active ? m_pBrushText : m_pBrushTextMuted
         );
 
-        // Draw track slider bar
+        // Draw track slider bar (thicker rounded techie progress bar)
         float trackY = slider.rect.bottom - 22.0f;
         float trackLeft = slider.rect.left + 20.0f;
         float trackRight = slider.rect.right - 20.0f;
@@ -541,47 +547,129 @@ void MainWindow::OnPaint() {
             D2D1::Point2F(trackLeft, trackY),
             D2D1::Point2F(trackRight, trackY),
             m_pBrushTrack,
-            4.0f
+            6.0f
         );
 
-        // Active segment
+        // Active progress track segment
         float thumbX = trackLeft + (slider.value * trackWidth);
         if (slider.active) {
             m_pRenderTarget->DrawLine(
                 D2D1::Point2F(trackLeft, trackY),
                 D2D1::Point2F(thumbX, trackY),
                 m_pBrushAccent,
-                4.0f
+                6.0f
             );
         }
 
-        // Thumb circular handle
-        m_pRenderTarget->FillEllipse(
-            D2D1::Ellipse(D2D1::Point2F(thumbX, trackY), 7.0f, 7.0f),
-            (slider.isHovered && slider.active) ? m_pBrushAccentHover : (slider.active ? m_pBrushAccent : m_pBrushTrack)
+        // Technical Dual-Ring Slider Knob (mixing console style)
+        if (slider.active) {
+            m_pRenderTarget->FillEllipse(
+                D2D1::Ellipse(D2D1::Point2F(thumbX, trackY), 8.0f, 8.0f),
+                slider.isHovered ? m_pBrushAccentHover : m_pBrushAccent
+            );
+            m_pRenderTarget->DrawEllipse(
+                D2D1::Ellipse(D2D1::Point2F(thumbX, trackY), 10.0f, 10.0f),
+                m_pBrushText,
+                1.5f
+            );
+        } else {
+            m_pRenderTarget->FillEllipse(
+                D2D1::Ellipse(D2D1::Point2F(thumbX, trackY), 7.0f, 7.0f),
+                m_pBrushTrack
+            );
+        }
+    }
+
+    // Dynamic structural layout separator above settings checklist
+    float settingsTop = 9999.0f;
+    for (const auto& cb : m_checkboxes) {
+        if (!cb.label.empty() && cb.rect.top < settingsTop) {
+            settingsTop = static_cast<float>(cb.rect.top);
+        }
+    }
+    if (settingsTop < 9999.0f) {
+        m_pRenderTarget->DrawLine(
+            D2D1::Point2F(20.0f, settingsTop - 12.0f),
+            D2D1::Point2F(m_windowWidth - 35.0f, settingsTop - 12.0f),
+            m_pBrushCardBorder,
+            1.0f
         );
     }
 
-    // Render checkbox/toggle icons
+    // Render high-tech sliding toggle switches instead of old checkboxes
     for (const auto& cb : m_checkboxes) {
-        // Render stylized custom checkboxes
-        D2D1_RECT_F boxRect = D2D1::RectF(cb.rect.left, cb.rect.top, cb.rect.right, cb.rect.bottom);
-        m_pRenderTarget->DrawRectangle(boxRect, cb.isHovered ? m_pBrushAccentHover : m_pBrushCardBorder, 1.5f);
+        D2D1_ROUNDED_RECT switchTrack = D2D1::RoundedRect(
+            D2D1::RectF(cb.rect.left, cb.rect.top, cb.rect.right, cb.rect.bottom),
+            9.0f, 9.0f
+        );
 
         if (cb.checked) {
-            D2D1_RECT_F innerRect = D2D1::RectF(cb.rect.left + 3, cb.rect.top + 3, cb.rect.right - 3, cb.rect.bottom - 3);
-            m_pRenderTarget->FillRectangle(innerRect, m_pBrushAccent);
+            m_pRenderTarget->FillRoundedRectangle(switchTrack, m_pBrushAccent);
+            m_pRenderTarget->DrawRoundedRectangle(switchTrack, cb.isHovered ? m_pBrushAccentHover : m_pBrushAccent, 1.2f);
+        } else {
+            m_pRenderTarget->FillRoundedRectangle(switchTrack, m_pBrushTrack);
+            m_pRenderTarget->DrawRoundedRectangle(switchTrack, cb.isHovered ? m_pBrushAccentHover : m_pBrushCardBorder, 1.2f);
         }
+
+        // Draw circular sliding toggle knob
+        float knobX = cb.checked ? (cb.rect.left + 25.0f) : (cb.rect.left + 9.0f);
+        float knobY = cb.rect.top + 9.0f;
+        m_pRenderTarget->FillEllipse(
+            D2D1::Ellipse(D2D1::Point2F(knobX, knobY), 6.0f, 6.0f),
+            m_pBrushText
+        );
 
         if (!cb.label.empty()) {
             m_pRenderTarget->DrawText(
                 cb.label.c_str(), static_cast<UINT32>(cb.label.length()),
                 m_pTextFormatDetail,
-                D2D1::RectF(cb.rect.right + 8.0f, cb.rect.top + 1.0f, cb.rect.right + 220.0f, cb.rect.bottom + 10.0f),
+                D2D1::RectF(cb.rect.right + 10.0f, cb.rect.top + 1.0f, cb.rect.right + 230.0f, cb.rect.bottom + 10.0f),
                 m_pBrushText
             );
         }
     }
+
+    // Technical Separator Line before Footer Metadata
+    float footerY = m_windowHeight - 35.0f;
+    m_pRenderTarget->DrawLine(
+        D2D1::Point2F(20.0f, footerY),
+        D2D1::Point2F(m_windowWidth - 35.0f, footerY),
+        m_pBrushCardBorder,
+        1.0f
+    );
+
+    // Dynamic Dimmer Status Indicator
+    bool anyDimmerActive = false;
+    const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
+    for (const auto& mon : activeMons) {
+        if (mon.enabled && mon.dimValue > 0) {
+            anyDimmerActive = true;
+            break;
+        }
+    }
+
+    wchar_t statusStr[64] = { 0 };
+    if (anyDimmerActive) {
+        StringCchCopyW(statusStr, ARRAYSIZE(statusStr), L"SYSTEM: ACTIVE");
+    } else {
+        StringCchCopyW(statusStr, ARRAYSIZE(statusStr), L"SYSTEM: STANDBY");
+    }
+
+    m_pRenderTarget->DrawText(
+        statusStr, static_cast<UINT32>(wcslen(statusStr)),
+        m_pTextFormatDetail,
+        D2D1::RectF(25.0f, footerY + 10.0f, 250.0f, footerY + 28.0f),
+        anyDimmerActive ? m_pBrushAccent : m_pBrushTextMuted
+    );
+
+    // Version Number in footer right
+    const wchar_t* versionStr = L"v1.0.3";
+    m_pRenderTarget->DrawText(
+        versionStr, 6,
+        m_pTextFormatDetail,
+        D2D1::RectF(m_windowWidth - 85.0f, footerY + 10.0f, m_windowWidth - 35.0f, footerY + 28.0f),
+        m_pBrushTextMuted
+    );
 
     HRESULT hr = m_pRenderTarget->EndDraw();
     if (hr == D2DERR_RECREATED) {
