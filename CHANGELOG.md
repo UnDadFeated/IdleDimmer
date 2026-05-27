@@ -6,6 +6,8 @@ All notable changes to the WinDimmer64 project are documented here.
 
 ### Bug Fixes
 * **Slider Dimming Not Applied**: Fixed an issue where dragging, scrolling, or arrow-keying a monitor brightness slider had no visible effect on screen brightness. Adjusting any monitor slider now auto-enables active dimming if it was off, so you see the result immediately without manually toggling the switch first.
+* **Smart App Control Triggering**: Fixed version mismatch between manifest and resources (1.0.3.0 vs 1.0.4.0) that flagged the binary as suspicious. Added ASLR, DEP, and Control Flow Guard linker flags so the PE looks legitimate to Windows 11 Smart App Control.
+* **Cursor Not Dimming With Screen**: Replaced the system arrow cursor with a proportionally dimmed bitmap (`SetSystemCursor` + `CreateIconIndirect`) whenever dimming is active, so the mouse pointer matches the overlay dim level instead of staying at full brightness.
 
 ### Updates
 * **Grouped Settings Sections**: Reorganized all toggle switches into three labeled sections — **DIMMING**, **DISPLAY**, and **APPLICATION** — with muted section header labels and breathing room between groups. Related options are now visually clustered, making the settings panel easier to scan.

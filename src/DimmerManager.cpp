@@ -1,5 +1,6 @@
 #include "DimmerManager.h"
-#include <iostream>
+#include <vector>
+#include <algorithm>
 
 // Helper to get friendly monitor name
 static std::wstring GetMonitorFriendlyName(HMONITOR hMonitor, int index) {
@@ -147,6 +148,7 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
                 TriggerFade(mon.hwndOverlay);
             }
         }
+        UpdateCursorDimming();
     }
 }
 
@@ -156,6 +158,125 @@ void DimmerManager::SetDimmingEnabled(bool enabled) {
         if (mon.hwndOverlay) {
             TriggerFade(mon.hwndOverlay);
         }
+    }
+    UpdateCursorDimming();
+}
+
+HCURSOR DimmerManager::CreateDimmedCursor(int dimLevel) {
+    HCURSOR hOriginal = LoadCursor(nullptr, IDC_ARROW);
+    ICONINFO ii = { 0 };
+    if (!GetIconInfo(hOriginal, &ii))
+        return CopyIcon(hOriginal);
+
+    if (!ii.hbmColor) {
+        // Monochrome cursor, return a copy
+        HCURSOR hCopy = CopyIcon(hOriginal);
+        DeleteObject(ii.hbmColor);
+        if (ii.hbmMask) DeleteObject(ii.hbmMask);
+        return hCopy;
+    }
+
+    BITMAP bm = { 0 };
+    GetObject(ii.hbmColor, sizeof(bm), &bm);
+
+    if (bm.bmBitsPixel != 32 || bm.bmWidth <= 0 || bm.bmHeight <= 0) {
+        HCURSOR hCopy = CopyIcon(hOriginal);
+        DeleteObject(ii.hbmColor);
+        if (ii.hbmMask) DeleteObject(ii.hbmMask);
+        return hCopy;
+    }
+
+    int pixelCount = bm.bmWidth * bm.bmHeight;
+    std::vector<DWORD> pixels(pixelCount);
+    GetBitmapBits(ii.hbmColor, pixelCount * static_cast<int>(sizeof(DWORD)), pixels.data());
+
+    float dimFactor = (std::min)(dimLevel, 90) / 90.0f;
+    float invFactor = 1.0f - dimFactor;
+
+    for (auto& pixel : pixels) {
+        BYTE* ch = reinterpret_cast<BYTE*>(&pixel);
+        ch[0] = static_cast<BYTE>(ch[0] * invFactor); // B
+        ch[1] = static_cast<BYTE>(ch[1] * invFactor); // G
+        ch[2] = static_cast<BYTE>(ch[2] * invFactor); // R
+    }
+
+    BITMAPINFO bmi = { 0 };
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = bm.bmWidth;
+    bmi.bmiHeader.biHeight = bm.bmHeight;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    void* pBits = nullptr;
+    HBITMAP hbmColor = CreateDIBSection(nullptr, &bmi, DIB_RGB_COLORS, &pBits, nullptr, 0);
+    if (!hbmColor || !pBits) {
+        if (hbmColor) DeleteObject(hbmColor);
+        DeleteObject(ii.hbmColor);
+        if (ii.hbmMask) DeleteObject(ii.hbmMask);
+        return CopyIcon(hOriginal);
+    }
+    memcpy(pBits, pixels.data(), pixelCount * static_cast<size_t>(sizeof(DWORD)));
+
+    HBITMAP hbmMask = nullptr;
+    if (ii.hbmMask) {
+        BITMAP bmMask = { 0 };
+        GetObject(ii.hbmMask, sizeof(bmMask), &bmMask);
+        std::vector<BYTE> maskBits(static_cast<size_t>(bmMask.bmWidthBytes) * bmMask.bmHeight);
+        GetBitmapBits(ii.hbmMask, static_cast<LONG>(maskBits.size()), maskBits.data());
+        hbmMask = CreateBitmap(bmMask.bmWidth, bmMask.bmHeight, 1, 1, maskBits.data());
+    }
+    if (!hbmMask)
+        hbmMask = CreateBitmap(1, 1, 1, 1, nullptr);
+
+    ICONINFO iiNew = { 0 };
+    iiNew.fIcon = FALSE;
+    iiNew.xHotspot = ii.xHotspot;
+    iiNew.yHotspot = ii.yHotspot;
+    iiNew.hbmColor = hbmColor;
+    iiNew.hbmMask = hbmMask;
+
+    HCURSOR hDimmed = CreateIconIndirect(&iiNew);
+
+    DeleteObject(ii.hbmColor);
+    if (ii.hbmMask) DeleteObject(ii.hbmMask);
+    DeleteObject(hbmColor);
+    DeleteObject(hbmMask);
+
+    return hDimmed;
+}
+
+void DimmerManager::UpdateCursorDimming() {
+    int dimLevel = 0;
+    if (m_dimmingEnabled) {
+        for (const auto& mon : m_monitors) {
+            if (mon.enabled && mon.dimValue > dimLevel)
+                dimLevel = mon.dimValue;
+        }
+    }
+    if (m_isIdleState && m_idleDimLevel > dimLevel)
+        dimLevel = m_idleDimLevel;
+
+    bool shouldDim = dimLevel >= 5;
+
+    if (shouldDim && !m_cursorDimmed) {
+        CURSORINFO ci = { sizeof(CURSORINFO) };
+        GetCursorInfo(&ci);
+        m_hOriginalArrow = CopyIcon(ci.hCursor);
+        if (!m_hOriginalArrow)
+            m_hOriginalArrow = CopyIcon(LoadCursor(nullptr, IDC_ARROW));
+
+        HCURSOR hDimmed = CreateDimmedCursor(dimLevel);
+        if (hDimmed) {
+            SetSystemCursor(hDimmed, OCR_NORMAL);
+            m_cursorDimmed = true;
+        }
+    } else if (!shouldDim && m_cursorDimmed) {
+        if (m_hOriginalArrow) {
+            SetSystemCursor(m_hOriginalArrow, OCR_NORMAL);
+            m_hOriginalArrow = nullptr;
+        }
+        m_cursorDimmed = false;
     }
 }
 
@@ -176,6 +297,9 @@ void DimmerManager::DestroyOverlays() {
 
 DimmerManager::~DimmerManager() {
     DestroyOverlays();
+    if (m_cursorDimmed && m_hOriginalArrow) {
+        SetSystemCursor(m_hOriginalArrow, OCR_NORMAL);
+    }
     if (m_classRegistered) {
         UnregisterClassW(L"WinDimmer64OverlayClass", m_hInst);
     }

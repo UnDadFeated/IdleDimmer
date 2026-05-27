@@ -1211,6 +1211,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                     for (auto& sl : self->m_sliders) {
                         sl.value = self->m_config.masterValue / 90.0f;
                     }
+                    DimmerManager::Instance().UpdateCursorDimming();
                     self->SaveSettings();
                     InvalidateRect(hwnd, nullptr, FALSE);
                 } else if (wp == 103) {
@@ -1230,6 +1231,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                             break;
                         }
                     }
+                    DimmerManager::Instance().UpdateCursorDimming();
                     self->SaveSettings();
                     InvalidateRect(hwnd, nullptr, FALSE);
                 }

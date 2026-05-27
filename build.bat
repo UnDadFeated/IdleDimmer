@@ -41,7 +41,7 @@ echo [INFO] Compiling resources...
 rc.exe /nologo resources\resources.rc
 
 echo [INFO] Compiling WinDimmer64 executable...
-cl.exe /nologo /O2 /MT /std:c++17 /EHsc /Fe:WinDimmer64.exe src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.res user32.lib gdi32.lib d2d1.lib dwrite.lib dwmapi.lib shell32.lib ole32.lib advapi.lib /link /SUBSYSTEM:WINDOWS
+cl.exe /nologo /O2 /MT /std:c++17 /EHsc /Fe:WinDimmer64.exe src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.res user32.lib gdi32.lib d2d1.lib dwrite.lib dwmapi.lib shell32.lib ole32.lib advapi.lib /link /SUBSYSTEM:WINDOWS /DYNAMICBASE /NXCOMPAT /GUARD:CF /HIGHENTROPYVA
 
 if %errorlevel% equ 0 (
     echo.

@@ -1,4 +1,7 @@
 #pragma once
+#ifndef OCR_NORMAL
+#define OCR_NORMAL 32512
+#endif
 #include <windows.h>
 #include <string>
 #include <vector>
@@ -40,6 +43,7 @@ public:
     int GetIdleDimLevel() const { return m_idleDimLevel; }
     void SetDimmingEnabled(bool enabled);
     bool IsDimmingEnabled() const { return m_dimmingEnabled; }
+    void UpdateCursorDimming();
 
 private:
     DimmerManager() = default;
@@ -47,6 +51,8 @@ private:
 
     void CreateOverlayForMonitor(ActiveMonitorInfo& info);
     static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
+
+    static HCURSOR CreateDimmedCursor(int dimLevel);
 
     HINSTANCE m_hInst = nullptr;
     std::vector<ActiveMonitorInfo> m_monitors;
@@ -57,4 +63,7 @@ private:
     int m_idleDimLevel = 90;
     bool m_dimmingEnabled = false;
     bool m_classRegistered = false;
+
+    HCURSOR m_hOriginalArrow = nullptr;
+    bool m_cursorDimmed = false;
 };
