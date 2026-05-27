@@ -52,7 +52,7 @@ private:
     void CreateOverlayForMonitor(ActiveMonitorInfo& info);
     static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
-    static HCURSOR CreateDimmedCursor(int dimLevel);
+    static HCURSOR CreateDimmedCursor();
 
     HINSTANCE m_hInst = nullptr;
     std::vector<ActiveMonitorInfo> m_monitors;

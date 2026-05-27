@@ -162,7 +162,7 @@ void DimmerManager::SetDimmingEnabled(bool enabled) {
     UpdateCursorDimming();
 }
 
-HCURSOR DimmerManager::CreateDimmedCursor(int dimLevel) {
+HCURSOR DimmerManager::CreateDimmedCursor() {
     HCURSOR hOriginal = LoadCursor(nullptr, IDC_ARROW);
     ICONINFO ii = { 0 };
     if (!GetIconInfo(hOriginal, &ii))
@@ -190,14 +190,11 @@ HCURSOR DimmerManager::CreateDimmedCursor(int dimLevel) {
     std::vector<DWORD> pixels(pixelCount);
     GetBitmapBits(ii.hbmColor, pixelCount * static_cast<int>(sizeof(DWORD)), pixels.data());
 
-    float dimFactor = (std::min)(dimLevel, 90) / 90.0f;
-    float invFactor = 1.0f - dimFactor;
-
     for (auto& pixel : pixels) {
         BYTE* ch = reinterpret_cast<BYTE*>(&pixel);
-        ch[0] = static_cast<BYTE>(ch[0] * invFactor); // B
-        ch[1] = static_cast<BYTE>(ch[1] * invFactor); // G
-        ch[2] = static_cast<BYTE>(ch[2] * invFactor); // R
+        ch[0] = 0; // B
+        ch[1] = 0; // G
+        ch[2] = 0; // R
     }
 
     BITMAPINFO bmi = { 0 };
@@ -266,7 +263,7 @@ void DimmerManager::UpdateCursorDimming() {
         if (!m_hOriginalArrow)
             m_hOriginalArrow = CopyIcon(LoadCursor(nullptr, IDC_ARROW));
 
-        HCURSOR hDimmed = CreateDimmedCursor(dimLevel);
+        HCURSOR hDimmed = CreateDimmedCursor();
         if (hDimmed) {
             SetSystemCursor(hDimmed, OCR_NORMAL);
             m_cursorDimmed = true;
