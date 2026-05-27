@@ -663,7 +663,7 @@ void MainWindow::OnPaint() {
 
         float headerY = (float)m_blockedPanelRect.top + 12.0f;
         m_pRenderTarget->DrawText(
-            L"BYPASS APPS", 10, m_pTextFormatDetail,
+            L"Bypass Apps", 10, m_pTextFormatDetail,
             D2D1::RectF(m_blockedPanelRect.left + 12, headerY,
                         m_blockedAddRect.right - 56, headerY + 18),
             m_pBrushTextMuted
