@@ -365,7 +365,7 @@ void MainWindow::UpdateLayout() {
     yOffset += 22;
 
     // ── BLOCKED APPS ──
-    m_blockedArrowRect = { CONTENT_WIDTH - 50, 5, CONTENT_WIDTH - 10, 25 };
+    m_blockedArrowRect = { CONTENT_WIDTH - 120, 5, CONTENT_WIDTH - 80, 25 };
 
     if (m_config.idleDimEnabled) {
         // Inactivity Minutes Slider Card
@@ -648,7 +648,7 @@ void MainWindow::OnPaint() {
     );
     m_pRenderTarget->DrawText(
         L"Bypass Apps", 11, m_pTextFormatDetail,
-        D2D1::RectF(ax + 17, ay, CONTENT_WIDTH - 12, ay + 16),
+        D2D1::RectF(ax + 17, ay, CONTENT_WIDTH - 10, ay + 16),
         m_blockedArrowHovered ? m_pBrushAccent : m_pBrushTextMuted
     );
 
