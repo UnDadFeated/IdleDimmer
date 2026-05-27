@@ -275,6 +275,9 @@ void DimmerManager::CheckVideoPlayback() {
             CloseHandle(hProc);
         }
         if (exe[0]) {
+            // Extract just the filename from the full path returned by QueryFullProcessImageNameW
+            wchar_t* fname = wcsrchr(exe, L'\\');
+            fname = fname ? fname + 1 : exe;
             const wchar_t* mediaPlayers[] = {
                 L"chrome.exe", L"msedge.exe", L"firefox.exe", L"opera.exe", L"brave.exe",
                 L"vlc.exe", L"mpc-hc.exe", L"mpc-hc64.exe", L"mpc-be.exe", L"mpc-be64.exe",
@@ -282,7 +285,7 @@ void DimmerManager::CheckVideoPlayback() {
                 L"Spotify.exe", L"Discord.exe"
             };
             for (auto name : mediaPlayers) {
-                if (lstrcmpiW(exe, name) == 0) {
+                if (lstrcmpiW(fname, name) == 0) {
                     detected = true;
                     break;
                 }

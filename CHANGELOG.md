@@ -2,6 +2,11 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.1.2] - 2026-05-27
+
+### Bug Fixes
+* **Video detection not working**: `QueryFullProcessImageNameW` returns the full executable path, but the comparison was against just the filename (e.g. `Plex.exe`). Now extracts the filename from the path before matching. Fixes detection for all media players in any install location.
+
 ## [1.1.1] - 2026-05-27
 
 ### Bug Fixes
