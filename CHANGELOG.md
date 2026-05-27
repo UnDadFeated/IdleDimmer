@@ -2,6 +2,16 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.0.3] - 2026-05-27
+
+### New Features
+* **Visual Undo Changes Engine**: Added an interactive "Undo Changes" button in the top-right header of the settings panel. If you modify any sliders or checkboxes, clicking it instantly reverts all monitors, theme settings, timeouts, and options back to your starting session preferences in real time.
+* **Dynamic Binding Architecture**: Re-engineered checkbox settings to bind directly to configuration variables via pointers, removing all hardcoded mapping loops from the rendering and event systems.
+
+### Updates
+* **Visual Spacing & Alignment**: Solved slider label overlapping with monitor selection checkmarks by dynamically shifting text columns (+48px offset). Shifted column spacing of settings checkmarks to X=260 to provide a symmetrical, professional layout grid.
+* **Safe Launch Defaults**: Set the initial startup dimming level to 0% to ensure that first-time launches do not modify active display brightness levels before you decide to move the master slider.
+
 ## [1.0.2] - 2026-05-27
 
 ### New Features

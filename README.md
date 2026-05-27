@@ -1,4 +1,4 @@
-# WinDimmer64 (v1.0.2)
+# WinDimmer64 (v1.0.3)
 
 ![Release](https://img.shields.io/github/v/release/UnDadFeated/WinDimmer64?style=flat-square&color=0078d4)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20%28x64%29-0078d4?style=flat-square&logo=windows)

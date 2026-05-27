@@ -25,6 +25,8 @@ struct UICheckbox {
     RECT rect;
     bool checked = false;
     bool isHovered = false;
+    bool* pValue = nullptr;
+    std::wstring label;
 };
 
 class MainWindow {
@@ -97,4 +99,9 @@ private:
 
     // Drag-drop tracking
     bool m_isDraggingAny = false;
+
+    // Undo features
+    RECT m_undoRect = { 0 };
+    AppConfig m_backupConfig;
+    bool m_canUndo = false;
 };

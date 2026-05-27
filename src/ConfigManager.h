@@ -23,7 +23,7 @@ struct AppConfig {
     int idleDimLevel = 90; // 0% to 100% dimming
     bool idleTurnOff = false;
 
-    int masterValue = 30; // 0 to 90
+    int masterValue = 0; // 0 to 90
     bool masterEnabled = true;
     bool lightMode = false;
     std::vector<MonitorConfig> monitors;

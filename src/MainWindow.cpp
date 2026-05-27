@@ -39,6 +39,8 @@ static bool RemoveTrayIcon(HWND hwnd, UINT uID) {
 bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     m_hInst = hInst;
     LoadSettings();
+    m_backupConfig = m_config;
+    m_canUndo = false;
 
     // Register MainWindow Class
     WNDCLASSEXW wc = { 0 };
@@ -207,6 +209,12 @@ void MainWindow::UpdateLayout() {
     m_sliders.clear();
     m_checkboxes.clear();
 
+    // Setup Undo button bounds in the top-right header region
+    m_undoRect.left = m_windowWidth - 75;
+    m_undoRect.top = 18;
+    m_undoRect.right = m_windowWidth - 20;
+    m_undoRect.bottom = 38;
+
     const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
 
     // 1. Header (WinDimmer64 Title)
@@ -230,6 +238,8 @@ void MainWindow::UpdateLayout() {
         UICheckbox mcb;
         mcb.settingName = L"MasterEnabled";
         mcb.checked = m_config.masterEnabled;
+        mcb.pValue = &m_config.masterEnabled;
+        mcb.label = L""; // Master uses standard title text
         mcb.rect.left = master.rect.left + 15;
         mcb.rect.top = master.rect.top + 15;
         mcb.rect.right = mcb.rect.left + 20;
@@ -256,6 +266,8 @@ void MainWindow::UpdateLayout() {
         UICheckbox cb;
         cb.monitorId = mon.id;
         cb.checked = mon.enabled;
+        cb.pValue = nullptr; // Mon enables are handled via individual loop logic
+        cb.label = L"";
         cb.rect.left = slider.rect.left + 15;
         cb.rect.top = slider.rect.top + 15;
         cb.rect.right = cb.rect.left + 20;
@@ -272,6 +284,8 @@ void MainWindow::UpdateLayout() {
     UICheckbox ctt;
     ctt.settingName = L"CloseToTray";
     ctt.checked = m_config.closeToTray;
+    ctt.pValue = &m_config.closeToTray;
+    ctt.label = L"Close button hides to tray";
     ctt.rect.left = 25;
     ctt.rect.top = yOffset;
     ctt.rect.right = ctt.rect.left + 18;
@@ -282,7 +296,9 @@ void MainWindow::UpdateLayout() {
     UICheckbox sit;
     sit.settingName = L"ShowInTaskbar";
     sit.checked = m_config.showInTaskbar;
-    sit.rect.left = 250;
+    sit.pValue = &m_config.showInTaskbar;
+    sit.label = L"Show in taskbar";
+    sit.rect.left = 260;
     sit.rect.top = yOffset;
     sit.rect.right = sit.rect.left + 18;
     sit.rect.bottom = sit.rect.top + 18;
@@ -294,6 +310,8 @@ void MainWindow::UpdateLayout() {
     UICheckbox sbd;
     sbd.settingName = L"ShowBoundaries";
     sbd.checked = m_config.showBoundaries;
+    sbd.pValue = &m_config.showBoundaries;
+    sbd.label = L"Show boundary diagnostics";
     sbd.rect.left = 25;
     sbd.rect.top = yOffset;
     sbd.rect.right = sbd.rect.left + 18;
@@ -304,7 +322,9 @@ void MainWindow::UpdateLayout() {
     UICheckbox sww;
     sww.settingName = L"StartWithWindows";
     sww.checked = m_config.startWithWindows;
-    sww.rect.left = 250;
+    sww.pValue = &m_config.startWithWindows;
+    sww.label = L"Start with Windows";
+    sww.rect.left = 260;
     sww.rect.top = yOffset;
     sww.rect.right = sww.rect.left + 18;
     sww.rect.bottom = sww.rect.top + 18;
@@ -316,6 +336,8 @@ void MainWindow::UpdateLayout() {
     UICheckbox wt;
     wt.settingName = L"WarmTint";
     wt.checked = m_config.warmTint;
+    wt.pValue = &m_config.warmTint;
+    wt.label = L"Eye-Saver Warm Amber Tint";
     wt.rect.left = 25;
     wt.rect.top = yOffset;
     wt.rect.right = wt.rect.left + 18;
@@ -326,7 +348,9 @@ void MainWindow::UpdateLayout() {
     UICheckbox fm;
     fm.settingName = L"FocusMode";
     fm.checked = m_config.focusMode;
-    fm.rect.left = 250;
+    fm.pValue = &m_config.focusMode;
+    fm.label = L"Focused Screen Highlight";
+    fm.rect.left = 260;
     fm.rect.top = yOffset;
     fm.rect.right = fm.rect.left + 18;
     fm.rect.bottom = fm.rect.top + 18;
@@ -338,6 +362,8 @@ void MainWindow::UpdateLayout() {
     UICheckbox ide;
     ide.settingName = L"IdleDimEnabled";
     ide.checked = m_config.idleDimEnabled;
+    ide.pValue = &m_config.idleDimEnabled;
+    ide.label = L"Dim screen when idle";
     ide.rect.left = 25;
     ide.rect.top = yOffset;
     ide.rect.right = ide.rect.left + 18;
@@ -348,7 +374,9 @@ void MainWindow::UpdateLayout() {
     UICheckbox ito;
     ito.settingName = L"IdleTurnOff";
     ito.checked = m_config.idleTurnOff;
-    ito.rect.left = 250;
+    ito.pValue = &m_config.idleTurnOff;
+    ito.label = L"Turn off screen on idle";
+    ito.rect.left = 260;
     ito.rect.top = yOffset;
     ito.rect.right = ito.rect.left + 18;
     ito.rect.bottom = ito.rect.top + 18;
@@ -360,6 +388,8 @@ void MainWindow::UpdateLayout() {
     UICheckbox lm;
     lm.settingName = L"LightMode";
     lm.checked = m_config.lightMode;
+    lm.pValue = &m_config.lightMode;
+    lm.label = L"Light Mode Theme Toggle";
     lm.rect.left = 25;
     lm.rect.top = yOffset;
     lm.rect.right = lm.rect.left + 18;
@@ -439,6 +469,14 @@ void MainWindow::OnPaint() {
         m_pBrushText
     );
 
+    // Draw interactive Undo Changes button on the top-right
+    m_pRenderTarget->DrawText(
+        L"Undo Changes", 12,
+        m_pTextFormatDetail,
+        D2D1::RectF(m_undoRect.left, m_undoRect.top, m_undoRect.right, m_undoRect.bottom),
+        m_canUndo ? m_pBrushAccent : m_pBrushTextMuted
+    );
+
     // Render interactive cards & sliders
     for (const auto& slider : m_sliders) {
         // Draw round cornered card
@@ -476,8 +514,8 @@ void MainWindow::OnPaint() {
             StringCchPrintfW(pctStr, ARRAYSIZE(pctStr), L"%d%%", pct);
         }
 
-        // Draw monitor label
-        float textLeft = slider.rect.left + 20.0f; // Shift text slightly left for full card spacing
+        // Draw monitor label (shift text left if checkbox is inside the card)
+        float textLeft = (slider.isIdleMinutes || slider.isIdleDimLevel) ? (slider.rect.left + 20.0f) : (slider.rect.left + 48.0f);
         m_pRenderTarget->DrawText(
             displayName.c_str(), static_cast<UINT32>(displayName.length()),
             m_pTextFormatBody,
@@ -535,21 +573,9 @@ void MainWindow::OnPaint() {
             m_pRenderTarget->FillRectangle(innerRect, m_pBrushAccent);
         }
 
-        // Text label matching checkbox target setting
-        std::wstring textLabel;
-        if (cb.settingName == L"CloseToTray") textLabel = L"Close button hides to tray";
-        else if (cb.settingName == L"ShowInTaskbar") textLabel = L"Show in taskbar";
-        else if (cb.settingName == L"ShowBoundaries") textLabel = L"Show boundary diagnostics";
-        else if (cb.settingName == L"StartWithWindows") textLabel = L"Start with Windows";
-        else if (cb.settingName == L"WarmTint") textLabel = L"Eye-Saver Warm Amber Tint";
-        else if (cb.settingName == L"FocusMode") textLabel = L"Focused Screen Highlight";
-        else if (cb.settingName == L"IdleDimEnabled") textLabel = L"Dim screen when idle";
-        else if (cb.settingName == L"IdleTurnOff") textLabel = L"Turn off screen on idle";
-        else if (cb.settingName == L"LightMode") textLabel = L"Light Mode Theme Toggle";
-
-        if (!textLabel.empty()) {
+        if (!cb.label.empty()) {
             m_pRenderTarget->DrawText(
-                textLabel.c_str(), static_cast<UINT32>(textLabel.length()),
+                cb.label.c_str(), static_cast<UINT32>(cb.label.length()),
                 m_pTextFormatDetail,
                 D2D1::RectF(cb.rect.right + 8.0f, cb.rect.top + 1.0f, cb.rect.right + 220.0f, cb.rect.bottom + 10.0f),
                 m_pBrushText
@@ -640,6 +666,43 @@ void MainWindow::HandleMouseMove(int x, int y) {
 }
 
 void MainWindow::HandleLButtonDown(int x, int y) {
+    // Intercept Undo click
+    if (m_canUndo && x >= m_undoRect.left && x <= m_undoRect.right && y >= m_undoRect.top && y <= m_undoRect.bottom) {
+        m_config = m_backupConfig;
+        m_canUndo = false;
+
+        // Re-synchronize monitors to loaded settings
+        SyncMonitorsWithConfig();
+
+        // Refresh dynamic overlay levels
+        const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
+        for (const auto& mon : activeMons) {
+            for (const auto& savedMon : m_config.monitors) {
+                if (savedMon.id == mon.id) {
+                    DimmerManager::Instance().SetMonitorDim(mon.id, savedMon.value);
+                    DimmerManager::Instance().SetMonitorEnabled(mon.id, savedMon.enabled);
+                    break;
+                }
+            }
+        }
+        DimmerManager::Instance().SetWarmTint(m_config.warmTint);
+        DimmerManager::Instance().SetFocusMode(m_config.focusMode);
+        DimmerManager::Instance().SetShowBoundaries(m_config.showBoundaries);
+        if (!m_config.idleDimEnabled) {
+            DimmerManager::Instance().SetIdleState(false);
+        }
+
+        // Dynamically toggle DWM theme bar
+        BOOL useDark = !m_config.lightMode;
+        DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
+        SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+        UpdateLayout();
+        SaveSettings();
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+        return;
+    }
+
     for (auto& slider : m_sliders) {
         float trackLeft = slider.rect.left + 20.0f;
         float trackRight = slider.rect.right - 20.0f;
@@ -651,6 +714,7 @@ void MainWindow::HandleLButtonDown(int x, int y) {
         if (slider.active && x >= trackLeft - 5 && x <= trackRight + 5 && abs(y - trackY) < 10) {
             slider.isDragging = true;
             m_isDraggingAny = true;
+            m_canUndo = true; // State changed
             SetCapture(m_hwnd);
             HandleMouseMove(x, y); // Immediately position thumb to mouse
             break;
@@ -661,7 +725,13 @@ void MainWindow::HandleLButtonDown(int x, int y) {
     for (auto& cb : m_checkboxes) {
         if (x >= cb.rect.left && x <= cb.rect.right && y >= cb.rect.top && y <= cb.rect.bottom) {
             cb.checked = !cb.checked;
+            m_canUndo = true; // State changed
             
+            // Dynamic configuration binding assignment
+            if (cb.pValue) {
+                *cb.pValue = cb.checked;
+            }
+
             // Apply setting immediately
             if (!cb.monitorId.empty()) {
                 // Individual screen checkbox
@@ -680,7 +750,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                     }
                 }
             } else if (cb.settingName == L"MasterEnabled") {
-                m_config.masterEnabled = cb.checked;
                 // Enable/disable all individual monitor sliders
                 const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
                 for (const auto& mon : activeMons) {
@@ -693,9 +762,8 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                     sl.active = cb.checked;
                 }
             } else if (cb.settingName == L"CloseToTray") {
-                m_config.closeToTray = cb.checked;
+                // Handled dynamically
             } else if (cb.settingName == L"ShowInTaskbar") {
-                m_config.showInTaskbar = cb.checked;
                 // Standard styles need window recreation or update, simpler to just write to config and let user know,
                 // or dynamic GWL_STYLE toggle:
                 LONG_PTR style = GetWindowLongPtrW(m_hwnd, GWL_STYLE);
@@ -706,28 +774,22 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 }
                 SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
             } else if (cb.settingName == L"ShowBoundaries") {
-                m_config.showBoundaries = cb.checked;
                 DimmerManager::Instance().SetShowBoundaries(cb.checked);
             } else if (cb.settingName == L"StartWithWindows") {
-                m_config.startWithWindows = cb.checked;
                 ToggleStartWithWindows(cb.checked);
             } else if (cb.settingName == L"WarmTint") {
-                m_config.warmTint = cb.checked;
                 DimmerManager::Instance().SetWarmTint(cb.checked);
             } else if (cb.settingName == L"FocusMode") {
-                m_config.focusMode = cb.checked;
                 DimmerManager::Instance().SetFocusMode(cb.checked);
             } else if (cb.settingName == L"IdleDimEnabled") {
-                m_config.idleDimEnabled = cb.checked;
                 if (!cb.checked) {
                     DimmerManager::Instance().SetIdleState(false);
                 }
                 UpdateLayout();
             } else if (cb.settingName == L"IdleTurnOff") {
-                m_config.idleTurnOff = cb.checked;
+                // Handled dynamically
             } else if (cb.settingName == L"LightMode") {
-                m_config.lightMode = cb.checked;
-                BOOL useDark = !m_config.lightMode;
+                BOOL useDark = !cb.checked;
                 DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
                 SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
             }
