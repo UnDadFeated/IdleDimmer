@@ -5,7 +5,10 @@ All notable changes to the WinDimmer64 project are documented here.
 ## [1.1.0] - 2026-05-27
 
 ### Updates
-* **Fixed Installer**: App now extracts correctly with proper error messages. Shows install status on welcome screen — detects running instances, existing versions, and handles each case cleanly.
+* **Fixed Installer Layout**: Welcome screen status text no longer overlaps the location text. Increased spacing between controls and taller status box for multiline messages.
+* **Launch on Finish**: The Launch WinDimmer64 checkbox on the completion screen now works — launches the app when checked before closing the installer.
+* **Installer Source Tracked**: `src/setup.cpp` and `resources/setup.rc` are now in the repo for repeatable builds.
+* **Fixed Installer Extraction**: App now extracts correctly with proper error messages. Shows install status on welcome screen — detects running instances, existing versions, and handles each case cleanly.
 * **Installer Icon**: Professional icon and version info metadata on the installer executable.
 * **Video Playback Detection**: Dimming pauses when a video is playing in a browser or media player (windowed or fullscreen).
 * **Update Check**: Automatically checks GitHub for new releases on startup.
