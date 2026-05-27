@@ -2,6 +2,11 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.2.6] - 2026-05-27
+
+### Bug Fixes
+* **Cursor bitmap ownership in CreateDimmedCursor**: The GDI color and mask bitmaps passed to `CreateIconIndirect` were deleted immediately after creation. MSDN states the system does not copy these bitmaps — the application must not delete them while the cursor is in use. The bitmaps are now kept alive and cleaned up when the system replaces cursors via `SPI_SETCURSORS`.
+
 ## [1.2.5] - 2026-05-27
 
 ### Bug Fixes

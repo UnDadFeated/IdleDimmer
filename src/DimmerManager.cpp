@@ -209,10 +209,10 @@ HCURSOR DimmerManager::CreateDimmedCursor(HCURSOR hOriginal) {
 
     HCURSOR hDimmed = CreateIconIndirect(&iiNew);
 
-    // Clean up original GDI bitmap handles returned by GetIconInfo!
-    DeleteObject(ii.hbmColor);
-    DeleteObject(ii.hbmMask);
-
+    if (!hDimmed) {
+        DeleteObject(ii.hbmColor);
+        DeleteObject(ii.hbmMask);
+    }
     return hDimmed;
 }
 
