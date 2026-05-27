@@ -1,8 +1,9 @@
 # WinDimmer64 (v1.0.8)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Windows](https://img.shields.io/badge/OS-Windows-blue?logo=windows)](https://github.com/UnDadFeated/WinDimmer64)
+[![C++](https://img.shields.io/badge/language-C%2B%2B17-00599C?logo=c%2B%2B)](https://github.com/UnDadFeated/WinDimmer64)
 [![Release](https://img.shields.io/github/v/release/UnDadFeated/WinDimmer64?include_prereleases&style=flat)](https://github.com/UnDadFeated/WinDimmer64/releases)
-[![Downloads](https://img.shields.io/github/downloads/UnDadFeated/WinDimmer64/total?style=flat)](https://github.com/UnDadFeated/WinDimmer64/releases)
 
 A lightweight, modern, and high-performance screen dimming and OLED burn-in prevention utility designed specifically for Windows 11 (x64) in native C++.
 
