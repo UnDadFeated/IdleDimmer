@@ -647,8 +647,8 @@ void MainWindow::OnPaint() {
         m_blockedArrowHovered ? m_pBrushAccent : m_pBrushTextMuted
     );
     m_pRenderTarget->DrawText(
-        L"Bypass Apps", 10, m_pTextFormatDetail,
-        D2D1::RectF(ax + 17, ay, ax + 80, ay + 16),
+        L"Bypass Apps", 11, m_pTextFormatDetail,
+        D2D1::RectF(ax + 17, ay, CONTENT_WIDTH - 12, ay + 16),
         m_blockedArrowHovered ? m_pBrushAccent : m_pBrushTextMuted
     );
 
@@ -663,7 +663,7 @@ void MainWindow::OnPaint() {
 
         float headerY = (float)m_blockedPanelRect.top + 12.0f;
         m_pRenderTarget->DrawText(
-            L"Bypass Apps", 10, m_pTextFormatDetail,
+            L"Bypass Apps", 11, m_pTextFormatDetail,
             D2D1::RectF(m_blockedPanelRect.left + 12, headerY,
                         m_blockedAddRect.right - 56, headerY + 18),
             m_pBrushTextMuted
