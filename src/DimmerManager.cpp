@@ -218,8 +218,15 @@ HCURSOR DimmerManager::CreateDimmedCursor() {
 
     HCURSOR hDimmed = CreateIconIndirect(&iiNew);
 
-    if (ii.hbmMask) DeleteObject(ii.hbmMask);
-    DeleteObject(hbmMask);
+    if (hDimmed) {
+        // Cursor now owns the bitmaps — system will clean them up via DestroyCursor
+        if (ii.hbmMask) DeleteObject(ii.hbmMask);
+    } else {
+        // Clean up on failure
+        DeleteObject(ii.hbmColor);
+        if (ii.hbmMask) DeleteObject(ii.hbmMask);
+        DeleteObject(hbmMask);
+    }
 
     return hDimmed;
 }

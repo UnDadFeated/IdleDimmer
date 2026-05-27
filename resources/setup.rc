@@ -1,8 +1,8 @@
 #include <windows.h>
 
 1 VERSIONINFO
- FILEVERSION     1,2,2,0
- PRODUCTVERSION  1,2,2,0
+ FILEVERSION     1,2,3,0
+ PRODUCTVERSION  1,2,3,0
 FILEFLAGSMASK   0x3fL
 FILEFLAGS       0x0L
 FILEOS          VOS_NT_WINDOWS32
@@ -15,9 +15,9 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "UnDadFeated"
             VALUE "FileDescription", "WinDimmer64 Setup"
-            VALUE "FileVersion", "1.2.2"
+            VALUE "FileVersion", "1.2.3"
 
-            VALUE "ProductVersion", "1.2.2"
+            VALUE "ProductVersion", "1.2.3"
         END
     END
     BLOCK "VarFileInfo"

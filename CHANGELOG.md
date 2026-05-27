@@ -2,6 +2,11 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.2.3] - 2026-05-27
+
+### Bug Fixes
+* **Cursor disappears after idle wake**: Fixed a bitmap ownership bug in `CreateDimmedCursor` — the new mask bitmap was deleted immediately after `CreateIconIndirect`, corrupting the cursor. The mask is now kept alive (owned by the cursor, cleaned up by the system via `DestroyCursor`).
+
 ## [1.2.2] - 2026-05-27
 
 ### Bug Fixes
