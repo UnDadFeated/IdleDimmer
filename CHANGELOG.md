@@ -5,6 +5,7 @@ All notable changes to the WinDimmer64 project are documented here.
 ## [1.0.9] - 2026-05-27
 
 ### Updates
+* **Installer**: Professional setup wizard with welcome screen, install location display, launch option, and clean uninstall via Settings > Apps & Features.
 * **Update Check**: WinDimmer64 now checks GitHub for new releases on startup. Shows "Update Available" or "Up to Date" next to the version number in the footer.
 * **Video Playback Detection**: WinDimmer64 now detects when a video is playing in a browser or media player (windowed or fullscreen) and halts all dimming until playback stops. Supports Chrome, Edge, Firefox, VLC, Plex, MPC, PotPlayer, Spotify, Discord, and more.
 * **Black Cursor**: Dimmed cursor now turns fully black instead of proportionally dimming, with no flipping artifacts.
