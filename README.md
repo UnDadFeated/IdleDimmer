@@ -1,10 +1,10 @@
 # WinDimmer64
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/version-1.0.8-2ea44f" alt="Version 1.0.8">
-  <img src="https://img.shields.io/badge/OS-Windows-blue?logo=windows" alt="Windows">
-  <img src="https://img.shields.io/badge/language-C%2B%2B17-00599C?logo=c%2B%2B" alt="C++17">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/MIT-6B7280?style=flat-square&label=License" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/1.0.8-10B981?style=flat-square&label=Version" alt="Version 1.0.8">
+  <img src="https://img.shields.io/badge/Windows-0078D4?style=flat-square&logo=windows&logoColor=white&label=OS" alt="Windows">
+  <img src="https://img.shields.io/badge/C%2B%2B17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white&label=Language" alt="C++17">
 </p>
 
 A lightweight, modern, and high-performance screen dimming and OLED burn-in prevention utility designed specifically for Windows 11 (x64) in native C++.
