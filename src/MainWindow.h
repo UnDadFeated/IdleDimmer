@@ -102,7 +102,8 @@ private:
 
     // Undo features
     RECT m_undoRect = { 0 };
-    AppConfig m_backupConfig;
+    std::vector<AppConfig> m_undoStack;
     bool m_canUndo = false;
     int m_changeCount = 0;
+    void PushUndoState();
 };

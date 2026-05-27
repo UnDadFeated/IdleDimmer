@@ -39,7 +39,7 @@ static bool RemoveTrayIcon(HWND hwnd, UINT uID) {
 bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     m_hInst = hInst;
     LoadSettings();
-    m_backupConfig = m_config;
+    m_undoStack.clear();
     m_canUndo = false;
     m_changeCount = 0;
 
@@ -221,7 +221,7 @@ void MainWindow::UpdateLayout() {
     const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
 
     // Start yOffset below the header
-    int yOffset = 60;
+    int yOffset = 52;
 
     // 2. Master Slider Card (If multiple screens)
     if (activeMons.size() > 1) {
@@ -233,7 +233,7 @@ void MainWindow::UpdateLayout() {
         master.rect.left = 20;
         master.rect.top = yOffset;
         master.rect.right = m_windowWidth - 35;
-        master.rect.bottom = master.rect.top + 75;
+        master.rect.bottom = master.rect.top + 65;
 
         m_sliders.push_back(master);
 
@@ -242,13 +242,13 @@ void MainWindow::UpdateLayout() {
         mcb.checked = m_config.masterEnabled;
         mcb.pValue = &m_config.masterEnabled;
         mcb.label = L""; // Master uses standard title text
-        mcb.rect.left = master.rect.left + 15;
-        mcb.rect.top = master.rect.top + 15;
+        mcb.rect.left = master.rect.left + 12;
+        mcb.rect.top = master.rect.top + 12;
         mcb.rect.right = mcb.rect.left + 34;
         mcb.rect.bottom = mcb.rect.top + 18;
         m_checkboxes.push_back(mcb);
 
-        yOffset = master.rect.bottom + 15;
+        yOffset = master.rect.bottom + 10;
     }
 
     // 3. Individual Screen Sliders
@@ -261,7 +261,7 @@ void MainWindow::UpdateLayout() {
         slider.rect.left = 20;
         slider.rect.top = yOffset;
         slider.rect.right = m_windowWidth - 35;
-        slider.rect.bottom = slider.rect.top + 75;
+        slider.rect.bottom = slider.rect.top + 65;
 
         m_sliders.push_back(slider);
 
@@ -270,17 +270,17 @@ void MainWindow::UpdateLayout() {
         cb.checked = mon.enabled;
         cb.pValue = nullptr; // Mon enables are handled via individual loop logic
         cb.label = L"";
-        cb.rect.left = slider.rect.left + 15;
-        cb.rect.top = slider.rect.top + 15;
+        cb.rect.left = slider.rect.left + 12;
+        cb.rect.top = slider.rect.top + 12;
         cb.rect.right = cb.rect.left + 34;
         cb.rect.bottom = cb.rect.top + 18;
         m_checkboxes.push_back(cb);
 
-        yOffset = slider.rect.bottom + 15;
+        yOffset = slider.rect.bottom + 10;
     }
 
     // Space before settings
-    yOffset += 10;
+    yOffset += 5;
 
     // 4. Settings Checkboxes (Grouped Footer Area)
     // Helper lambda: places a checkbox at absolute yPos
@@ -298,32 +298,32 @@ void MainWindow::UpdateLayout() {
     };
 
     // ── DIMMING section ──
-    yOffset += 22; // space for section header label
+    yOffset += 16; // space for section header label
     AddCheckbox(L"DimmingEnabled", m_config.dimmingEnabled, &m_config.dimmingEnabled, L"Active Dimming", 0, yOffset);
     AddCheckbox(L"GroupDim", m_config.groupDim, &m_config.groupDim, L"Group All Monitors", 1, yOffset);
-    yOffset += 28;
+    yOffset += 22;
     AddCheckbox(L"IdleDimEnabled", m_config.idleDimEnabled, &m_config.idleDimEnabled, L"Dim When Away", 0, yOffset);
     AddCheckbox(L"IdleTurnOff", m_config.idleTurnOff, &m_config.idleTurnOff, L"Turn Off When Away", 1, yOffset);
-    yOffset += 28;
+    yOffset += 22;
 
     // ── DISPLAY section ──
-    yOffset += 14; // gap between sections
-    yOffset += 22; // space for section header label
+    yOffset += 8; // gap between sections
+    yOffset += 16; // space for section header label
     AddCheckbox(L"WarmTint", m_config.warmTint, &m_config.warmTint, L"Warm Amber Tint", 0, yOffset);
     AddCheckbox(L"FocusMode", m_config.focusMode, &m_config.focusMode, L"Focus Highlight", 1, yOffset);
-    yOffset += 28;
+    yOffset += 22;
     AddCheckbox(L"LightMode", m_config.lightMode, &m_config.lightMode, L"Light Mode", 0, yOffset);
     AddCheckbox(L"ShowBoundaries", m_config.showBoundaries, &m_config.showBoundaries, L"Boundary Diagnostics", 1, yOffset);
-    yOffset += 28;
+    yOffset += 22;
 
     // ── APPLICATION section ──
-    yOffset += 14; // gap between sections
-    yOffset += 22; // space for section header label
+    yOffset += 8; // gap between sections
+    yOffset += 16; // space for section header label
     AddCheckbox(L"CloseToTray", m_config.closeToTray, &m_config.closeToTray, L"Close to Tray", 0, yOffset);
     AddCheckbox(L"ShowInTaskbar", m_config.showInTaskbar, &m_config.showInTaskbar, L"Show in Taskbar", 1, yOffset);
-    yOffset += 28;
+    yOffset += 22;
     AddCheckbox(L"StartWithWindows", m_config.startWithWindows, &m_config.startWithWindows, L"Start with Windows", 0, yOffset);
-    yOffset += 28;
+    yOffset += 22;
 
     if (m_config.idleDimEnabled) {
         // Inactivity Minutes Slider Card
@@ -334,7 +334,7 @@ void MainWindow::UpdateLayout() {
         idleMin.rect.left = 20;
         idleMin.rect.top = yOffset + 15;
         idleMin.rect.right = m_windowWidth - 35;
-        idleMin.rect.bottom = idleMin.rect.top + 65;
+        idleMin.rect.bottom = idleMin.rect.top + 58;
         m_sliders.push_back(idleMin);
 
         // Inactivity Dim Level Slider Card
@@ -345,14 +345,14 @@ void MainWindow::UpdateLayout() {
         idleLvl.rect.left = 20;
         idleLvl.rect.top = idleMin.rect.bottom + 15;
         idleLvl.rect.right = m_windowWidth - 35;
-        idleLvl.rect.bottom = idleLvl.rect.top + 65;
+        idleLvl.rect.bottom = idleLvl.rect.top + 58;
         m_sliders.push_back(idleLvl);
 
         yOffset = idleLvl.rect.bottom;
     }
 
     // Calculate required window height dynamically
-    m_windowHeight = yOffset + 55;
+    m_windowHeight = yOffset + 42;
     
     RECT rc = { 0, 0, m_windowWidth, m_windowHeight };
     AdjustWindowRectEx(&rc, GetWindowLongW(m_hwnd, GWL_STYLE), FALSE, GetWindowLongW(m_hwnd, GWL_EXSTYLE));
@@ -606,7 +606,7 @@ void MainWindow::OnPaint() {
     );
 
     // Version Number in footer right
-    const wchar_t* versionStr = L"v1.0.5";
+    const wchar_t* versionStr = L"v1.0.6";
     m_pRenderTarget->DrawText(
         versionStr, 6,
         m_pTextFormatDetail,
@@ -721,12 +721,19 @@ void MainWindow::HandleMouseMove(int x, int y) {
     }
 }
 
+void MainWindow::PushUndoState() {
+    m_undoStack.push_back(m_config);
+    m_canUndo = true;
+    m_changeCount = static_cast<int>(m_undoStack.size());
+}
+
 void MainWindow::HandleLButtonDown(int x, int y) {
     // Intercept Undo click
     if (m_canUndo && x >= m_undoRect.left && x <= m_undoRect.right && y >= m_undoRect.top && y <= m_undoRect.bottom) {
-        m_config = m_backupConfig;
-        m_canUndo = false;
-        m_changeCount = 0;
+        m_config = m_undoStack.back();
+        m_undoStack.pop_back();
+        m_canUndo = !m_undoStack.empty();
+        m_changeCount = static_cast<int>(m_undoStack.size());
 
         // Re-synchronize monitors to loaded settings
         SyncMonitorsWithConfig();
@@ -770,10 +777,9 @@ void MainWindow::HandleLButtonDown(int x, int y) {
         float thumbX = trackLeft + (slider.value * trackWidth);
         // If clicked anywhere near the track or the thumb
         if (slider.active && x >= trackLeft - 5 && x <= trackRight + 5 && abs(y - trackY) < 10) {
+            PushUndoState();
             slider.isDragging = true;
             m_isDraggingAny = true;
-            m_canUndo = true; // State changed
-            m_changeCount++;
             SetCapture(m_hwnd);
             HandleMouseMove(x, y); // Immediately position thumb to mouse
             break;
@@ -783,9 +789,8 @@ void MainWindow::HandleLButtonDown(int x, int y) {
     // Checkboxes check
     for (auto& cb : m_checkboxes) {
         if (x >= cb.rect.left && x <= cb.rect.right && y >= cb.rect.top && y <= cb.rect.bottom) {
+            PushUndoState();
             cb.checked = !cb.checked;
-            m_canUndo = true; // State changed
-            m_changeCount++;
             
             // Dynamic configuration binding assignment
             if (cb.pValue) {
@@ -934,6 +939,7 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
     bool changed = false;
     for (auto& slider : m_sliders) {
         if (slider.active && pt.x >= slider.rect.left && pt.x <= slider.rect.right && pt.y >= slider.rect.top && pt.y <= slider.rect.bottom) {
+            PushUndoState();
             float step = (delta > 0) ? 0.02f : -0.02f;
             slider.value += step;
             if (slider.value < 0.0f) slider.value = 0.0f;
@@ -1012,6 +1018,7 @@ void MainWindow::HandleKeyDown(WPARAM key) {
             else if (key == VK_LEFT || key == VK_DOWN) step = -0.02f;
 
             if (step != 0.0f) {
+                PushUndoState();
                 slider.value += step;
                 if (slider.value < 0.0f) slider.value = 0.0f;
                 if (slider.value > 1.0f) slider.value = 1.0f;
@@ -1192,6 +1199,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
             }
             case WM_HOTKEY: {
                 if (wp == 101 || wp == 102) {
+                    self->PushUndoState();
                     int delta = (wp == 101) ? -5 : 5;
                     self->m_config.masterValue += delta;
                     if (self->m_config.masterValue < 0) self->m_config.masterValue = 0;
@@ -1210,6 +1218,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                     self->SaveSettings();
                     InvalidateRect(hwnd, nullptr, FALSE);
                 } else if (wp == 103) {
+                    self->PushUndoState();
                     self->m_config.masterEnabled = !self->m_config.masterEnabled;
                     for (const auto& mon : DimmerManager::Instance().GetActiveMonitors()) {
                         DimmerManager::Instance().SetMonitorEnabled(mon.id, self->m_config.masterEnabled);

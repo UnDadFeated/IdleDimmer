@@ -2,6 +2,14 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.0.6] - 2026-05-27
+
+### New Features
+* **One-By-One Undo**: Replaced the single "undo everything" button with a proper undo stack. Each click of "Undo" reverts only the most recent change, letting you step back through slider adjustments, checkbox toggles, hotkey presses, and wheel ticks one at a time.
+
+### Updates
+* **Compact Settings Panel**: Tightened all layout spacing — card heights reduced from 75→65 px, row margins tightened, section gaps narrowed, and overall window padding cut — so the panel fits more content without scrolling on smaller screens.
+
 ## [1.0.5] - 2026-05-27
 
 ### New Features
