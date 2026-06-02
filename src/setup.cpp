@@ -104,9 +104,9 @@ static void KillRunning() {
         DWORD waitResult = WaitForSingleObject(hProc, 5000);
         if (waitResult == WAIT_TIMEOUT) {
             TerminateProcess(hProc, 1);
-            Sleep(300);
         }
         CloseHandle(hProc);
+        Sleep(200);
     }
 }
 
