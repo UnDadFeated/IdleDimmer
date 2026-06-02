@@ -1,0 +1,12 @@
+v1.3.7 — Browser audio detection ripped out, v1.2.8 rules restored.
+
+Removed all browser audio enumeration (IAudioSessionEnumerator, audio meters,
+etc.). CheckVideoPlayback is now just: foreground-window fullscreen check +
+blocked app name match. That's it. No Twitch/YouTube tabs blocking dimming
+ever again.
+
+Overlay timer priority reverted to: video > idle > manual dim. Idle timer
+now checks && !IsVideoDetected() again. Per-monitor idle dimming kept.
+
+This is the dimming behavior v1.2.8 users loved, with the per-monitor idle
+improvements from v1.3.6 kept. Simple, reliable, no false positives.

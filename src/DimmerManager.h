@@ -44,11 +44,9 @@ public:
     void CheckVideoPlayback();
     void SetBlockedApps(const std::vector<std::wstring>& apps);
     bool IsVideoDetected() const { return m_videoDetected; }
-    bool IsAnyAppPlayingAudio(const std::vector<std::wstring>& apps);
 
 private:
-    DimmerManager()
-        : m_browserApps{ L"chrome.exe", L"msedge.exe", L"firefox.exe", L"opera.exe", L"brave.exe" } {}
+    DimmerManager() = default;
     ~DimmerManager();
 
     void CreateOverlayForMonitor(ActiveMonitorInfo& info);
@@ -67,5 +65,4 @@ private:
     bool m_cursorHidden = false;
     bool m_videoDetected = false;
     std::vector<std::wstring> m_blockedApps;
-    std::vector<std::wstring> m_browserApps;
 };

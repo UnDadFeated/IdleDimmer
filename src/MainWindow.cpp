@@ -826,12 +826,12 @@ void MainWindow::OnPaint() {
     wchar_t versionFull[64] = { 0 };
     if (m_updateChecked) {
         if (m_updateAvailable) {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.3.6");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.3.7");
         } else {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.3.6");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.3.7");
         }
     } else {
-        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.3.6");
+        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.3.7");
     }
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
     m_pRenderTarget->DrawText(
@@ -1005,7 +1005,7 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                                             latestVer = new wchar_t[32];
                                             MultiByteToWideChar(CP_UTF8, 0, tag, len, latestVer, 32);
                                             latestVer[len] = L'\0';
-                                            if (wcscmp(latestVer, L"1.3.6") > 0)
+                                            if (wcscmp(latestVer, L"1.3.7") > 0)
                                                 updateAvailable = true;
                                         }
                                     }
@@ -1678,7 +1678,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                     }
                 } else if (wp == 202) {
                     DimmerManager::Instance().CheckVideoPlayback();
-                    if (self->m_config.idleDimEnabled) {
+                    if (self->m_config.idleDimEnabled && !DimmerManager::Instance().IsVideoDetected()) {
                         LASTINPUTINFO lii = { 0 };
                         lii.cbSize = sizeof(lii);
                         if (GetLastInputInfo(&lii)) {

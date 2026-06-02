@@ -359,37 +359,20 @@ void DimmerManager::CheckVideoPlayback() {
         detected = true;
     }
 
-    // Foreground blocked app check — only media players, NOT browsers
+    // Foreground blocked app check — media players only
     if (!detected) {
         HWND hFore = GetForegroundWindow();
         if (hFore) {
             DWORD pid = GetRealProcessId(hFore);
             std::wstring fname = GetProcessNameFromPid(pid);
             if (!fname.empty()) {
-                // Skip browser foreground check (browsers only block via audio)
-                bool isBrowser = false;
-                for (const auto& b : m_browserApps) {
-                    if (lstrcmpiW(fname.c_str(), b.c_str()) == 0) {
-                        isBrowser = true;
+                for (const auto& name : m_blockedApps) {
+                    if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                        detected = true;
                         break;
                     }
                 }
-                if (!isBrowser) {
-                    for (const auto& name : m_blockedApps) {
-                        if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                            detected = true;
-                            break;
-                        }
-                    }
-                }
             }
-        }
-    }
-
-    // Audio check for BOTH blocked apps AND browsers (any process playing audio)
-    if (!detected) {
-        if (IsAnyAppPlayingAudio(m_blockedApps) || IsAnyAppPlayingAudio(m_browserApps)) {
-            detected = true;
         }
     }
 
@@ -402,76 +385,6 @@ void DimmerManager::CheckVideoPlayback() {
         }
         UpdateCursorDimming();
     }
-}
-
-bool DimmerManager::IsAnyAppPlayingAudio(const std::vector<std::wstring>& apps) {
-    if (apps.empty()) return false;
-
-    bool found = false;
-    IMMDeviceEnumerator* pEnumerator = nullptr;
-    HRESULT hr = CoCreateInstance(
-        __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-        __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&pEnumerator)
-    );
-    if (FAILED(hr)) { LogError(ErrorCode::E407, hr); return false; }
-
-    IMMDevice* pDevice = nullptr;
-    hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
-    if (SUCCEEDED(hr)) {
-        IAudioSessionManager2* pSessionManager = nullptr;
-        hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
-            reinterpret_cast<void**>(&pSessionManager));
-        if (SUCCEEDED(hr)) {
-            IAudioSessionEnumerator* pSessionEnumerator = nullptr;
-            hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
-            if (SUCCEEDED(hr)) {
-                int count = 0;
-                if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
-                    for (int i = 0; i < count && !found; ++i) {
-                        IAudioSessionControl* pSessionControl = nullptr;
-                        hr = pSessionEnumerator->GetSession(i, &pSessionControl);
-                        if (SUCCEEDED(hr)) {
-                            IAudioSessionControl2* pSessionControl2 = nullptr;
-                            hr = pSessionControl->QueryInterface(
-                                __uuidof(IAudioSessionControl2),
-                                reinterpret_cast<void**>(&pSessionControl2));
-                            if (SUCCEEDED(hr)) {
-                                DWORD pid = 0;
-                                if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
-                                    std::wstring fname = GetProcessNameFromPid(pid);
-                                        if (!fname.empty()) {
-                                            for (const auto& name : apps) {
-                                            if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                                                IAudioMeterInformation* pMeter = nullptr;
-                                                hr = pSessionControl->QueryInterface(
-                                                    IID_IAudioMeterInformation,
-                                                    reinterpret_cast<void**>(&pMeter));
-                                                if (SUCCEEDED(hr)) {
-                                                    float peak = 0.0f;
-                                                    if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f)
-                                                        found = true;
-                                                    pMeter->Release();
-                                                }
-                                                break;
-                                            }
-                                            if (found) break;
-                                        }
-                                    }
-                                }
-                                pSessionControl2->Release();
-                            }
-                            pSessionControl->Release();
-                        }
-                    }
-                }
-                pSessionEnumerator->Release();
-            }
-            pSessionManager->Release();
-        }
-        pDevice->Release();
-    }
-    pEnumerator->Release();
-    return found;
 }
 
 void DimmerManager::SetBlockedApps(const std::vector<std::wstring>& apps) {
@@ -519,13 +432,11 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
         case WM_TIMER: {
             if (wp == 1 && info) {
                 int target = 0;
-                if (DimmerManager::Instance().IsIdleState() && info->enabled) {
-                    // Per-monitor idle dimming: each monitor uses its own value
-                    // but never goes lower (brighter) than the global idle dim level
+                if (DimmerManager::Instance().IsVideoDetected()) {
+                    target = 0;
+                } else if (DimmerManager::Instance().IsIdleState() && info->enabled) {
                     target = (std::max)(info->dimValue, DimmerManager::Instance().GetIdleDimLevel());
                     if (target > 90) target = 90;
-                } else if (DimmerManager::Instance().IsVideoDetected()) {
-                    target = 0;
                 } else if (DimmerManager::Instance().IsDimmingEnabled() && info->enabled) {
                     // Active dimming is enabled right now
                     target = info->dimValue;

@@ -2,11 +2,13 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
-## [1.3.6] - 2026-06-02
+## [1.3.7] - 2026-06-02
 
-### Bug Fixes
-* **Idle dimming stuck when browser audio detected**: Twitch/YouTube in a browser tab kept a live audio session → `m_videoDetected = true` → idle timer's `&& !IsVideoDetected()` guard skipped the entire idle check → dimming never activated. Fixed: idle timer now runs regardless of video detection, and the overlay timer gives idle state priority over video detection.
-* **Netflix minimized / silent browser tabs blocking dim**: Same root cause — any browser audio session with peak > 0.0001f blocked idle dimming entirely. Now only affects non-idle (active) dimming; idle always overrides.
+### Updates
+* **Browser audio detection removed entirely**: v1.3.6's fix tried to let idle dimming override browser audio, but the real problem was deeper — enumerating audio sessions falsely flagged ANY browser audio (Twitch, YouTube, notifications, ads) as "video playing." Now completely reverted to v1.2.8 behavior: a simple foreground-window blocked-app check with zero audio enumeration. No COM audio meter. No IAudioSessionEnumerator. Just `GetForegroundWindow` + process name match. Clean, fast, and reliable.
+* **Overlay timer priority reverted**: Back to v1.2.8 order: video detection > idle > manual dim. If a blocked app plays audio in the foreground, no dimming at all — exactly what you want during a movie.
+* **Idle timer reverted**: Now checks `&& !IsVideoDetected()` so idle never dims while a blocked app is running. If you're watching something, the screen stays bright.
+* **Per-monitor idle dimming preserved**: Each overlay still handles its own fade during idle, capped at 90%. Disabled monitors stay undimmed.
 
 ## [1.3.5] - 2026-06-02
 
