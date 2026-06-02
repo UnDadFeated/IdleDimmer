@@ -6,6 +6,7 @@
 #include <audiopolicy.h>
 #include <endpointvolume.h>
 #include <shellapi.h>
+#include <tlhelp32.h>
 
 // Define IAudioMeterInformation manually as MinGW headers only forward declare it
 #ifndef __IAudioMeterInformation_INTERFACE_DEFINED__
@@ -299,6 +300,9 @@ static bool IsForegroundWindowFullscreen() {
     HWND hwnd = GetForegroundWindow();
     if (!hwnd) return false;
 
+    // A minimized window cannot be fullscreen.
+    if (IsIconic(hwnd)) return false;
+
     // Skip the desktop and taskbar windows
     wchar_t className[256];
     if (GetClassNameW(hwnd, className, 256)) {
@@ -363,6 +367,29 @@ void DimmerManager::CheckVideoPlayback() {
                     }
                 }
             }
+        }
+    }
+
+    // Check background/minimized blocked apps for active audio playback
+    if (!detected && !m_blockedApps.empty()) {
+        HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (hSnap != INVALID_HANDLE_VALUE) {
+            PROCESSENTRY32W pe = { sizeof(pe) };
+            if (Process32FirstW(hSnap, &pe)) {
+                do {
+                    std::wstring fname(pe.szExeFile);
+                    for (const auto& name : m_blockedApps) {
+                        if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                            if (IsProcessNamePlayingAudio(fname)) {
+                                detected = true;
+                            }
+                            break;
+                        }
+                    }
+                    if (detected) break;
+                } while (Process32NextW(hSnap, &pe));
+            }
+            CloseHandle(hSnap);
         }
     }
 
@@ -586,6 +613,12 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                 }
             }
             EndPaint(hwnd, &ps);
+            return 0;
+        }
+        case WM_WINDOWPOSCHANGING: {
+            WINDOWPOS* wpos = reinterpret_cast<WINDOWPOS*>(lp);
+            wpos->hwndInsertAfter = HWND_TOPMOST;
+            wpos->flags &= ~SWP_NOZORDER;
             return 0;
         }
         default:
