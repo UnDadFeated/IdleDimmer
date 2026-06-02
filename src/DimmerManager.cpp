@@ -306,11 +306,51 @@ static std::wstring GetProcessNameFromPid(DWORD pid) {
     return L"";
 }
 
+static bool IsForegroundWindowFullscreen() {
+    HWND hwnd = GetForegroundWindow();
+    if (!hwnd) return false;
+
+    // Skip the desktop and taskbar windows
+    wchar_t className[256];
+    if (GetClassNameW(hwnd, className, 256)) {
+        if (wcscmp(className, L"Progman") == 0 || 
+            wcscmp(className, L"WorkerW") == 0 || 
+            wcscmp(className, L"Shell_TrayWnd") == 0 ||
+            wcscmp(className, L"Shell_SecondaryTrayWnd") == 0) {
+            return false;
+        }
+    }
+
+    RECT rcWindow;
+    if (GetWindowRect(hwnd, &rcWindow)) {
+        HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO mi = { sizeof(mi) };
+        if (GetMonitorInfoW(hMonitor, &mi)) {
+            // Check if window bounds cover the monitor bounds
+            if (rcWindow.left <= mi.rcMonitor.left &&
+                rcWindow.top <= mi.rcMonitor.top &&
+                rcWindow.right >= mi.rcMonitor.right &&
+                rcWindow.bottom >= mi.rcMonitor.bottom) {
+                
+                // Exclude standard maximized windows that are not borderless fullscreen.
+                // A maximized window will typically have its rect match or be close to the work area (mi.rcWork),
+                // but a borderless window matches the full monitor area (mi.rcMonitor).
+                // Let's check the window style.
+                LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+                if ((style & WS_POPUP) || !(style & WS_CAPTION) || !(style & WS_MAXIMIZE)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 void DimmerManager::CheckVideoPlayback() {
     bool detected = false;
 
     // Check if a fullscreen app or game is active
-    if (IsFullscreenAppActive()) {
+    if (IsFullscreenAppActive() || IsForegroundWindowFullscreen()) {
         detected = true;
     }
 
