@@ -291,7 +291,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
-    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Global\\WinDimmer64SetupMutex");
+    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Local\\WinDimmer64SetupMutex");
     if (hMutex == nullptr) {
         LogError(ErrorCode::E507, HRESULT_FROM_WIN32(GetLastError()));
         return 1;

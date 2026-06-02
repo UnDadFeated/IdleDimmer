@@ -139,7 +139,7 @@ inline ErrorInfo GetErrorInfo(ErrorCode code) {
     }
 }
 
-inline thread_local ErrorCode g_lastAppError = ErrorCode::SUCCESS;
+inline ErrorCode g_lastAppError = ErrorCode::SUCCESS;
 
 inline ErrorCode GetLastAppError() {
     return g_lastAppError;
