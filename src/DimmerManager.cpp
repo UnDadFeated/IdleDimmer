@@ -5,6 +5,7 @@
 #include <mmdeviceapi.h>
 #include <audiopolicy.h>
 #include <endpointvolume.h>
+#include <shellapi.h>
 
 // Define IAudioMeterInformation manually as MinGW headers only forward declare it
 #ifndef __IAudioMeterInformation_INTERFACE_DEFINED__
@@ -234,6 +235,30 @@ static BOOL CALLBACK EnumUwpChildProc(HWND hwnd, LPARAM lParam) {
     return TRUE;
 }
 
+typedef HRESULT (WINAPI* PFN_SHQueryUserNotificationState)(QUERY_USER_NOTIFICATION_STATE*);
+
+static bool IsFullscreenAppActive() {
+    bool active = false;
+    HMODULE hShell32 = GetModuleHandleW(L"shell32.dll");
+    if (!hShell32) {
+        hShell32 = LoadLibraryW(L"shell32.dll");
+    }
+    if (hShell32) {
+        auto pfn = reinterpret_cast<PFN_SHQueryUserNotificationState>(
+            GetProcAddress(hShell32, "SHQueryUserNotificationState")
+        );
+        if (pfn) {
+            QUERY_USER_NOTIFICATION_STATE state;
+            if (SUCCEEDED(pfn(&state))) {
+                if (state == QUNS_BUSY || state == QUNS_RUNNING_D3D_FULL_SCREEN || state == QUNS_PRESENTATION_MODE) {
+                    active = true;
+                }
+            }
+        }
+    }
+    return active;
+}
+
 static DWORD GetRealProcessId(HWND hwnd) {
     if (!hwnd) return 0;
     DWORD pid = 0;
@@ -283,26 +308,35 @@ static std::wstring GetProcessNameFromPid(DWORD pid) {
 
 void DimmerManager::CheckVideoPlayback() {
     bool detected = false;
-    HWND hFore = GetForegroundWindow();
-    if (hFore) {
-        DWORD pid = GetRealProcessId(hFore);
-        std::wstring fname = GetProcessNameFromPid(pid);
-        if (!fname.empty()) {
-            for (const auto& name : m_blockedApps) {
-                if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                    detected = true;
-                    break;
-                }
-            }
 
-            // Check if active foreground process is playing audio
-            if (!detected) {
-                if (IsProcessNamePlayingAudio(fname)) {
-                    detected = true;
+    // Check if a fullscreen app or game is active
+    if (IsFullscreenAppActive()) {
+        detected = true;
+    }
+
+    if (!detected) {
+        HWND hFore = GetForegroundWindow();
+        if (hFore) {
+            DWORD pid = GetRealProcessId(hFore);
+            std::wstring fname = GetProcessNameFromPid(pid);
+            if (!fname.empty()) {
+                for (const auto& name : m_blockedApps) {
+                    if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                        detected = true;
+                        break;
+                    }
+                }
+
+                // Check if active foreground process is playing audio
+                if (!detected) {
+                    if (IsProcessNamePlayingAudio(fname)) {
+                        detected = true;
+                    }
                 }
             }
         }
     }
+
     if (detected != m_videoDetected) {
         m_videoDetected = detected;
         for (auto& mon : m_monitors) {
