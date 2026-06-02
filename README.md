@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/MIT-6B7280?style=flat-square&label=License" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/1.2.9-10B981?style=flat-square&label=Version" alt="Version 1.2.9">
+  <img src="https://img.shields.io/badge/1.3.0-10B981?style=flat-square&label=Version" alt="Version 1.3.0">
 
   <img src="https://img.shields.io/badge/Windows-0078D4?style=flat-square&logo=windows&logoColor=white&label=OS" alt="Windows">
   <img src="https://img.shields.io/badge/C%2B%2B17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white&label=Language" alt="C++17">
@@ -18,7 +18,7 @@ Unlike the default Windows display options that only support physically turning 
 
 Download the latest installer from the [releases page](https://github.com/UnDadFeated/WinDimmer64/releases):
 
-[**WinDimmer64-Setup-v1.2.9.exe**](https://github.com/UnDadFeated/WinDimmer64/releases/download/v1.2.9/WinDimmer64-Setup-v1.2.9.exe)
+[**WinDimmer64-Setup-v1.3.0.exe**](https://github.com/UnDadFeated/WinDimmer64/releases/download/v1.3.0/WinDimmer64-Setup-v1.3.0.exe)
 
 Run the installer — it will install WinDimmer64, create a Start Menu shortcut, and register with Settings > Apps & Features for clean uninstallation.
 

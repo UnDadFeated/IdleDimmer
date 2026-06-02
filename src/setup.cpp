@@ -21,7 +21,7 @@
 static const wchar_t* APP_NAME = L"WinDimmer64";
 static const wchar_t* INSTALL_DIR = L"WinDimmer64";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinDimmer64";
-static const wchar_t* VER = L"1.2.9";
+static const wchar_t* VER = L"1.3.0";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;

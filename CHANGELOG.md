@@ -2,6 +2,11 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.3.0] - 2026-06-01
+
+### Bug Fixes
+* **Windows Security Block**: Replaced the global `SetSystemCursor` calls with local `ShowCursor` visibility checks during idle screen dimming to completely resolve heuristic antivirus/smartscreen warnings and blocks.
+
 ## [1.2.9] - 2026-06-01
 
 ### New Features
