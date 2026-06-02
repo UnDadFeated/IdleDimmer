@@ -24,6 +24,7 @@ static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\
 static const wchar_t* VER = L"1.3.4";
 
 static HANDLE g_hConsole = nullptr;
+static HWND g_hConsoleWnd = nullptr;
 
 static void ConsolePrint(const wchar_t* fmt, ...) {
     wchar_t buf[1024];
@@ -33,6 +34,7 @@ static void ConsolePrint(const wchar_t* fmt, ...) {
     va_end(args);
     DWORD written;
     WriteConsoleW(g_hConsole, buf, static_cast<DWORD>(wcslen(buf)), &written, nullptr);
+    PostMessageW(g_hConsoleWnd, WM_VSCROLL, SB_BOTTOM, 0);
 }
 
 enum State { READY, INSTALLING, COMPLETE };
@@ -337,6 +339,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
     AllocConsole();
     SetConsoleTitleW(L"WinDimmer64 Setup");
     g_hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    g_hConsoleWnd = GetConsoleWindow();
 
     HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Local\\WinDimmer64SetupMutex");
     if (hMutex == nullptr) {
