@@ -2,6 +2,12 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.3.5] - 2026-06-02
+
+### Updates
+* **Verbose console window**: Setup now opens a black console alongside the GUI with real-time step-by-step output (version detection, kill, extract, shortcut, uninstall registration). Auto-scrolls to keep the latest line visible.
+* **KillRunning safety sleep**: Added Sleep(200) after normal process exit too, not just after TerminateProcess.
+
 ## [1.3.4] - 2026-06-02
 
 ### Bug Fixes
