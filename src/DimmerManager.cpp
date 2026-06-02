@@ -6,7 +6,6 @@
 #include <audiopolicy.h>
 #include <endpointvolume.h>
 #include <shellapi.h>
-#include <tlhelp32.h>
 
 // Define IAudioMeterInformation manually as MinGW headers only forward declare it
 #ifndef __IAudioMeterInformation_INTERFACE_DEFINED__
@@ -342,7 +341,6 @@ static bool IsForegroundWindowFullscreen() {
 void DimmerManager::CheckVideoPlayback() {
     bool detected = false;
 
-    // Check if a fullscreen app or game is active
     if (IsFullscreenAppActive() || IsForegroundWindowFullscreen()) {
         detected = true;
     }
@@ -359,37 +357,13 @@ void DimmerManager::CheckVideoPlayback() {
                         break;
                     }
                 }
-
-                // Check if active foreground process is playing audio
-                if (!detected) {
-                    if (IsProcessNamePlayingAudio(fname)) {
-                        detected = true;
-                    }
-                }
             }
         }
     }
 
-    // Check background/minimized blocked apps for active audio playback
-    if (!detected && !m_blockedApps.empty()) {
-        HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if (hSnap != INVALID_HANDLE_VALUE) {
-            PROCESSENTRY32W pe = { sizeof(pe) };
-            if (Process32FirstW(hSnap, &pe)) {
-                do {
-                    std::wstring fname(pe.szExeFile);
-                    for (const auto& name : m_blockedApps) {
-                        if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                            if (IsProcessNamePlayingAudio(fname)) {
-                                detected = true;
-                            }
-                            break;
-                        }
-                    }
-                    if (detected) break;
-                } while (Process32NextW(hSnap, &pe));
-            }
-            CloseHandle(hSnap);
+    if (!detected) {
+        if (IsAnyBlockedAppPlayingAudio()) {
+            detected = true;
         }
     }
 
@@ -404,101 +378,74 @@ void DimmerManager::CheckVideoPlayback() {
     }
 }
 
-bool DimmerManager::IsProcessNamePlayingAudio(const std::wstring& targetProcessName) {
-    if (targetProcessName.empty()) return false;
+bool DimmerManager::IsAnyBlockedAppPlayingAudio() {
+    if (m_blockedApps.empty()) return false;
 
-    bool playing = false;
+    bool found = false;
     IMMDeviceEnumerator* pEnumerator = nullptr;
     HRESULT hr = CoCreateInstance(
-        __uuidof(MMDeviceEnumerator),
-        nullptr,
-        CLSCTX_ALL,
-        __uuidof(IMMDeviceEnumerator),
-        reinterpret_cast<void**>(&pEnumerator)
+        __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+        __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&pEnumerator)
     );
-
-    if (FAILED(hr)) {
-        LogError(ErrorCode::E407, hr);
-        return false;
-    }
+    if (FAILED(hr)) { LogError(ErrorCode::E407, hr); return false; }
 
     IMMDevice* pDevice = nullptr;
     hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
     if (SUCCEEDED(hr)) {
         IAudioSessionManager2* pSessionManager = nullptr;
-        hr = pDevice->Activate(
-            __uuidof(IAudioSessionManager2),
-            CLSCTX_ALL,
-            nullptr,
-            reinterpret_cast<void**>(&pSessionManager)
-        );
+        hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
+            reinterpret_cast<void**>(&pSessionManager));
         if (SUCCEEDED(hr)) {
             IAudioSessionEnumerator* pSessionEnumerator = nullptr;
             hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
             if (SUCCEEDED(hr)) {
                 int count = 0;
                 if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
-                    for (int i = 0; i < count; ++i) {
+                    for (int i = 0; i < count && !found; ++i) {
                         IAudioSessionControl* pSessionControl = nullptr;
                         hr = pSessionEnumerator->GetSession(i, &pSessionControl);
                         if (SUCCEEDED(hr)) {
                             IAudioSessionControl2* pSessionControl2 = nullptr;
                             hr = pSessionControl->QueryInterface(
                                 __uuidof(IAudioSessionControl2),
-                                reinterpret_cast<void**>(&pSessionControl2)
-                            );
+                                reinterpret_cast<void**>(&pSessionControl2));
                             if (SUCCEEDED(hr)) {
                                 DWORD pid = 0;
                                 if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
-                                    std::wstring sessionProcessName = GetProcessNameFromPid(pid);
-                                    if (lstrcmpiW(targetProcessName.c_str(), sessionProcessName.c_str()) == 0) {
-                                        IAudioMeterInformation* pMeter = nullptr;
-                                        hr = pSessionControl->QueryInterface(
-                                            IID_IAudioMeterInformation,
-                                            reinterpret_cast<void**>(&pMeter)
-                                        );
-                                        if (SUCCEEDED(hr)) {
-                                            float peak = 0.0f;
-                                            if (SUCCEEDED(pMeter->GetPeakValue(&peak))) {
-                                                if (peak > 0.0001f) {
-                                                    playing = true;
+                                    std::wstring fname = GetProcessNameFromPid(pid);
+                                    if (!fname.empty()) {
+                                        for (const auto& name : m_blockedApps) {
+                                            if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                                                IAudioMeterInformation* pMeter = nullptr;
+                                                hr = pSessionControl->QueryInterface(
+                                                    IID_IAudioMeterInformation,
+                                                    reinterpret_cast<void**>(&pMeter));
+                                                if (SUCCEEDED(hr)) {
+                                                    float peak = 0.0f;
+                                                    if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f)
+                                                        found = true;
+                                                    pMeter->Release();
                                                 }
-                                            } else {
-                                                LogError(ErrorCode::E414, hr);
+                                                break;
                                             }
-                                            pMeter->Release();
-                                        } else {
-                                            LogError(ErrorCode::E413, hr);
+                                            if (found) break;
                                         }
                                     }
                                 }
                                 pSessionControl2->Release();
-                            } else {
-                                LogError(ErrorCode::E412, hr);
                             }
                             pSessionControl->Release();
-                        } else {
-                            LogError(ErrorCode::E411, hr);
-                        }
-                        if (playing) {
-                            break;
                         }
                     }
                 }
                 pSessionEnumerator->Release();
-            } else {
-                LogError(ErrorCode::E410, hr);
             }
             pSessionManager->Release();
-        } else {
-            LogError(ErrorCode::E409, hr);
         }
         pDevice->Release();
-    } else {
-        LogError(ErrorCode::E408, hr);
     }
     pEnumerator->Release();
-    return playing;
+    return found;
 }
 
 void DimmerManager::SetBlockedApps(const std::vector<std::wstring>& apps) {
