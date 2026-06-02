@@ -93,21 +93,18 @@ static bool ExtractApp(const wchar_t* dest) {
 
 static void KillRunning() {
     HWND hwnd = FindWindowW(L"WinDimmer64MainClass", NULL);
-    if (hwnd) {
-        DWORD pid;
-        GetWindowThreadProcessId(hwnd, &pid);
-        PostMessageW(hwnd, WM_CLOSE, 0, 0);
-        for (int i = 0; i < 50; i++) {
-            if (!IsRunning()) return;
-            Sleep(100);
-        }
-        // Force kill if app didn't close (e.g. close-to-tray mode)
-        HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
-        if (hProc) {
+    if (!hwnd) return;
+    DWORD pid;
+    GetWindowThreadProcessId(hwnd, &pid);
+    PostMessageW(hwnd, WM_CLOSE, 0, 0);
+    HANDLE hProc = OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, FALSE, pid);
+    if (hProc) {
+        DWORD waitResult = WaitForSingleObject(hProc, 5000);
+        if (waitResult == WAIT_TIMEOUT) {
             TerminateProcess(hProc, 1);
-            CloseHandle(hProc);
             Sleep(300);
         }
+        CloseHandle(hProc);
     }
 }
 
