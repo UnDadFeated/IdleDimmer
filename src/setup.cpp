@@ -21,7 +21,7 @@
 static const wchar_t* APP_NAME = L"WinDimmer64";
 static const wchar_t* INSTALL_DIR = L"WinDimmer64";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinDimmer64";
-static const wchar_t* VER = L"1.3.3";
+static const wchar_t* VER = L"1.3.4";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
@@ -84,11 +84,13 @@ static bool ExtractApp(const wchar_t* dest) {
     }
     DWORD written;
     BOOL ok = WriteFile(hFile, data, size, &written, NULL);
+    CloseHandle(hFile);
     if (!ok || written != size) {
         LogError(ErrorCode::E506, HRESULT_FROM_WIN32(GetLastError()));
+        DeleteFileW(dest);
+        return false;
     }
-    CloseHandle(hFile);
-    return ok && written == size;
+    return true;
 }
 
 static void KillRunning() {
@@ -134,9 +136,9 @@ static void RegisterUninstall() {
     swprintf(displayName, 64, L"%s", APP_NAME);
     swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
     swprintf(uninstallCmd, MAX_PATH + 32, L"%s\\%s.exe /uninstall", g_installPath, APP_NAME);
-    RegSetValueExW(hKey, L"DisplayName", 0, REG_SZ, (BYTE*)displayName, (DWORD)(sizeof(displayName)));
-    RegSetValueExW(hKey, L"DisplayIcon", 0, REG_SZ, (BYTE*)exePath, (DWORD)(sizeof(exePath)));
-    RegSetValueExW(hKey, L"UninstallString", 0, REG_SZ, (BYTE*)uninstallCmd, (DWORD)(sizeof(uninstallCmd)));
+    RegSetValueExW(hKey, L"DisplayName", 0, REG_SZ, (BYTE*)displayName, (DWORD)((wcslen(displayName) + 1) * sizeof(wchar_t)));
+    RegSetValueExW(hKey, L"DisplayIcon", 0, REG_SZ, (BYTE*)exePath, (DWORD)((wcslen(exePath) + 1) * sizeof(wchar_t)));
+    RegSetValueExW(hKey, L"UninstallString", 0, REG_SZ, (BYTE*)uninstallCmd, (DWORD)((wcslen(uninstallCmd) + 1) * sizeof(wchar_t)));
     DWORD dummy = 1;
     RegSetValueExW(hKey, L"NoModify", 0, REG_DWORD, (BYTE*)&dummy, sizeof(dummy));
     RegSetValueExW(hKey, L"NoRepair", 0, REG_DWORD, (BYTE*)&dummy, sizeof(dummy));
@@ -308,6 +310,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
         Uninstall();
         CoUninitialize();
         MessageBoxW(NULL, L"WinDimmer64 has been uninstalled.", APP_NAME, MB_OK | MB_ICONINFORMATION);
+        CloseHandle(hMutex);
         return 0;
     }
 
@@ -325,7 +328,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
         WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         CW_USEDEFAULT, CW_USEDEFAULT, 380, 230,
         NULL, NULL, hInst, NULL);
-    if (!hwnd) return 1;
+    if (!hwnd) { CloseHandle(hMutex); return 1; }
 
     ShowWindow(hwnd, SW_SHOWNORMAL);
     UpdateWindow(hwnd);

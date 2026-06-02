@@ -2,6 +2,23 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.3.4] - 2026-06-02
+
+### Bug Fixes
+* **Setup not killing running app**: `KillRunning` used `FindWindowW` to check if the app exited, but when `closeToTray` is on, `WM_CLOSE` just hides the window — `FindWindowW` returns `NULL` while the process still runs. Now uses `OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE)` + `WaitForSingleObject` to wait for actual process exit before force-killing.
+* **Crash after crash blocks relaunch**: Named mutex with `bInitialOwner=TRUE` and no abandoned-mutex handling meant a crashed instance permanently blocked relaunch. Now checks `WAIT_ABANDONED` and proceeds if the previous instance crashed.
+* **Data race in update check thread**: Background thread wrote to `m_latestVersion` (std::wstring), `m_updateAvailable`, and `m_updateChecked` without synchronization while `OnPaint` read them on the main thread. Now results are passed through `PostMessage` parameters and applied on the main thread.
+* **D2D resource failure crash**: Individual brush/text-format creation failures were logged but not propagated — `CreateGraphicsResources` returned `S_OK` with null pointers, crashing `OnPaint`. Failures now set the function's `HRESULT`, triggering `DiscardGraphicsResources` and a safe early-return on the next paint.
+* **Unchecked WinHttpQueryDataAvailable**: Return value was ignored — stale/undefined `size` could cause a zero-byte read or oversized buffer. Now checks the return before proceeding.
+* **Disabled monitors dimming during idle**: Monitors toggled OFF would still dim when the system went idle. Added `info->enabled` check to the idle dim path.
+
+### Updates
+* **Version resource consistency**: Binary `FILEVERSION`/`PRODUCTVERSION` now matches the string version block (both `1.3.4.0`). Previously binary said `1.3.2.0` while string said `1.3.3.0`.
+* **Setup mutex handle leak**: Uninstall path returned without `CloseHandle` on the single-instance mutex. Also fixed on `CreateWindowExW` failure.
+* **Registry write cleanup**: `RegSetValueExW` used `sizeof(buf)` writing uninitialized stack bytes past the null terminator. Now uses `(wcslen(buf) + 1) * sizeof(wchar_t)`.
+* **Partial exe cleanup**: Failed `WriteFile` in setup no longer leaves a corrupt `.exe` on disk — `DeleteFileW` removes it on failure.
+* **Thread handle leak**: `CreateThread` return value was discarded, leaking a kernel handle. Now stored and closed.
+
 ## [1.3.3] - 2026-06-02
 
 ### Updates

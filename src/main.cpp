@@ -12,16 +12,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return 1;
     }
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        LogError(ErrorCode::E102);
-        // Find existing window, restore and bring to front
-        HWND hwndExisting = FindWindowW(L"WinDimmer64MainClass", nullptr);
-        if (hwndExisting) {
-            ShowWindow(hwndExisting, SW_SHOW);
-            ShowWindow(hwndExisting, SW_RESTORE);
-            SetForegroundWindow(hwndExisting);
+        // Check if mutex is abandoned (prior crash) vs another live instance
+        if (WaitForSingleObject(hMutex, 0) == WAIT_ABANDONED) {
+            // Previous instance crashed — we own the mutex now, proceed
+        } else {
+            LogError(ErrorCode::E102);
+            HWND hwndExisting = FindWindowW(L"WinDimmer64MainClass", nullptr);
+            if (hwndExisting) {
+                ShowWindow(hwndExisting, SW_SHOW);
+                ShowWindow(hwndExisting, SW_RESTORE);
+                SetForegroundWindow(hwndExisting);
+            }
+            CloseHandle(hMutex);
+            return 0;
         }
-        CloseHandle(hMutex);
-        return 0;
     }
 
     // 2. Initialize COM for DirectWrite / Shell functions

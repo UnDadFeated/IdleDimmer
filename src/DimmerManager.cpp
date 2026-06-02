@@ -521,7 +521,7 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                 int target = 0;
                 if (DimmerManager::Instance().IsVideoDetected()) {
                     target = 0;
-                } else if (DimmerManager::Instance().IsIdleState()) {
+                } else if (DimmerManager::Instance().IsIdleState() && info->enabled) {
                     // Per-monitor idle dimming: each monitor uses its own value
                     // but never goes lower (brighter) than the global idle dim level
                     target = (std::max)(info->dimValue, DimmerManager::Instance().GetIdleDimLevel());

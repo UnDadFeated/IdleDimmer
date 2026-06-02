@@ -11,9 +11,9 @@
 - **Setup** (optional, requires `WinDimmer64.exe` in project root):
   ```cmd
   llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
-  clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -o WinDimmer64-Setup-v1.3.3.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
+  clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -o WinDimmer64-Setup-v1.3.4.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
   ```
-- Output: `WinDimmer64.exe` (~100 KB), `WinDimmer64-Setup-v1.3.3.exe` (~200 KB with embedded exe)
+- Output: `WinDimmer64.exe` (~100 KB), `WinDimmer64-Setup-v1.3.4.exe` (~200 KB with embedded exe)
 
 ## Architecture
 
