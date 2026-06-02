@@ -6,14 +6,14 @@
 - **LLVM-MinGW**:
   ```cmd
   llvm-windres resources\resources.rc -O coff -o resources\resources.o
-  clang++ -O2 -std=c++17 -mwindows -Os -s -o WinDimmer64.exe src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.o -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp
+  clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -o WinDimmer64.exe src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.o -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
   ```
 - **Setup** (optional, requires `WinDimmer64.exe` in project root):
   ```cmd
   llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
-  clang++ -O2 -std=c++17 -mwindows -Os -s -o WinDimmer64-Setup-v1.2.8.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion
+  clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -o WinDimmer64-Setup-v1.3.0.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
   ```
-- Output: `WinDimmer64.exe` (~100 KB), `WinDimmer64-Setup-v1.2.8.exe` (~200 KB with embedded exe)
+- Output: `WinDimmer64.exe` (~100 KB), `WinDimmer64-Setup-v1.3.0.exe` (~200 KB with embedded exe)
 
 ## Architecture
 
