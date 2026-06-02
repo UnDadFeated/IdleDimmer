@@ -23,25 +23,22 @@ static const wchar_t* INSTALL_DIR = L"WinDimmer64";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinDimmer64";
 static const wchar_t* VER = L"1.3.5";
 
-static HANDLE g_hConsole = nullptr;
-static HWND g_hConsoleWnd = nullptr;
+enum State { READY, INSTALLING, COMPLETE };
+static State g_state = READY;
+static wchar_t g_installPath[MAX_PATH];
+static HWND g_hStatus, g_hLocation, g_hButton, g_hLaunchCheck, g_hLog;
+static HFONT g_hFontTitle, g_hFontBody, g_hFontLog;
 
-static void ConsolePrint(const wchar_t* fmt, ...) {
+static void Log(const wchar_t* fmt, ...) {
     wchar_t buf[1024];
     va_list args;
     va_start(args, fmt);
     vswprintf(buf, 1024, fmt, args);
     va_end(args);
-    DWORD written;
-    WriteConsoleW(g_hConsole, buf, static_cast<DWORD>(wcslen(buf)), &written, nullptr);
-    PostMessageW(g_hConsoleWnd, WM_VSCROLL, SB_BOTTOM, 0);
+    int len = GetWindowTextLengthW(g_hLog);
+    SendMessageW(g_hLog, EM_SETSEL, len, len);
+    SendMessageW(g_hLog, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(buf));
 }
-
-enum State { READY, INSTALLING, COMPLETE };
-static State g_state = READY;
-static wchar_t g_installPath[MAX_PATH];
-static HWND g_hStatus, g_hLocation, g_hButton, g_hLaunchCheck;
-static HFONT g_hFontTitle, g_hFontBody;
 
 static void GetInstallPath(wchar_t* buf, DWORD size) {
     GetEnvironmentVariableW(L"LOCALAPPDATA", buf, size);
@@ -73,31 +70,31 @@ static std::wstring GetExeVersion(const wchar_t* filepath) {
 }
 
 static bool ExtractApp(const wchar_t* dest) {
-    ConsolePrint(L"  Extracting %s...\r\n", dest);
+    Log(L"  Extracting %s...\r\n", dest);
     HRSRC hRes = FindResourceW(NULL, MAKEINTRESOURCEW(IDR_APP_BIN), MAKEINTRESOURCEW(10));
     if (!hRes) {
         LogError(ErrorCode::E501, HRESULT_FROM_WIN32(GetLastError()));
-        ConsolePrint(L"  [FAILED] FindResourceW error %lu\r\n", GetLastError());
+        Log(L"  [FAILED] FindResourceW error %lu\r\n", GetLastError());
         return false;
     }
     HGLOBAL hData = LoadResource(NULL, hRes);
     if (!hData) {
         LogError(ErrorCode::E502, HRESULT_FROM_WIN32(GetLastError()));
-        ConsolePrint(L"  [FAILED] LoadResource error %lu\r\n", GetLastError());
+        Log(L"  [FAILED] LoadResource error %lu\r\n", GetLastError());
         return false;
     }
     DWORD size = SizeofResource(NULL, hRes);
     void* data = LockResource(hData);
     if (!data || size == 0) {
         LogError(ErrorCode::E503, HRESULT_FROM_WIN32(GetLastError()));
-        ConsolePrint(L"  [FAILED] LockResource error %lu\r\n", GetLastError());
+        Log(L"  [FAILED] LockResource\r\n");
         return false;
     }
-    ConsolePrint(L"  Resource size: %lu bytes\r\n", size);
+    Log(L"  Resource size: %lu bytes\r\n", size);
     HANDLE hFile = CreateFileW(dest, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         LogError(ErrorCode::E505, HRESULT_FROM_WIN32(GetLastError()));
-        ConsolePrint(L"  [FAILED] CreateFileW error %lu (sharing violation?)\r\n", GetLastError());
+        Log(L"  [FAILED] CreateFileW error %lu\r\n", GetLastError());
         return false;
     }
     DWORD written;
@@ -105,42 +102,41 @@ static bool ExtractApp(const wchar_t* dest) {
     CloseHandle(hFile);
     if (!ok || written != size) {
         LogError(ErrorCode::E506, HRESULT_FROM_WIN32(GetLastError()));
-        ConsolePrint(L"  [FAILED] WriteFile wrote %lu of %lu bytes\r\n", written, size);
+        Log(L"  [FAILED] WriteFile wrote %lu of %lu bytes\r\n", written, size);
         DeleteFileW(dest);
         return false;
     }
-    ConsolePrint(L"  Extracted %lu bytes successfully\r\n", written);
+    Log(L"  Extracted %lu bytes\r\n", written);
     return true;
 }
 
 static void KillRunning() {
     HWND hwnd = FindWindowW(L"WinDimmer64MainClass", NULL);
     if (!hwnd) {
-        ConsolePrint(L"  No running instance found\r\n");
+        Log(L"  No running instance found\r\n");
         return;
     }
     DWORD pid;
     GetWindowThreadProcessId(hwnd, &pid);
-    ConsolePrint(L"  Found running instance (PID %lu), sending WM_CLOSE...\r\n", pid);
+    Log(L"  Found running instance (PID %lu), sending WM_CLOSE...\r\n", pid);
     PostMessageW(hwnd, WM_CLOSE, 0, 0);
     HANDLE hProc = OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, FALSE, pid);
     if (hProc) {
         DWORD waitResult = WaitForSingleObject(hProc, 5000);
-        if (waitResult == WAIT_OBJECT_0) {
-            ConsolePrint(L"  Process exited gracefully\r\n");
-        } else if (waitResult == WAIT_TIMEOUT) {
-            ConsolePrint(L"  Timeout, force-terminating...\r\n");
+        if (waitResult == WAIT_OBJECT_0)
+            Log(L"  Process exited gracefully\r\n");
+        else if (waitResult == WAIT_TIMEOUT) {
+            Log(L"  Timeout, force-terminating...\r\n");
             TerminateProcess(hProc, 1);
-        } else {
-            ConsolePrint(L"  WaitForSingleObject returned %lu\r\n", waitResult);
-        }
+        } else
+            Log(L"  Wait returned %lu\r\n", waitResult);
         CloseHandle(hProc);
         Sleep(200);
     }
 }
 
 static void CreateShortcut(const wchar_t* target) {
-    ConsolePrint(L"  Creating Start Menu shortcut...\r\n");
+    Log(L"  Creating Start Menu shortcut...\r\n");
     wchar_t path[MAX_PATH];
     SHGetFolderPathW(NULL, CSIDL_STARTMENU, NULL, 0, path);
     wcscat_s(path, MAX_PATH, L"\\Programs\\WinDimmer64.lnk");
@@ -152,17 +148,17 @@ static void CreateShortcut(const wchar_t* target) {
         if (SUCCEEDED(psl->QueryInterface(IID_IPersistFile, (void**)&ppf))) {
             ppf->Save(path, TRUE);
             ppf->Release();
-            ConsolePrint(L"  Shortcut saved to %s\r\n", path);
+            Log(L"  Shortcut saved\r\n");
         }
         psl->Release();
     }
 }
 
 static void RegisterUninstall() {
-    ConsolePrint(L"  Registering uninstall entry...\r\n");
+    Log(L"  Registering uninstall entry...\r\n");
     HKEY hKey;
     if (RegCreateKeyExW(HKEY_CURRENT_USER, REG_PATH, 0, NULL, 0, KEY_WRITE, NULL, &hKey, NULL) != ERROR_SUCCESS) {
-        ConsolePrint(L"  [FAILED] RegCreateKeyExW\r\n");
+        Log(L"  [FAILED] RegCreateKeyExW\r\n");
         return;
     }
     wchar_t displayName[64], exePath[MAX_PATH], uninstallCmd[MAX_PATH + 32];
@@ -176,20 +172,19 @@ static void RegisterUninstall() {
     RegSetValueExW(hKey, L"NoModify", 0, REG_DWORD, (BYTE*)&dummy, sizeof(dummy));
     RegSetValueExW(hKey, L"NoRepair", 0, REG_DWORD, (BYTE*)&dummy, sizeof(dummy));
     RegCloseKey(hKey);
-    ConsolePrint(L"  Uninstall registered (HKCU\\%s)\r\n", REG_PATH);
+    Log(L"  Uninstall registered\r\n");
 }
 
 static void Uninstall() {
     GetInstallPath(g_installPath, MAX_PATH);
-    ConsolePrint(L"\r\n=== WinDimmer64 Uninstall ===\r\n\r\n");
-    ConsolePrint(L"  Install path: %s\r\n", g_installPath);
+    Log(L"\r\n=== WinDimmer64 Uninstall ===\r\n\r\n");
+    Log(L"  Install path: %s\r\n", g_installPath);
     KillRunning();
     wchar_t exePath[MAX_PATH];
     swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
     DeleteFileW(exePath);
-    ConsolePrint(L"  Removed %s\r\n", exePath);
+    Log(L"  Removed %s\r\n", exePath);
     RemoveDirectoryW(g_installPath);
-
     wchar_t configDir[MAX_PATH];
     GetEnvironmentVariableW(L"APPDATA", configDir, MAX_PATH);
     wcscat_s(configDir, MAX_PATH, L"\\WinDimmer64");
@@ -197,14 +192,12 @@ static void Uninstall() {
     swprintf(iniPath, MAX_PATH, L"%s\\dimmer.ini", configDir);
     DeleteFileW(iniPath);
     RemoveDirectoryW(configDir);
-
     wchar_t shortcut[MAX_PATH];
     SHGetFolderPathW(NULL, CSIDL_STARTMENU, NULL, 0, shortcut);
     wcscat_s(shortcut, MAX_PATH, L"\\Programs\\WinDimmer64.lnk");
     DeleteFileW(shortcut);
-
     RegDeleteKeyW(HKEY_CURRENT_USER, REG_PATH);
-    ConsolePrint(L"  Uninstall complete\r\n");
+    Log(L"  Uninstall complete\r\n");
 }
 
 static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -213,9 +206,9 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             HINSTANCE hInst = ((LPCREATESTRUCTW)lParam)->hInstance;
             RECT rc;
             GetClientRect(hwnd, &rc);
-            int w = rc.right;
-            int m = 25, cw = w - 50;
-            int h = rc.bottom;
+            int cw = rc.right;
+            int ch = rc.bottom;
+            int m = 20;
 
             GetInstallPath(g_installPath, MAX_PATH);
             wchar_t exePath[MAX_PATH];
@@ -223,45 +216,46 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 
             bool running = IsRunning();
             bool installed = GetFileAttributesW(exePath) != INVALID_FILE_ATTRIBUTES;
+            std::wstring installedVer;
+            if (installed) installedVer = GetExeVersion(exePath);
 
-            std::wstring installedVer = L"";
-            if (installed) {
-                installedVer = GetExeVersion(exePath);
-            }
+            int leftW = 170;
+            int logX = leftW + m * 2;
+            int logW = cw - logX - m;
 
-            ConsolePrint(L"\r\n=== WinDimmer64 Setup v%s ===\r\n\r\n", VER);
-            ConsolePrint(L"  Install path: %s\r\n", g_installPath);
-            if (installed)
-                ConsolePrint(L"  Installed version: %s\r\n", installedVer.c_str());
-            if (running)
-                ConsolePrint(L"  App is currently running\r\n");
+            CreateWindowW(L"STATIC", L"WinDimmer64 Setup",
+                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 14, leftW, 22, hwnd, NULL, hInst, NULL);
 
             wchar_t status[196];
             if (running && installed)
-                swprintf(status, 196, L"Running: v%s | Installed: v%s\r\nSetup will terminate it and overwrite.", installedVer.c_str(), installedVer.c_str());
+                swprintf(status, 196, L"Running: v%s | Installed: v%s\r\nSetup will terminate and overwrite.", installedVer.c_str(), installedVer.c_str());
             else if (running)
-                swprintf(status, 196, L"Running: v%s\r\nSetup will terminate it and install.", installedVer.empty() ? L"unknown" : installedVer.c_str());
+                swprintf(status, 196, L"Running: v%s\r\nSetup will terminate and install.", installedVer.empty() ? L"unknown" : installedVer.c_str());
             else if (installed)
-                swprintf(status, 196, L"Installed: v%s\r\nSetup will overwrite the existing installation.", installedVer.c_str());
+                swprintf(status, 196, L"Installed: v%s\r\nSetup will overwrite.", installedVer.c_str());
             else
-                swprintf(status, 196, L"Ready to install WinDimmer64 v%s", VER);
+                swprintf(status, 196, L"Ready to install v%s", VER);
+
+            g_hStatus = CreateWindowW(L"STATIC", status,
+                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 44, leftW, 50, hwnd, NULL, hInst, NULL);
 
             wchar_t pathStr[MAX_PATH + 32];
             swprintf(pathStr, MAX_PATH + 32, L"Location: %s", g_installPath);
-
-            CreateWindowW(L"STATIC", L"WinDimmer64 Setup",
-                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 14, cw, 22, hwnd, NULL, hInst, NULL);
-            g_hStatus = CreateWindowW(L"STATIC", status,
-                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 44, cw, 50, hwnd, NULL, hInst, NULL);
             g_hLocation = CreateWindowW(L"STATIC", pathStr,
-                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 102, cw, 16, hwnd, NULL, hInst, NULL);
-            g_hLaunchCheck = CreateWindowW(L"BUTTON", L"Launch WinDimmer64",
-                WS_CHILD | BS_AUTOCHECKBOX | BS_LEFT, m, 126, cw, 18, hwnd, NULL, hInst, NULL);
+                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 102, leftW, 16, hwnd, NULL, hInst, NULL);
+
+            g_hLaunchCheck = CreateWindowW(L"BUTTON", L"Launch after install",
+                WS_CHILD | BS_AUTOCHECKBOX | BS_LEFT, m, 126, leftW, 18, hwnd, NULL, hInst, NULL);
             ShowWindow(g_hLaunchCheck, SW_HIDE);
 
             g_hButton = CreateWindowW(L"BUTTON", L"Install",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON,
-                (w - 120) / 2, h - 48, 120, 30, hwnd, (HMENU)IDOK, hInst, NULL);
+                m + (leftW - 100) / 2, ch - 48, 100, 30, hwnd, (HMENU)IDOK, hInst, NULL);
+
+            // Log panel
+            g_hLog = CreateWindowW(L"EDIT", NULL,
+                WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_LEFT,
+                logX, 14, logW, ch - 28, hwnd, NULL, hInst, NULL);
 
             g_hFontTitle = CreateFontW(16, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -269,9 +263,20 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             g_hFontBody = CreateFontW(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+            g_hFontLog = CreateFontW(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                CLEARTYPE_QUALITY, FIXED_PITCH | FF_MODERN, L"Consolas");
+
             SendMessageW(g_hStatus, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
             SendMessageW(g_hLocation, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
             SendMessageW(g_hLaunchCheck, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
+            SendMessageW(g_hLog, WM_SETFONT, (WPARAM)g_hFontLog, TRUE);
+
+            Log(L">>> WinDimmer64 Setup v%s\r\n", VER);
+            Log(L">>> %s\r\n\r\n", g_installPath);
+            if (installed) Log(L"  Installed: v%s\r\n", installedVer.c_str());
+            if (running)  Log(L"  App is running\r\n");
+
             break;
         }
         case WM_COMMAND:
@@ -282,12 +287,12 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                     EnableWindow(g_hButton, FALSE);
                     SetWindowTextW(g_hStatus, L"Installing...");
 
-                    ConsolePrint(L"\r\n=== Installing ===\r\n\r\n");
+                    Log(L"\r\n=== Installing ===\r\n\r\n");
                     KillRunning();
-                    ConsolePrint(L"  Ensuring directory exists...\r\n");
+                    Log(L"  Creating directory...\r\n");
                     if (!CreateDirectoryW(g_installPath, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
                         LogError(ErrorCode::E504, HRESULT_FROM_WIN32(GetLastError()));
-                        ConsolePrint(L"  [FAILED] CreateDirectoryW error %lu\r\n", GetLastError());
+                        Log(L"  [FAILED] CreateDirectoryW error %lu\r\n", GetLastError());
                     }
                     wchar_t exePath[MAX_PATH];
                     swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
@@ -295,14 +300,14 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                     if (ExtractApp(exePath)) {
                         CreateShortcut(exePath);
                         RegisterUninstall();
-                        ConsolePrint(L"\r\n=== Installation complete! ===\r\n");
+                        Log(L"\r\n=== Installation complete! ===\r\n");
                         SetWindowTextW(g_hStatus, L"Installation complete!");
                         ShowWindow(g_hLaunchCheck, SW_SHOW);
                         SetWindowTextW(g_hButton, L"Close");
                         EnableWindow(g_hButton, TRUE);
                         g_state = COMPLETE;
                     } else {
-                        ConsolePrint(L"\r\n=== Installation FAILED ===\r\n");
+                        Log(L"\r\n=== Installation FAILED ===\r\n");
                         SetWindowTextW(g_hStatus, L"Extraction failed.\r\nTry running as Administrator.");
                         SetWindowTextW(g_hButton, L"Close");
                         EnableWindow(g_hButton, TRUE);
@@ -329,6 +334,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         case WM_DESTROY:
             DeleteObject(g_hFontTitle);
             DeleteObject(g_hFontBody);
+            DeleteObject(g_hFontLog);
             PostQuitMessage(0);
             return 0;
     }
@@ -336,24 +342,13 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
-    AllocConsole();
-    SetConsoleTitleW(L"WinDimmer64 Setup");
-    g_hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    g_hConsoleWnd = GetConsoleWindow();
-
     HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Local\\WinDimmer64SetupMutex");
     if (hMutex == nullptr) {
         LogError(ErrorCode::E507, HRESULT_FROM_WIN32(GetLastError()));
-        ConsolePrint(L"Error: mutex creation failed (%lu)\r\n", GetLastError());
-        ConsolePrint(L"Press any key to exit...\r\n");
-        getchar();
         return 1;
     }
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         LogError(ErrorCode::E508);
-        ConsolePrint(L"Setup is already running.\r\n");
-        ConsolePrint(L"Press any key to exit...\r\n");
-        getchar();
         CloseHandle(hMutex);
         return 0;
     }
@@ -365,11 +360,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
         CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
         Uninstall();
         CoUninitialize();
-        ConsolePrint(L"\r\nUninstall complete.\r\n");
         MessageBoxW(NULL, L"WinDimmer64 has been uninstalled.", APP_NAME, MB_OK | MB_ICONINFORMATION);
         CloseHandle(hMutex);
-        ConsolePrint(L"Press any key to exit...\r\n");
-        getchar();
         return 0;
     }
 
@@ -385,15 +377,9 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
 
     HWND hwnd = CreateWindowExW(0, L"WinDimmer64SetupClass", L"WinDimmer64 Setup",
         WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 380, 230,
+        CW_USEDEFAULT, CW_USEDEFAULT, 540, 240,
         NULL, NULL, hInst, NULL);
-    if (!hwnd) {
-        ConsolePrint(L"Error: window creation failed\r\n");
-        ConsolePrint(L"Press any key to exit...\r\n");
-        getchar();
-        CloseHandle(hMutex);
-        return 1;
-    }
+    if (!hwnd) { CloseHandle(hMutex); return 1; }
 
     ShowWindow(hwnd, SW_SHOWNORMAL);
     UpdateWindow(hwnd);
