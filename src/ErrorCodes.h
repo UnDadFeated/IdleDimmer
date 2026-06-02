@@ -59,6 +59,12 @@ enum class ErrorCode {
     E415 = 415, // OpenProcess failed during audio session PID query
     E416 = 416, // QueryFullProcessImageNameW failed during audio session PID query
     
+    // Area 4 continued: Overlay & Dimming (E417+)
+    E417 = 417, // OpenProcess failed in GetRealProcessId for UWP process resolution
+    E418 = 418, // OpenProcess failed in GetProcessNameFromPid for video/audio check
+    E419 = 419, // CreateWindowExW failed in setup
+    E420 = 420, // SetWindowDisplayAffinity failed for overlay
+    
     // Area 5: Setup & Installer (E500 - E599)
     E501 = 501, // Resource lookup failed (FindResourceW)
     E502 = 502, // Resource loading failed (LoadResource)
@@ -125,6 +131,10 @@ inline ErrorInfo GetErrorInfo(ErrorCode code) {
         case ErrorCode::E414: return { L"E414", L"GetPeakValue failed from audio meter (audio check)." };
         case ErrorCode::E415: return { L"E415", L"OpenProcess failed during audio session PID query." };
         case ErrorCode::E416: return { L"E416", L"QueryFullProcessImageNameW failed during audio session PID query." };
+        case ErrorCode::E417: return { L"E417", L"OpenProcess failed in GetRealProcessId for UWP process resolution." };
+        case ErrorCode::E418: return { L"E418", L"OpenProcess failed in GetProcessNameFromPid during video/audio check." };
+        case ErrorCode::E419: return { L"E419", L"CreateWindowExW failed during setup window creation." };
+        case ErrorCode::E420: return { L"E420", L"SetWindowDisplayAffinity failed for overlay window." };
         
         case ErrorCode::E501: return { L"E501", L"Resource lookup failed during setup (FindResourceW)." };
         case ErrorCode::E502: return { L"E502", L"Resource loading failed during setup (LoadResource)." };

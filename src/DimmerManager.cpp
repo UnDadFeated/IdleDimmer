@@ -196,7 +196,19 @@ void DimmerManager::SetDimmingEnabled(bool enabled) {
 }
 
 void DimmerManager::UpdateCursorDimming() {
-    bool shouldHide = m_isIdleState && (m_idleDimLevel >= 5) && !m_videoDetected;
+    int dimLevel = 0;
+    if (m_dimmingEnabled) {
+        for (const auto& mon : m_monitors) {
+            if (mon.enabled && mon.dimValue > dimLevel)
+                dimLevel = mon.dimValue;
+        }
+    }
+    if (m_isIdleState && m_idleDimLevel > dimLevel)
+        dimLevel = m_idleDimLevel;
+    if (m_videoDetected)
+        dimLevel = 0;
+
+    bool shouldHide = dimLevel >= 5;
 
     if (shouldHide && !m_cursorHidden) {
         ShowCursor(FALSE);
@@ -228,10 +240,7 @@ typedef HRESULT (WINAPI* PFN_SHQueryUserNotificationState)(QUERY_USER_NOTIFICATI
 
 static bool IsFullscreenAppActive() {
     bool active = false;
-    HMODULE hShell32 = GetModuleHandleW(L"shell32.dll");
-    if (!hShell32) {
-        hShell32 = LoadLibraryW(L"shell32.dll");
-    }
+    HMODULE hShell32 = LoadLibraryW(L"shell32.dll");
     if (hShell32) {
         auto pfn = reinterpret_cast<PFN_SHQueryUserNotificationState>(
             GetProcAddress(hShell32, "SHQueryUserNotificationState")
@@ -244,6 +253,7 @@ static bool IsFullscreenAppActive() {
                 }
             }
         }
+        FreeLibrary(hShell32);
     }
     return active;
 }
@@ -262,6 +272,8 @@ static DWORD GetRealProcessId(HWND hwnd) {
             LogError(ErrorCode::E406, HRESULT_FROM_WIN32(GetLastError()));
         }
         CloseHandle(hProc);
+    } else {
+        LogError(ErrorCode::E417, HRESULT_FROM_WIN32(GetLastError()));
     }
 
     if (exe[0]) {
@@ -287,6 +299,8 @@ static std::wstring GetProcessNameFromPid(DWORD pid) {
             LogError(ErrorCode::E406, HRESULT_FROM_WIN32(GetLastError()));
         }
         CloseHandle(hProc);
+    } else {
+        LogError(ErrorCode::E418, HRESULT_FROM_WIN32(GetLastError()));
     }
     if (exe[0]) {
         const wchar_t* fname = wcsrchr(exe, L'\\');

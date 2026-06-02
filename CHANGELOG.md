@@ -2,6 +2,18 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.3.2] - 2026-06-02
+
+### Bug Fixes
+* **Cursor hide on any dim, not just idle**: `UpdateCursorDimming` now checks actual monitor dim level, not just idle state. Cursor hides whenever screen dims ≥ 5%.
+* **Shell32.dll leak**: `IsFullscreenAppActive` loaded shell32 via `LoadLibraryW` but never called `FreeLibrary`. Fixed.
+* **OpenProcess error logging**: `GetRealProcessId` and `GetProcessNameFromPid` now log E417/E418 when `OpenProcess` fails.
+* **Dead declaration removed**: `IsProcessNamePlayingAudio` declared in header but removed from .cpp.
+
+### Updates
+* **Error codes E417–E420**: Added for OpenProcess failures, setup window creation, overlay display affinity.
+* **Self-healing**: All COM failure paths log and return cleanly. Per-monitor overlay failure doesn't block others.
+
 ## [1.3.0] - 2026-06-01
 
 ### Bug Fixes
