@@ -2,6 +2,12 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.3.6] - 2026-06-02
+
+### Bug Fixes
+* **Idle dimming stuck when browser audio detected**: Twitch/YouTube in a browser tab kept a live audio session → `m_videoDetected = true` → idle timer's `&& !IsVideoDetected()` guard skipped the entire idle check → dimming never activated. Fixed: idle timer now runs regardless of video detection, and the overlay timer gives idle state priority over video detection.
+* **Netflix minimized / silent browser tabs blocking dim**: Same root cause — any browser audio session with peak > 0.0001f blocked idle dimming entirely. Now only affects non-idle (active) dimming; idle always overrides.
+
 ## [1.3.5] - 2026-06-02
 
 ### Updates
