@@ -2,6 +2,18 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.3.3] - 2026-06-02
+
+### Updates
+* **Browser foreground separation**: Browsers (Chrome, Edge, Firefox, Opera, Brave) no longer trigger the foreground blocked-app check. They only block dimming when actively playing audio. A silent browser in foreground won't stop idle dimming.
+* **Per-monitor idle dimming**: During idle, each monitor now targets `max(own dimValue, global idle level)` instead of a forced global value. Monitors darker than the idle level stay at their existing level.
+* **Saved config sanitization**: Old `dimmer.ini` files with browsers in `BlockedApps` are filtered on load — browsers removed from the foreground match list.
+* **Hardcoded browser list**: Built-in `m_browserApps` vector in DimmerManager with 5 known browsers, checked only via audio enumeration.
+
+### Bug Fixes
+* **Audio detection bug**: `IsAnyAppPlayingAudio` was hardcoded to compare against `m_blockedApps` instead of the passed `apps` parameter — browser audio never matched. Fixed.
+* **Idle dimming lockout via browser sounds**: Browser system audio (ads, notification pings) was keeping `m_videoDetected = true` permanently, preventing idle timer from ever activating. Now correctly isolated.
+
 ## [1.3.2] - 2026-06-02
 
 ### Bug Fixes

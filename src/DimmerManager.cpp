@@ -359,24 +359,36 @@ void DimmerManager::CheckVideoPlayback() {
         detected = true;
     }
 
+    // Foreground blocked app check — only media players, NOT browsers
     if (!detected) {
         HWND hFore = GetForegroundWindow();
         if (hFore) {
             DWORD pid = GetRealProcessId(hFore);
             std::wstring fname = GetProcessNameFromPid(pid);
             if (!fname.empty()) {
-                for (const auto& name : m_blockedApps) {
-                    if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                        detected = true;
+                // Skip browser foreground check (browsers only block via audio)
+                bool isBrowser = false;
+                for (const auto& b : m_browserApps) {
+                    if (lstrcmpiW(fname.c_str(), b.c_str()) == 0) {
+                        isBrowser = true;
                         break;
+                    }
+                }
+                if (!isBrowser) {
+                    for (const auto& name : m_blockedApps) {
+                        if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                            detected = true;
+                            break;
+                        }
                     }
                 }
             }
         }
     }
 
+    // Audio check for BOTH blocked apps AND browsers (any process playing audio)
     if (!detected) {
-        if (IsAnyBlockedAppPlayingAudio()) {
+        if (IsAnyAppPlayingAudio(m_blockedApps) || IsAnyAppPlayingAudio(m_browserApps)) {
             detected = true;
         }
     }
@@ -392,8 +404,8 @@ void DimmerManager::CheckVideoPlayback() {
     }
 }
 
-bool DimmerManager::IsAnyBlockedAppPlayingAudio() {
-    if (m_blockedApps.empty()) return false;
+bool DimmerManager::IsAnyAppPlayingAudio(const std::vector<std::wstring>& apps) {
+    if (apps.empty()) return false;
 
     bool found = false;
     IMMDeviceEnumerator* pEnumerator = nullptr;
@@ -427,8 +439,8 @@ bool DimmerManager::IsAnyBlockedAppPlayingAudio() {
                                 DWORD pid = 0;
                                 if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
                                     std::wstring fname = GetProcessNameFromPid(pid);
-                                    if (!fname.empty()) {
-                                        for (const auto& name : m_blockedApps) {
+                                        if (!fname.empty()) {
+                                            for (const auto& name : apps) {
                                             if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
                                                 IAudioMeterInformation* pMeter = nullptr;
                                                 hr = pSessionControl->QueryInterface(
@@ -510,8 +522,10 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                 if (DimmerManager::Instance().IsVideoDetected()) {
                     target = 0;
                 } else if (DimmerManager::Instance().IsIdleState()) {
-                    // Dim when user is away (Idle Dimming)
-                    target = DimmerManager::Instance().GetIdleDimLevel();
+                    // Per-monitor idle dimming: each monitor uses its own value
+                    // but never goes lower (brighter) than the global idle dim level
+                    target = (std::max)(info->dimValue, DimmerManager::Instance().GetIdleDimLevel());
+                    if (target > 90) target = 90;
                 } else if (DimmerManager::Instance().IsDimmingEnabled() && info->enabled) {
                     // Active dimming is enabled right now
                     target = info->dimValue;
