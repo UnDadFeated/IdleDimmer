@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "ErrorCodes.h"
 #include "DimmerManager.h"
 #include <algorithm>
 #include <dwmapi.h>
@@ -95,7 +96,10 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     wc.hbrBackground = nullptr;
     wc.lpszClassName = L"WinDimmer64MainClass";
     wc.hIcon = LoadIconW(hInst, MAKEINTRESOURCEW(101));
-    RegisterClassExW(&wc);
+    if (!RegisterClassExW(&wc)) {
+        LogError(ErrorCode::E106, HRESULT_FROM_WIN32(GetLastError()));
+        return false;
+    }
 
     // Initial position in center of screen
     int screenW = GetSystemMetrics(SM_CXSCREEN);
@@ -119,7 +123,10 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
         nullptr, nullptr, hInst, this
     );
 
-    if (!m_hwnd) return false;
+    if (!m_hwnd) {
+        LogError(ErrorCode::E107, HRESULT_FROM_WIN32(GetLastError()));
+        return false;
+    }
 
     // Enable Windows 11 rounded corners and dark/light theme
     BOOL useDark = !m_config.lightMode;
@@ -148,19 +155,31 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
 
     // Register global hotkeys
-    RegisterHotKey(m_hwnd, 101, MOD_CONTROL | MOD_ALT, VK_UP);
-    RegisterHotKey(m_hwnd, 102, MOD_CONTROL | MOD_ALT, VK_DOWN);
-    RegisterHotKey(m_hwnd, 103, MOD_CONTROL | MOD_ALT, 0x44); // 'D' key
+    if (!RegisterHotKey(m_hwnd, 101, MOD_CONTROL | MOD_ALT, VK_UP)) {
+        LogError(ErrorCode::E210, HRESULT_FROM_WIN32(GetLastError()));
+    }
+    if (!RegisterHotKey(m_hwnd, 102, MOD_CONTROL | MOD_ALT, VK_DOWN)) {
+        LogError(ErrorCode::E211, HRESULT_FROM_WIN32(GetLastError()));
+    }
+    if (!RegisterHotKey(m_hwnd, 103, MOD_CONTROL | MOD_ALT, 0x44)) { // 'D' key
+        LogError(ErrorCode::E212, HRESULT_FROM_WIN32(GetLastError()));
+    }
 
     // Start Focus Mode checking timer (150ms interval)
-    SetTimer(m_hwnd, 201, 150, nullptr);
+    if (!SetTimer(m_hwnd, 201, 150, nullptr)) {
+        LogError(ErrorCode::E208, HRESULT_FROM_WIN32(GetLastError()));
+    }
 
     // Start Inactivity/Idle checking timer (1000ms interval)
-    SetTimer(m_hwnd, 202, 1000, nullptr);
+    if (!SetTimer(m_hwnd, 202, 1000, nullptr)) {
+        LogError(ErrorCode::E209, HRESULT_FROM_WIN32(GetLastError()));
+    }
 
     // Add to system tray
     HICON hAppIcon = LoadIconW(m_hInst, MAKEINTRESOURCEW(101));
-    AddTrayIcon(m_hwnd, 1, hAppIcon, L"WinDimmer64 Screen Brightness");
+    if (!AddTrayIcon(m_hwnd, 1, hAppIcon, L"WinDimmer64 Screen Brightness")) {
+        LogError(ErrorCode::E213, HRESULT_FROM_WIN32(GetLastError()));
+    }
 
     UpdateLayout();
 
@@ -188,6 +207,9 @@ HRESULT MainWindow::CreateGraphicsResources() {
     HRESULT hr = S_OK;
     if (!m_pFactory) {
         hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pFactory);
+        if (FAILED(hr)) {
+            LogError(ErrorCode::E201, hr);
+        }
     }
     if (SUCCEEDED(hr) && !m_pRenderTarget) {
         RECT rc;
@@ -200,16 +222,36 @@ HRESULT MainWindow::CreateGraphicsResources() {
             &m_pRenderTarget
         );
 
+        if (FAILED(hr)) {
+            LogError(ErrorCode::E206, hr);
+        }
+
         if (SUCCEEDED(hr)) {
             // Create brushes
-            m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x131315), &m_pBrushBg);
-            m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1F1F24), &m_pBrushCard);
-            m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2D2D34), &m_pBrushCardBorder);
-            m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFFFFF), &m_pBrushText);
-            m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x8E8E93), &m_pBrushTextMuted);
-            m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0078D4), &m_pBrushAccent);
-            m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2B88D8), &m_pBrushAccentHover);
-            m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x44444A), &m_pBrushTrack);
+            HRESULT hrBrush = S_OK;
+            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x131315), &m_pBrushBg);
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+
+            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1F1F24), &m_pBrushCard);
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+
+            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2D2D34), &m_pBrushCardBorder);
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+
+            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFFFFF), &m_pBrushText);
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+
+            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x8E8E93), &m_pBrushTextMuted);
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+
+            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0078D4), &m_pBrushAccent);
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+
+            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2B88D8), &m_pBrushAccentHover);
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+
+            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x44444A), &m_pBrushTrack);
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
         }
     }
 
@@ -220,22 +262,32 @@ HRESULT MainWindow::CreateGraphicsResources() {
             reinterpret_cast<IUnknown**>(&m_pDWriteFactory)
         );
 
+        if (FAILED(hr)) {
+            LogError(ErrorCode::E202, hr);
+        }
+
         if (SUCCEEDED(hr)) {
-            m_pDWriteFactory->CreateTextFormat(
+            HRESULT hrFmt = S_OK;
+            hrFmt = m_pDWriteFactory->CreateTextFormat(
                 L"Segoe UI Variable Display", nullptr,
                 DWRITE_FONT_WEIGHT_SEMI_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
                 20.0f, L"en-us", &m_pTextFormatTitle
             );
-            m_pDWriteFactory->CreateTextFormat(
+            if (FAILED(hrFmt)) LogError(ErrorCode::E203, hrFmt);
+
+            hrFmt = m_pDWriteFactory->CreateTextFormat(
                 L"Segoe UI Variable Text", nullptr,
                 DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
                 13.0f, L"en-us", &m_pTextFormatBody
             );
-            m_pDWriteFactory->CreateTextFormat(
+            if (FAILED(hrFmt)) LogError(ErrorCode::E204, hrFmt);
+
+            hrFmt = m_pDWriteFactory->CreateTextFormat(
                 L"Segoe UI Variable Text", nullptr,
                 DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
                 10.5f, L"en-us", &m_pTextFormatDetail
             );
+            if (FAILED(hrFmt)) LogError(ErrorCode::E205, hrFmt);
         }
     }
 
@@ -1378,7 +1430,10 @@ void MainWindow::ShowAddAppDialog() {
         wc.hCursor = LoadCursor(NULL, IDC_ARROW);
         wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         wc.lpszClassName = ADD_DLG_CLASS;
-        RegisterClassExW(&wc);
+        if (!RegisterClassExW(&wc)) {
+            LogError(ErrorCode::E214, HRESULT_FROM_WIN32(GetLastError()));
+            return;
+        }
         g_addDlgRegistered = true;
     }
 
@@ -1390,31 +1445,34 @@ void MainWindow::ShowAddAppDialog() {
         CW_USEDEFAULT, CW_USEDEFAULT, 270, 105,
         m_hwnd, NULL, m_hInst, NULL);
 
-    if (hDlg) {
-        EnableWindow(m_hwnd, FALSE);
-        MSG msg;
-        while (IsWindow(hDlg) && GetMessageW(&msg, NULL, 0, 0)) {
-            TranslateMessage(&msg);
-            DispatchMessageW(&msg);
-        }
-        EnableWindow(m_hwnd, TRUE);
-        SetForegroundWindow(m_hwnd);
+    if (!hDlg) {
+        LogError(ErrorCode::E215, HRESULT_FROM_WIN32(GetLastError()));
+        return;
+    }
 
-        if (g_addDlgConfirmed && g_addDlgResult[0]) {
-            std::wstring name = g_addDlgResult;
-            CharLowerW(&name[0]);
-            if (name.find(L'.') == std::wstring::npos) name += L".exe";
-            bool dup = false;
-            for (const auto& app : m_config.blockedApps) {
-                if (lstrcmpiW(app.c_str(), name.c_str()) == 0) { dup = true; break; }
-            }
-            if (!dup) {
-                m_config.blockedApps.push_back(name);
-                DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
-                UpdateLayout();
-                SaveSettings();
-                Repaint();
-            }
+    EnableWindow(m_hwnd, FALSE);
+    MSG msg;
+    while (IsWindow(hDlg) && GetMessageW(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessageW(&msg);
+    }
+    EnableWindow(m_hwnd, TRUE);
+    SetForegroundWindow(m_hwnd);
+
+    if (g_addDlgConfirmed && g_addDlgResult[0]) {
+        std::wstring name = g_addDlgResult;
+        CharLowerW(&name[0]);
+        if (name.find(L'.') == std::wstring::npos) name += L".exe";
+        bool dup = false;
+        for (const auto& app : m_config.blockedApps) {
+            if (lstrcmpiW(app.c_str(), name.c_str()) == 0) { dup = true; break; }
+        }
+        if (!dup) {
+            m_config.blockedApps.push_back(name);
+            DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
+            UpdateLayout();
+            SaveSettings();
+            Repaint();
         }
     }
 }
@@ -1451,11 +1509,19 @@ void MainWindow::ToggleStartWithWindows(bool enable) {
         if (enable) {
             wchar_t exePath[MAX_PATH];
             GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-            RegSetValueExW(hKey, L"WinDimmer64", 0, REG_SZ, reinterpret_cast<const BYTE*>(exePath), static_cast<DWORD>((wcslen(exePath) + 1) * sizeof(wchar_t)));
+            LONG lResSet = RegSetValueExW(hKey, L"WinDimmer64", 0, REG_SZ, reinterpret_cast<const BYTE*>(exePath), static_cast<DWORD>((wcslen(exePath) + 1) * sizeof(wchar_t)));
+            if (lResSet != ERROR_SUCCESS) {
+                LogError(ErrorCode::E306, HRESULT_FROM_WIN32(lResSet));
+            }
         } else {
-            RegDeleteValueW(hKey, L"WinDimmer64");
+            LONG lResDel = RegDeleteValueW(hKey, L"WinDimmer64");
+            if (lResDel != ERROR_SUCCESS && lResDel != ERROR_FILE_NOT_FOUND) {
+                LogError(ErrorCode::E307, HRESULT_FROM_WIN32(lResDel));
+            }
         }
         RegCloseKey(hKey);
+    } else {
+        LogError(ErrorCode::E305, HRESULT_FROM_WIN32(lRes));
     }
 }
 

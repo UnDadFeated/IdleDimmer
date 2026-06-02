@@ -2,6 +2,14 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.2.9] - 2026-06-01
+
+### New Features
+* **Windowed Netflix & Video Playback Detection**: Added active audio session monitoring to detect when browser tabs (like Chrome, Edge, Firefox) or media players are playing sound in the foreground. This prevents the screen from dimming while watching a show or movie in windowed mode, and correctly resumes dimming when the video is paused.
+
+### Bug Fixes
+* **Centralized Error Database**: Integrated a structured E### error reporting system across all areas of the application (initialization, GUI rendering, config loading, registry settings, and setup extraction). Errors are logged to system debuggers (OutputDebugStringW) for clean troubleshooting.
+
 ## [1.2.8] - 2026-05-27
 
 ### Bug Fixes

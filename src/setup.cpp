@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <winver.h>
+#include "ErrorCodes.h"
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #define IDI_APP 101
@@ -61,16 +62,31 @@ static std::wstring GetExeVersion(const wchar_t* filepath) {
 
 static bool ExtractApp(const wchar_t* dest) {
     HRSRC hRes = FindResourceW(NULL, MAKEINTRESOURCEW(IDR_APP_BIN), MAKEINTRESOURCEW(10));
-    if (!hRes) return false;
+    if (!hRes) {
+        LogError(ErrorCode::E501, HRESULT_FROM_WIN32(GetLastError()));
+        return false;
+    }
     HGLOBAL hData = LoadResource(NULL, hRes);
-    if (!hData) return false;
+    if (!hData) {
+        LogError(ErrorCode::E502, HRESULT_FROM_WIN32(GetLastError()));
+        return false;
+    }
     DWORD size = SizeofResource(NULL, hRes);
     void* data = LockResource(hData);
-    if (!data || size == 0) return false;
+    if (!data || size == 0) {
+        LogError(ErrorCode::E503, HRESULT_FROM_WIN32(GetLastError()));
+        return false;
+    }
     HANDLE hFile = CreateFileW(dest, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) return false;
+    if (hFile == INVALID_HANDLE_VALUE) {
+        LogError(ErrorCode::E505, HRESULT_FROM_WIN32(GetLastError()));
+        return false;
+    }
     DWORD written;
     BOOL ok = WriteFile(hFile, data, size, &written, NULL);
+    if (!ok || written != size) {
+        LogError(ErrorCode::E506, HRESULT_FROM_WIN32(GetLastError()));
+    }
     CloseHandle(hFile);
     return ok && written == size;
 }
@@ -227,7 +243,9 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                     SetWindowTextW(g_hStatus, L"Installing...");
 
                     KillRunning();
-                    CreateDirectoryW(g_installPath, NULL);
+                    if (!CreateDirectoryW(g_installPath, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
+                        LogError(ErrorCode::E504, HRESULT_FROM_WIN32(GetLastError()));
+                    }
                     wchar_t exePath[MAX_PATH];
                     swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
 
@@ -273,6 +291,17 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
+    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Global\\WinDimmer64SetupMutex");
+    if (hMutex == nullptr) {
+        LogError(ErrorCode::E507, HRESULT_FROM_WIN32(GetLastError()));
+        return 1;
+    }
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        LogError(ErrorCode::E508);
+        CloseHandle(hMutex);
+        return 0;
+    }
+
     InitCommonControls();
 
     // Check for uninstall switch using wide command line
@@ -312,6 +341,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
+    CloseHandle(hMutex);
     CoUninitialize();
     return (int)msg.wParam;
 }

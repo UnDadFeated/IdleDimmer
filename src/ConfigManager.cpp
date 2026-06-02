@@ -1,4 +1,5 @@
 #include "ConfigManager.h"
+#include "ErrorCodes.h"
 #include <fstream>
 #include <sstream>
 #include <shlobj.h>
@@ -30,6 +31,7 @@ std::wstring ConfigManager::GetConfigPath() {
         CreateDirectoryW(appDir.c_str(), NULL);
         return appDir + L"\\dimmer.ini";
     }
+    LogError(ErrorCode::E301, HRESULT_FROM_WIN32(GetLastError()));
     return L"dimmer.ini"; // Fallback to local
 }
 
@@ -37,6 +39,10 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     AppConfig config;
     std::wifstream file(filePath.c_str());
     if (!file.is_open()) {
+        DWORD attrs = GetFileAttributesW(filePath.c_str());
+        if (attrs != INVALID_FILE_ATTRIBUTES) {
+            LogError(ErrorCode::E302, HRESULT_FROM_WIN32(GetLastError()));
+        }
         return config; // Return defaults
     }
 
@@ -44,6 +50,11 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     buffer << file.rdbuf();
     std::wstring content = buffer.str();
     file.close();
+
+    if (content.empty() || content.find(L"{") == std::wstring::npos || content.find(L"}") == std::wstring::npos) {
+        LogError(ErrorCode::E303);
+        return config;
+    }
 
     // Simple robust JSON scanner
     size_t pos = 0;
@@ -136,7 +147,10 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
 
 void ConfigManager::SaveConfig(const std::wstring& filePath, const AppConfig& config) {
     std::wofstream file(filePath.c_str());
-    if (!file.is_open()) return;
+    if (!file.is_open()) {
+        LogError(ErrorCode::E304, HRESULT_FROM_WIN32(GetLastError()));
+        return;
+    }
 
     file << L"{\n";
     file << L"  \"CloseToTray\": " << (config.closeToTray ? L"true" : L"false") << L",\n";

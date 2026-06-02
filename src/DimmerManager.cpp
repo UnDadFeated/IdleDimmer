@@ -1,6 +1,28 @@
 #include "DimmerManager.h"
+#include "ErrorCodes.h"
 #include <vector>
 #include <algorithm>
+#include <mmdeviceapi.h>
+#include <audiopolicy.h>
+#include <endpointvolume.h>
+
+// Define IAudioMeterInformation manually as MinGW headers only forward declare it
+#ifndef __IAudioMeterInformation_INTERFACE_DEFINED__
+#define __IAudioMeterInformation_INTERFACE_DEFINED__
+
+const IID IID_IAudioMeterInformation = {0xC02216F6, 0x8C67, 0x4B5B, {0x9D, 0x00, 0xD0, 0x08, 0xE7, 0x3E, 0x00, 0x64}};
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+interface IAudioMeterInformation : public IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE GetPeakValue(float *pfPeak) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetMeteringChannelCount(UINT *pnChannelCount) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetChannelsPeakValues(UINT32 u32ChannelCount, float *afPeaks) = 0;
+    virtual HRESULT STDMETHODCALLTYPE QueryHardwareSupport(DWORD *pdwHardwareSupportMask) = 0;
+};
+#endif
+#endif
+
 
 // Helper to get friendly monitor name
 static std::wstring GetMonitorFriendlyName(HMONITOR hMonitor, int index) {
@@ -37,8 +59,11 @@ void DimmerManager::Initialize(HINSTANCE hInst) {
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
         wc.hbrBackground = nullptr; // Let WM_PAINT handle background to support custom warm tints
         wc.lpszClassName = L"WinDimmer64OverlayClass";
-        RegisterClassExW(&wc);
-        m_classRegistered = true;
+        if (!RegisterClassExW(&wc)) {
+            LogError(ErrorCode::E402, HRESULT_FROM_WIN32(GetLastError()));
+        } else {
+            m_classRegistered = true;
+        }
     }
 }
 
@@ -80,12 +105,16 @@ void DimmerManager::CreateOverlayForMonitor(ActiveMonitorInfo& info) {
     if (info.hwndOverlay) {
         // Start from 0 dim for a beautiful fade-in on startup!
         info.currentDimValue = 0;
-        SetLayeredWindowAttributes(info.hwndOverlay, 0, 0, LWA_ALPHA);
+        if (!SetLayeredWindowAttributes(info.hwndOverlay, 0, 0, LWA_ALPHA)) {
+            LogError(ErrorCode::E404, HRESULT_FROM_WIN32(GetLastError()));
+        }
 
         ShowWindow(info.hwndOverlay, SW_SHOWNOACTIVATE);
         UpdateWindow(info.hwndOverlay);
 
         TriggerFade(info.hwndOverlay);
+    } else {
+        LogError(ErrorCode::E403, HRESULT_FROM_WIN32(GetLastError()));
     }
 }
 
@@ -215,7 +244,9 @@ static DWORD GetRealProcessId(HWND hwnd) {
     HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
     if (hProc) {
         DWORD size = MAX_PATH;
-        QueryFullProcessImageNameW(hProc, 0, exe, &size);
+        if (!QueryFullProcessImageNameW(hProc, 0, exe, &size)) {
+            LogError(ErrorCode::E406, HRESULT_FROM_WIN32(GetLastError()));
+        }
         CloseHandle(hProc);
     }
 
@@ -238,7 +269,9 @@ static std::wstring GetProcessNameFromPid(DWORD pid) {
     HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
     if (hProc) {
         DWORD size = MAX_PATH;
-        QueryFullProcessImageNameW(hProc, 0, exe, &size);
+        if (!QueryFullProcessImageNameW(hProc, 0, exe, &size)) {
+            LogError(ErrorCode::E406, HRESULT_FROM_WIN32(GetLastError()));
+        }
         CloseHandle(hProc);
     }
     if (exe[0]) {
@@ -261,6 +294,13 @@ void DimmerManager::CheckVideoPlayback() {
                     break;
                 }
             }
+
+            // Check if active foreground process is playing audio
+            if (!detected) {
+                if (IsProcessNamePlayingAudio(fname)) {
+                    detected = true;
+                }
+            }
         }
     }
     if (detected != m_videoDetected) {
@@ -272,6 +312,103 @@ void DimmerManager::CheckVideoPlayback() {
         }
         UpdateCursorDimming();
     }
+}
+
+bool DimmerManager::IsProcessNamePlayingAudio(const std::wstring& targetProcessName) {
+    if (targetProcessName.empty()) return false;
+
+    bool playing = false;
+    IMMDeviceEnumerator* pEnumerator = nullptr;
+    HRESULT hr = CoCreateInstance(
+        __uuidof(MMDeviceEnumerator),
+        nullptr,
+        CLSCTX_ALL,
+        __uuidof(IMMDeviceEnumerator),
+        reinterpret_cast<void**>(&pEnumerator)
+    );
+
+    if (FAILED(hr)) {
+        LogError(ErrorCode::E407, hr);
+        return false;
+    }
+
+    IMMDevice* pDevice = nullptr;
+    hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
+    if (SUCCEEDED(hr)) {
+        IAudioSessionManager2* pSessionManager = nullptr;
+        hr = pDevice->Activate(
+            __uuidof(IAudioSessionManager2),
+            CLSCTX_ALL,
+            nullptr,
+            reinterpret_cast<void**>(&pSessionManager)
+        );
+        if (SUCCEEDED(hr)) {
+            IAudioSessionEnumerator* pSessionEnumerator = nullptr;
+            hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
+            if (SUCCEEDED(hr)) {
+                int count = 0;
+                if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
+                    for (int i = 0; i < count; ++i) {
+                        IAudioSessionControl* pSessionControl = nullptr;
+                        hr = pSessionEnumerator->GetSession(i, &pSessionControl);
+                        if (SUCCEEDED(hr)) {
+                            IAudioSessionControl2* pSessionControl2 = nullptr;
+                            hr = pSessionControl->QueryInterface(
+                                __uuidof(IAudioSessionControl2),
+                                reinterpret_cast<void**>(&pSessionControl2)
+                            );
+                            if (SUCCEEDED(hr)) {
+                                DWORD pid = 0;
+                                if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
+                                    std::wstring sessionProcessName = GetProcessNameFromPid(pid);
+                                    if (lstrcmpiW(targetProcessName.c_str(), sessionProcessName.c_str()) == 0) {
+                                        IAudioMeterInformation* pMeter = nullptr;
+                                        hr = pSessionControl->QueryInterface(
+                                            IID_IAudioMeterInformation,
+                                            reinterpret_cast<void**>(&pMeter)
+                                        );
+                                        if (SUCCEEDED(hr)) {
+                                            float peak = 0.0f;
+                                            if (SUCCEEDED(pMeter->GetPeakValue(&peak))) {
+                                                if (peak > 0.0001f) {
+                                                    playing = true;
+                                                }
+                                            } else {
+                                                LogError(ErrorCode::E414, hr);
+                                            }
+                                            pMeter->Release();
+                                        } else {
+                                            LogError(ErrorCode::E413, hr);
+                                        }
+                                    }
+                                }
+                                pSessionControl2->Release();
+                            } else {
+                                LogError(ErrorCode::E412, hr);
+                            }
+                            pSessionControl->Release();
+                        } else {
+                            LogError(ErrorCode::E411, hr);
+                        }
+                        if (playing) {
+                            break;
+                        }
+                    }
+                }
+                pSessionEnumerator->Release();
+            } else {
+                LogError(ErrorCode::E410, hr);
+            }
+            pSessionManager->Release();
+        } else {
+            LogError(ErrorCode::E409, hr);
+        }
+        pDevice->Release();
+    } else {
+        LogError(ErrorCode::E408, hr);
+    }
+    pEnumerator->Release();
+    return playing;
 }
 
 void DimmerManager::SetBlockedApps(const std::vector<std::wstring>& apps) {
