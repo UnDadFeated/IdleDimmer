@@ -2,6 +2,12 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.4.5] - 2026-06-02
+
+### Bug Fixes
+* **Video detection oscillation fixed**: `CheckVideoPlayback()` now only updates `m_videoDetected` on full-check ticks (every 5th second), eliminating the 4-second flicker cycle between lightweight and heavyweight checks.
+* **Installer visual refresh**: Dark theme applied with Premium Monochrome Slate colors (bg `#1E1E1E`, text `#E1E1E1`) matching the app. Title bar uses `DWMWA_USE_IMMERSIVE_DARK_MODE`. Fonts updated to Segoe UI Variable Display/Text at 20pt/13pt. Launch checkbox enabled by default and always visible. Redundant Location label removed (install path already shown in the log console).
+
 ## [1.4.4] - 2026-06-02
 
 ### Bug Fixes

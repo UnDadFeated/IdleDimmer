@@ -9,10 +9,12 @@
 #include <shellapi.h>
 #include <objbase.h>
 #include <commctrl.h>
+#include <dwmapi.h>
 #include <string>
 #include <vector>
 #include <winver.h>
 #include "ErrorCodes.h"
+#pragma comment(lib, "dwmapi.lib")
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #define IDI_APP 101
@@ -21,13 +23,14 @@
 static const wchar_t* APP_NAME = L"WinDimmer64";
 static const wchar_t* INSTALL_DIR = L"WinDimmer64";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinDimmer64";
-static const wchar_t* VER = L"1.4.0";
+static const wchar_t* VER = L"1.4.5";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
 static wchar_t g_installPath[MAX_PATH];
-static HWND g_hStatus, g_hLocation, g_hButton, g_hLaunchCheck, g_hLog;
+static HWND g_hStatus, g_hButton, g_hLaunchCheck, g_hLog;
 static HFONT g_hFontTitle, g_hFontBody, g_hFontLog;
+static HBRUSH g_hBgBrush, g_hEditBgBrush;
 
 static void Log(const wchar_t* fmt, ...) {
     wchar_t buf[1024];
@@ -210,6 +213,10 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             int ch = rc.bottom;
             int m = 20;
 
+            // Apply dark mode for title bar
+            BOOL dark = TRUE;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
+
             GetInstallPath(g_installPath, MAX_PATH);
             wchar_t exePath[MAX_PATH];
             swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
@@ -223,8 +230,8 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             int logX = leftW + m * 2;
             int logW = cw - logX - m;
 
-            CreateWindowW(L"STATIC", L"WinDimmer64 Setup",
-                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 14, leftW, 22, hwnd, NULL, hInst, NULL);
+            g_hStatus = CreateWindowW(L"STATIC", L"",
+                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 44, leftW, 50, hwnd, NULL, hInst, NULL);
 
             wchar_t status[196];
             if (running && installed)
@@ -235,18 +242,11 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 swprintf(status, 196, L"Installed: v%s\r\nSetup will overwrite.", installedVer.c_str());
             else
                 swprintf(status, 196, L"Ready to install v%s", VER);
-
-            g_hStatus = CreateWindowW(L"STATIC", status,
-                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 44, leftW, 50, hwnd, NULL, hInst, NULL);
-
-            wchar_t pathStr[MAX_PATH + 32];
-            swprintf(pathStr, MAX_PATH + 32, L"Location: %s", g_installPath);
-            g_hLocation = CreateWindowW(L"STATIC", pathStr,
-                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 102, leftW, 16, hwnd, NULL, hInst, NULL);
+            SetWindowTextW(g_hStatus, status);
 
             g_hLaunchCheck = CreateWindowW(L"BUTTON", L"Launch after install",
-                WS_CHILD | BS_AUTOCHECKBOX | BS_LEFT, m, 126, leftW, 18, hwnd, NULL, hInst, NULL);
-            ShowWindow(g_hLaunchCheck, SW_HIDE);
+                WS_CHILD | BS_AUTOCHECKBOX | BS_LEFT, m, 106, leftW, 18, hwnd, NULL, hInst, NULL);
+            SendMessageW(g_hLaunchCheck, BM_SETCHECK, BST_CHECKED, 0);
 
             g_hButton = CreateWindowW(L"BUTTON", L"Install",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON,
@@ -257,18 +257,17 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_LEFT,
                 logX, 14, logW, ch - 28, hwnd, NULL, hInst, NULL);
 
-            g_hFontTitle = CreateFontW(16, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+            g_hFontTitle = CreateFontW(20, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-            g_hFontBody = CreateFontW(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Variable Display");
+            g_hFontBody = CreateFontW(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Variable Text");
             g_hFontLog = CreateFontW(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 CLEARTYPE_QUALITY, FIXED_PITCH | FF_MODERN, L"Consolas");
 
             SendMessageW(g_hStatus, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
-            SendMessageW(g_hLocation, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
             SendMessageW(g_hLaunchCheck, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
             SendMessageW(g_hLog, WM_SETFONT, (WPARAM)g_hFontLog, TRUE);
 
@@ -277,7 +276,28 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             if (installed) Log(L"  Installed: v%s\r\n", installedVer.c_str());
             if (running)  Log(L"  App is running\r\n");
 
+            g_hBgBrush = CreateSolidBrush(RGB(18, 18, 18));
+            g_hEditBgBrush = CreateSolidBrush(RGB(30, 30, 30));
+
             break;
+        }
+        case WM_CTLCOLORSTATIC: {
+            HDC hdc = (HDC)wParam;
+            SetTextColor(hdc, RGB(225, 225, 225));
+            SetBkColor(hdc, RGB(18, 18, 18));
+            return (LRESULT)g_hBgBrush;
+        }
+        case WM_CTLCOLORBTN: {
+            HDC hdc = (HDC)wParam;
+            SetTextColor(hdc, RGB(225, 225, 225));
+            SetBkColor(hdc, RGB(18, 18, 18));
+            return (LRESULT)g_hBgBrush;
+        }
+        case WM_CTLCOLOREDIT: {
+            HDC hdc = (HDC)wParam;
+            SetTextColor(hdc, RGB(200, 200, 200));
+            SetBkColor(hdc, RGB(30, 30, 30));
+            return (LRESULT)g_hEditBgBrush;
         }
         case WM_COMMAND:
             if (LOWORD(wParam) == IDOK) {
@@ -335,6 +355,8 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             DeleteObject(g_hFontTitle);
             DeleteObject(g_hFontBody);
             DeleteObject(g_hFontLog);
+            DeleteObject(g_hBgBrush);
+            DeleteObject(g_hEditBgBrush);
             PostQuitMessage(0);
             return 0;
     }
@@ -371,7 +393,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
     wc.hInstance = hInst;
     wc.hIcon = LoadIconW(hInst, MAKEINTRESOURCEW(IDI_APP));
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hbrBackground = CreateSolidBrush(RGB(18, 18, 18));
     wc.lpszClassName = L"WinDimmer64SetupClass";
     RegisterClassExW(&wc);
 

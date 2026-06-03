@@ -336,54 +336,47 @@ static bool IsForegroundWindowFullscreen() {
 }
 
 void DimmerManager::CheckVideoPlayback() {
-    bool detected = false;
     m_videoCheckTick++;
-
     bool doFullCheck = (m_videoCheckTick % 5 == 0);
 
-    // Lightweight geometric check every tick
-    if (IsForegroundWindowFullscreen()) {
-        detected = true;
-    }
+    if (doFullCheck) {
+        bool detected = false;
 
-    // Heavy checks every 5th tick
-    if (!detected && doFullCheck) {
-        if (IsFullscreenAppActive()) {
+        // Full suite of checks
+        if (IsForegroundWindowFullscreen() || IsFullscreenAppActive()) {
             detected = true;
         }
-    }
 
-    if (!detected && doFullCheck) {
-        HWND hFore = GetForegroundWindow();
-        if (hFore) {
-            DWORD pid = GetRealProcessId(hFore);
-            std::wstring fname = GetProcessNameFromPid(pid);
-            if (!fname.empty()) {
-                for (const auto& name : m_blockedApps) {
-                    if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                        detected = true;
-                        break;
+        if (!detected && !m_blockedApps.empty()) {
+            HWND hFore = GetForegroundWindow();
+            if (hFore) {
+                DWORD pid = GetRealProcessId(hFore);
+                std::wstring fname = GetProcessNameFromPid(pid);
+                if (!fname.empty()) {
+                    for (const auto& name : m_blockedApps) {
+                        if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                            detected = true;
+                            break;
+                        }
                     }
                 }
             }
         }
-    }
 
-    if (!detected && doFullCheck) {
-        if (IsAnyBlockedAppPlayingAudio()) {
+        if (!detected && IsAnyBlockedAppPlayingAudio()) {
             detected = true;
         }
-    }
 
-    if (detected != m_videoDetected) {
-        m_videoDetected = detected;
-        for (auto& mon : m_monitors) {
-            if (mon.hwndOverlay) {
-                TriggerFade(mon.hwndOverlay);
+        if (detected != m_videoDetected) {
+            m_videoDetected = detected;
+            for (auto& mon : m_monitors) {
+                if (mon.hwndOverlay) TriggerFade(mon.hwndOverlay);
             }
+            UpdateCursorDimming();
         }
-        UpdateCursorDimming();
     }
+    // On non-full-check ticks: do nothing. The 5-second cadence is fast
+    // enough for video detection; no need for a partial check that flips state.
 }
 
 bool DimmerManager::IsAnyBlockedAppPlayingAudio() {
