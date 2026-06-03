@@ -2,6 +2,11 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.4.4] - 2026-06-02
+
+### Bug Fixes
+* **Cursor no longer hides during active dimming**: Mouse cursor only hides during idle/inactive dimming, not when manually dimming via sliders or hotkeys.
+
 ## [1.4.3] - 2026-06-02
 
 ### Updates

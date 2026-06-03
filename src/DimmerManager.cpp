@@ -185,13 +185,7 @@ void DimmerManager::SetDimmingEnabled(bool enabled) {
 
 void DimmerManager::UpdateCursorDimming() {
     int dimLevel = 0;
-    if (m_dimmingEnabled) {
-        for (const auto& mon : m_monitors) {
-            if (mon.enabled && mon.dimValue > dimLevel)
-                dimLevel = mon.dimValue;
-        }
-    }
-    if (m_isIdleState && m_idleDimLevel > dimLevel)
+    if (m_isIdleState)
         dimLevel = m_idleDimLevel;
     if (m_videoDetected)
         dimLevel = 0;
