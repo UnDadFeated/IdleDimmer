@@ -187,8 +187,6 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
                 m_isSettingCursorPos = true;
                 int dx = (pt.x > 0) ? -1 : 1;
                 SetCursorPos(pt.x + dx, pt.y);
-                SetCursorPos(pt.x, pt.y);
-                m_isSettingCursorPos = false;
             }
         }
     }
@@ -376,7 +374,7 @@ static BOOL CALLBACK EnumWindowsProcForPid(HWND hwnd, LPARAM lParam) {
     auto* info = reinterpret_cast<PidMonitorInfo*>(lParam);
     DWORD pid = 0;
     GetWindowThreadProcessId(hwnd, &pid);
-    if (pid == info->pid && IsWindowVisible(hwnd)) {
+    if (pid == info->pid && IsWindowVisible(hwnd) && !IsIconic(hwnd)) {
         HMONITOR hMon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
         if (hMon && std::find(info->monitors.begin(), info->monitors.end(), hMon) == info->monitors.end()) {
             info->monitors.push_back(hMon);
@@ -656,6 +654,7 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
         case WM_MBUTTONDOWN: {
             if (DimmerManager::Instance().IsIdleState()) {
                 if (DimmerManager::Instance().IsSettingCursorPos()) {
+                    DimmerManager::Instance().SetSettingCursorPos(false);
                     return DefWindowProcW(hwnd, msg, wp, lp);
                 }
                 POINT pt;
