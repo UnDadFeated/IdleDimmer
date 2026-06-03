@@ -29,7 +29,19 @@ std::wstring ConfigManager::GetConfigPath() {
     if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, path))) {
         std::wstring appDir = std::wstring(path) + L"\\IdleDimmer";
         CreateDirectoryW(appDir.c_str(), NULL);
-        return appDir + L"\\dimmer.ini";
+        std::wstring newPath = appDir + L"\\dimmer.ini";
+        
+        // Migrate from old WinDimmer64 if new path does not exist
+        DWORD newAttrs = GetFileAttributesW(newPath.c_str());
+        if (newAttrs == INVALID_FILE_ATTRIBUTES) {
+            std::wstring oldPath = std::wstring(path) + L"\\WinDimmer64\\dimmer.ini";
+            DWORD oldAttrs = GetFileAttributesW(oldPath.c_str());
+            if (oldAttrs != INVALID_FILE_ATTRIBUTES && !(oldAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
+                CopyFileW(oldPath.c_str(), newPath.c_str(), FALSE);
+            }
+        }
+        
+        return newPath;
     }
     LogError(ErrorCode::E301, HRESULT_FROM_WIN32(GetLastError()));
     return L"dimmer.ini"; // Fallback to local

@@ -2,6 +2,15 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.4.8] - 2026-06-03
+
+### New Features
+* **Automatic Configuration Migration**: Added logic to copy the user's existing settings from `%APPDATA%\WinDimmer64\dimmer.ini` to `%APPDATA%\IdleDimmer\dimmer.ini` if the latter is not found, ensuring that previous settings, monitor dim levels, and customized blocked app list are automatically preserved.
+
+### Bug Fixes
+* **Active and Idle Dimmer Not Working After Rename**: Resolved conflict where the old `WinDimmer64` process would remain running in the background, keeping the global hotkeys and overlay priority, while the new `IdleDimmer` app started with empty configurations.
+* **Harmless DPI Context Log Error**: Safely handle DPI awareness initialization errors if the application manifest has already pre-configured the thread DPI context.
+
 ## [1.4.7] - 2026-06-02
 
 ### Bug Fixes
