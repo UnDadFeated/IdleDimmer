@@ -57,7 +57,7 @@ void DimmerManager::Initialize(HINSTANCE hInst) {
         wc.style = CS_HREDRAW | CS_VREDRAW;
         wc.lpfnWndProc = OverlayWndProc;
         wc.hInstance = hInst;
-        wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        wc.hCursor = nullptr;
         wc.hbrBackground = nullptr; // Let WM_PAINT handle background to support custom warm tints
         wc.lpszClassName = L"IdleDimmerOverlayClass";
         if (!RegisterClassExW(&wc)) {
@@ -581,9 +581,10 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
         case WM_SETCURSOR: {
             if (DimmerManager::Instance().IsIdleState()) {
                 SetCursor(nullptr);
-                return TRUE;
+            } else {
+                SetCursor(LoadCursor(nullptr, IDC_ARROW));
             }
-            return DefWindowProcW(hwnd, msg, wp, lp);
+            return TRUE;
         }
         case WM_MOUSEMOVE:
         case WM_LBUTTONDOWN:
