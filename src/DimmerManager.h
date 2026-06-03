@@ -43,6 +43,8 @@ public:
     void SetBlockedApps(const std::vector<std::wstring>& apps);
     bool IsVideoDetected() const { return m_videoDetected; }
     bool IsAnyBlockedAppPlayingAudio();
+    POINT GetLastMousePos() const { return m_lastMousePos; }
+    void SetLastMousePos(POINT pt) { m_lastMousePos = pt; }
 
 private:
     DimmerManager() = default;
@@ -63,4 +65,5 @@ private:
     bool m_videoDetected = false;
     int m_videoCheckTick = 0;
     std::vector<std::wstring> m_blockedApps;
+    POINT m_lastMousePos = { -1, -1 };
 };

@@ -164,6 +164,13 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
     if (m_isIdleState != idle || m_idleDimLevel != idleLevel) {
         m_isIdleState = idle;
         m_idleDimLevel = idleLevel;
+        
+        if (idle) {
+            GetCursorPos(&m_lastMousePos);
+        } else {
+            m_lastMousePos = { -1, -1 };
+        }
+
         for (auto& mon : m_monitors) {
             if (mon.hwndOverlay) {
                 LONG_PTR exStyle = GetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE);
@@ -179,6 +186,14 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
             }
         }
         UpdateCursorDimming();
+
+        if (idle) {
+            // Force cursor to update/hide immediately
+            POINT pt;
+            if (GetCursorPos(&pt)) {
+                SetCursorPos(pt.x, pt.y);
+            }
+        }
     }
 }
 
@@ -575,6 +590,15 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN: {
             if (DimmerManager::Instance().IsIdleState()) {
+                POINT pt;
+                if (GetCursorPos(&pt)) {
+                    POINT lastPt = DimmerManager::Instance().GetLastMousePos();
+                    if (pt.x == lastPt.x && pt.y == lastPt.y) {
+                        return DefWindowProcW(hwnd, msg, wp, lp);
+                    }
+                    DimmerManager::Instance().SetLastMousePos(pt);
+                }
+
                 DimmerManager::Instance().SetIdleState(false);
                 HWND hwndMain = FindWindowW(L"IdleDimmerMainClass", nullptr);
                 if (hwndMain) {
