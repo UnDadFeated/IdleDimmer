@@ -6,7 +6,6 @@
 #include <shellapi.h>
 #include <strsafe.h>
 #include <winhttp.h>
-#include <winver.h>
 
 #ifndef D2DERR_RECREATED
 #define D2DERR_RECREATED ((HRESULT)0x8898000CL)
@@ -16,28 +15,8 @@
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
-#pragma comment(lib, "version.lib")
 
-static std::wstring GetOwnVersion() {
-    wchar_t path[MAX_PATH];
-    GetModuleFileNameW(NULL, path, MAX_PATH);
-    DWORD dummy = 0;
-    DWORD size = GetFileVersionInfoSizeW(path, &dummy);
-    if (size == 0) return L"v1.4.0";
-    std::vector<BYTE> data(size);
-    if (!GetFileVersionInfoW(path, 0, size, data.data())) return L"v1.4.0";
-    VS_FIXEDFILEINFO* pFileInfo = nullptr;
-    UINT len = 0;
-    if (VerQueryValueW(data.data(), L"\\", reinterpret_cast<void**>(&pFileInfo), &len) && len > 0 && pFileInfo) {
-        wchar_t buf[32];
-        swprintf(buf, 32, L"v%d.%d.%d",
-            static_cast<int>(HIWORD(pFileInfo->dwProductVersionMS)),
-            static_cast<int>(LOWORD(pFileInfo->dwProductVersionMS)),
-            static_cast<int>(HIWORD(pFileInfo->dwProductVersionLS)));
-        return buf;
-    }
-    return L"v1.4.0";
-}
+static const wchar_t* APP_VERSION = L"v1.4.6";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -173,7 +152,7 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
         return false;
     }
 
-    m_appVersion = GetOwnVersion();
+    m_appVersion = APP_VERSION;
 
     DimmerManager::Instance().Initialize(hInst);
     DimmerManager::Instance().RefreshMonitors();

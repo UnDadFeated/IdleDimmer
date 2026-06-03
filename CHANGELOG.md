@@ -2,6 +2,12 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.4.6] - 2026-06-02
+
+### Bug Fixes
+* **Active dimming oscillation fixed**: Restored proper logic to `CheckVideoPlayback()`. On lightweight ticks, the state can only transition from `false` -> `true` (for instant response to fullscreen apps/games). Transitions back to `false` (clearing detected state) are deferred to the full-check tick every 5 seconds. This eliminates the 5-second oscillation cycle.
+* **Version display showing 1.4.0**: Runtime PE version reading (`GetOwnVersion`) had hardcoded `L"v1.4.0"` fallbacks that triggered when the API failed. Replaced with a single compile-time `APP_VERSION` constant — no API, no fallback, always matches.
+
 ## [1.4.5] - 2026-06-02
 
 ### Bug Fixes

@@ -374,9 +374,19 @@ void DimmerManager::CheckVideoPlayback() {
             }
             UpdateCursorDimming();
         }
+    } else {
+        // Lightweight tick: we can transition from FALSE -> TRUE instantly
+        // for maximum responsiveness when launching a fullscreen app/game.
+        if (!m_videoDetected) {
+            if (IsForegroundWindowFullscreen()) {
+                m_videoDetected = true;
+                for (auto& mon : m_monitors) {
+                    if (mon.hwndOverlay) TriggerFade(mon.hwndOverlay);
+                }
+                UpdateCursorDimming();
+            }
+        }
     }
-    // On non-full-check ticks: do nothing. The 5-second cadence is fast
-    // enough for video detection; no need for a partial check that flips state.
 }
 
 bool DimmerManager::IsAnyBlockedAppPlayingAudio() {
