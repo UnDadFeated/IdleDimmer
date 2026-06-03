@@ -365,29 +365,50 @@ static bool IsForegroundWindowFullscreen() {
     return false;
 }
 
-struct PidMonitorInfo {
-    DWORD pid;
+static std::wstring GetProcessNameFromPidNoLog(DWORD pid) {
+    wchar_t exe[MAX_PATH] = { 0 };
+    HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (hProc) {
+        DWORD size = MAX_PATH;
+        QueryFullProcessImageNameW(hProc, 0, exe, &size);
+        CloseHandle(hProc);
+    }
+    if (exe[0]) {
+        const wchar_t* fname = wcsrchr(exe, L'\\');
+        return fname ? fname + 1 : exe;
+    }
+    return L"";
+}
+
+struct ProcessNameMonitorInfo {
+    std::wstring processName;
     std::vector<HMONITOR> monitors;
 };
 
-static BOOL CALLBACK EnumWindowsProcForPid(HWND hwnd, LPARAM lParam) {
-    auto* info = reinterpret_cast<PidMonitorInfo*>(lParam);
-    DWORD pid = 0;
-    GetWindowThreadProcessId(hwnd, &pid);
-    if (pid == info->pid && IsWindowVisible(hwnd) && !IsIconic(hwnd)) {
-        HMONITOR hMon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        if (hMon && std::find(info->monitors.begin(), info->monitors.end(), hMon) == info->monitors.end()) {
-            info->monitors.push_back(hMon);
+static BOOL CALLBACK EnumWindowsProcForProcessName(HWND hwnd, LPARAM lParam) {
+    auto* info = reinterpret_cast<ProcessNameMonitorInfo*>(lParam);
+    if (IsWindowVisible(hwnd) && !IsIconic(hwnd)) {
+        DWORD pid = 0;
+        GetWindowThreadProcessId(hwnd, &pid);
+        if (pid != 0) {
+            std::wstring fname = GetProcessNameFromPidNoLog(pid);
+            if (lstrcmpiW(fname.c_str(), info->processName.c_str()) == 0) {
+                HMONITOR hMon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+                if (hMon && std::find(info->monitors.begin(), info->monitors.end(), hMon) == info->monitors.end()) {
+                    info->monitors.push_back(hMon);
+                }
+            }
         }
     }
     return TRUE;
 }
 
-static std::vector<HMONITOR> GetMonitorsForPid(DWORD pid) {
-    PidMonitorInfo info = { pid, {} };
-    EnumWindows(EnumWindowsProcForPid, reinterpret_cast<LPARAM>(&info));
+static std::vector<HMONITOR> GetMonitorsForProcessName(const std::wstring& processName) {
+    ProcessNameMonitorInfo info = { processName, {} };
+    EnumWindows(EnumWindowsProcForProcessName, reinterpret_cast<LPARAM>(&info));
     return info.monitors;
 }
+
 
 void DimmerManager::CheckVideoPlayback() {
     m_videoCheckTick++;
@@ -468,7 +489,7 @@ void DimmerManager::CheckVideoPlayback() {
                                                     float peak = 0.0f;
                                                     if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
                                                         // This process is playing audio. Set hasVideo = true for its monitors
-                                                        std::vector<HMONITOR> mons = GetMonitorsForPid(pid);
+                                                        std::vector<HMONITOR> mons = GetMonitorsForProcessName(fname);
                                                         for (auto hMon : mons) {
                                                             for (auto& mon : m_monitors) {
                                                                 if (mon.hMonitor == hMon) {

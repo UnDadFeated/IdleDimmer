@@ -6,6 +6,7 @@ All notable changes to the IdleDimmer project are documented here.
 
 ### Bug Fixes
 * **Mouse Cursor Hiding Only During Idle**: Fixed the mouse cursor hiding behavior so that the cursor is hidden globally only during idle/inactive dimming. Manually adjusting brightness via active dimming/hotkeys keeps the cursor visible. This was achieved by toggling the `WS_EX_TRANSPARENT` style on overlays during the idle state to capture cursor events and handle them with `SetCursor(nullptr)` under `WM_SETCURSOR`, combined with instant wake-up triggers.
+* **Multi-process Browser Audio Association**: Changed audio/video monitor bypass mapping from PID-based to process-name-based. This ensures that when a web browser (e.g., Chrome) runs its audio rendering via a headless utility helper process, all of its visible, non-minimized browser windows are properly associated with the active audio session, correctly preventing the monitor hosting the playing video from dimming while allowing other inactive monitors to dim.
 
 ## [1.4.8] - 2026-06-03
 
