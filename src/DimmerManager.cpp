@@ -166,6 +166,15 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
         m_idleDimLevel = idleLevel;
         for (auto& mon : m_monitors) {
             if (mon.hwndOverlay) {
+                LONG_PTR exStyle = GetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE);
+                if (idle) {
+                    exStyle &= ~WS_EX_TRANSPARENT;
+                } else {
+                    exStyle |= WS_EX_TRANSPARENT;
+                }
+                SetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE, exStyle);
+                SetWindowPos(mon.hwndOverlay, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+                
                 TriggerFade(mon.hwndOverlay);
             }
         }
@@ -553,6 +562,26 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
             wpos->hwndInsertAfter = HWND_TOPMOST;
             wpos->flags &= ~SWP_NOZORDER;
             return 0;
+        }
+        case WM_SETCURSOR: {
+            if (DimmerManager::Instance().IsIdleState()) {
+                SetCursor(nullptr);
+                return TRUE;
+            }
+            return DefWindowProcW(hwnd, msg, wp, lp);
+        }
+        case WM_MOUSEMOVE:
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN: {
+            if (DimmerManager::Instance().IsIdleState()) {
+                DimmerManager::Instance().SetIdleState(false);
+                HWND hwndMain = FindWindowW(L"IdleDimmerMainClass", nullptr);
+                if (hwndMain) {
+                    InvalidateRect(hwndMain, nullptr, FALSE);
+                }
+            }
+            return DefWindowProcW(hwnd, msg, wp, lp);
         }
         default:
             return DefWindowProcW(hwnd, msg, wp, lp);

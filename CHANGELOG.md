@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.4.9] - 2026-06-03
+
+### Bug Fixes
+* **Mouse Cursor Hiding Only During Idle**: Fixed the mouse cursor hiding behavior so that the cursor is hidden globally only during idle/inactive dimming. Manually adjusting brightness via active dimming/hotkeys keeps the cursor visible. This was achieved by toggling the `WS_EX_TRANSPARENT` style on overlays during the idle state to capture cursor events and handle them with `SetCursor(nullptr)` under `WM_SETCURSOR`, combined with instant wake-up triggers.
+
 ## [1.4.8] - 2026-06-03
 
 ### New Features

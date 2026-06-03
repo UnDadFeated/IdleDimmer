@@ -16,7 +16,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.4.8";
+static const wchar_t* APP_VERSION = L"v1.4.9";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
