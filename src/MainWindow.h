@@ -101,6 +101,9 @@ private:
     int m_windowHeight = 520;
     AppConfig m_config;
 
+    // Current app version read from resource
+    std::wstring m_appVersion;
+
     // Drag-drop tracking
     bool m_isDraggingAny = false;
 

@@ -6,6 +6,7 @@
 #include <shellapi.h>
 #include <strsafe.h>
 #include <winhttp.h>
+#include <winver.h>
 
 #ifndef D2DERR_RECREATED
 #define D2DERR_RECREATED ((HRESULT)0x8898000CL)
@@ -15,6 +16,38 @@
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
+#pragma comment(lib, "version.lib")
+
+static std::wstring GetOwnVersion() {
+    wchar_t path[MAX_PATH];
+    GetModuleFileNameW(NULL, path, MAX_PATH);
+    DWORD dummy = 0;
+    DWORD size = GetFileVersionInfoSizeW(path, &dummy);
+    if (size == 0) return L"v1.4.0";
+    std::vector<BYTE> data(size);
+    if (!GetFileVersionInfoW(path, 0, size, data.data())) return L"v1.4.0";
+    VS_FIXEDFILEINFO* pFileInfo = nullptr;
+    UINT len = 0;
+    if (VerQueryValueW(data.data(), L"\\", reinterpret_cast<void**>(&pFileInfo), &len) && len > 0 && pFileInfo) {
+        wchar_t buf[32];
+        swprintf(buf, 32, L"v%d.%d.%d",
+            static_cast<int>(HIWORD(pFileInfo->dwProductVersionMS)),
+            static_cast<int>(LOWORD(pFileInfo->dwProductVersionMS)),
+            static_cast<int>(HIWORD(pFileInfo->dwProductVersionLS)));
+        return buf;
+    }
+    return L"v1.4.0";
+}
+
+static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
+    int majA = 0, minA = 0, patA = 0;
+    int majB = 0, minB = 0, patB = 0;
+    swscanf(verA, L"v%d.%d.%d", &majA, &minA, &patA);
+    swscanf(verB, L"v%d.%d.%d", &majB, &minB, &patB);
+    if (majA != majB) return majA - majB;
+    if (minA != minB) return minA - minB;
+    return patA - patB;
+}
 
 #define WM_TRAYICON (WM_USER + 100)
 #define WM_UPDATE_CHECK (WM_USER + 101)
@@ -139,6 +172,8 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     if (FAILED(CreateGraphicsResources())) {
         return false;
     }
+
+    m_appVersion = GetOwnVersion();
 
     DimmerManager::Instance().Initialize(hInst);
     DimmerManager::Instance().RefreshMonitors();
@@ -807,12 +842,12 @@ void MainWindow::OnPaint() {
     wchar_t versionFull[64] = { 0 };
     if (m_updateChecked) {
         if (m_updateAvailable) {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.4.0");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | %s", m_latestVersion.c_str());
         } else {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.4.0");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | %s", m_appVersion.c_str());
         }
     } else {
-        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.4.0");
+        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), m_appVersion.c_str());
     }
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
     m_pRenderTarget->DrawText(
@@ -968,8 +1003,8 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                                             wchar_t ver[32] = { 0 };
                                             MultiByteToWideChar(CP_UTF8, 0, tag, len, ver, 32);
                                             wchar_t* latestVer = new wchar_t[32];
-                                            StringCchCopyW(latestVer, 32, ver);
-                                            if (wcscmp(ver, L"1.4.0") > 0)
+                                            StringCchPrintfW(latestVer, 32, L"v%s", ver);
+                                            if (CompareVersion(latestVer, self->m_appVersion.c_str()) > 0)
                                                 PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 1);
                                             else
                                                 PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 0);

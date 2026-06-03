@@ -30,7 +30,7 @@ static State g_state = READY;
 static wchar_t g_installPath[MAX_PATH];
 static HWND g_hStatus, g_hButton, g_hLaunchCheck, g_hLog;
 static HFONT g_hFontTitle, g_hFontBody, g_hFontLog;
-static HBRUSH g_hBgBrush, g_hEditBgBrush;
+static HBRUSH g_hEditBgBrush;
 
 static void Log(const wchar_t* fmt, ...) {
     wchar_t buf[1024];
@@ -276,22 +276,9 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             if (installed) Log(L"  Installed: v%s\r\n", installedVer.c_str());
             if (running)  Log(L"  App is running\r\n");
 
-            g_hBgBrush = CreateSolidBrush(RGB(18, 18, 18));
             g_hEditBgBrush = CreateSolidBrush(RGB(30, 30, 30));
 
             break;
-        }
-        case WM_CTLCOLORSTATIC: {
-            HDC hdc = (HDC)wParam;
-            SetTextColor(hdc, RGB(225, 225, 225));
-            SetBkColor(hdc, RGB(18, 18, 18));
-            return (LRESULT)g_hBgBrush;
-        }
-        case WM_CTLCOLORBTN: {
-            HDC hdc = (HDC)wParam;
-            SetTextColor(hdc, RGB(225, 225, 225));
-            SetBkColor(hdc, RGB(18, 18, 18));
-            return (LRESULT)g_hBgBrush;
         }
         case WM_CTLCOLOREDIT: {
             HDC hdc = (HDC)wParam;
@@ -355,7 +342,6 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             DeleteObject(g_hFontTitle);
             DeleteObject(g_hFontBody);
             DeleteObject(g_hFontLog);
-            DeleteObject(g_hBgBrush);
             DeleteObject(g_hEditBgBrush);
             PostQuitMessage(0);
             return 0;
@@ -393,7 +379,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
     wc.hInstance = hInst;
     wc.hIcon = LoadIconW(hInst, MAKEINTRESOURCEW(IDI_APP));
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = CreateSolidBrush(RGB(18, 18, 18));
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = L"WinDimmer64SetupClass";
     RegisterClassExW(&wc);
 

@@ -6,7 +6,7 @@
 - **LLVM-MinGW** (always rebuild `resources.o` and `setup_res.o`):
   ```cmd
   llvm-windres resources\resources.rc -O coff -o resources\resources.o
-  clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -o WinDimmer64.exe src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.o -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
+   clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -o WinDimmer64.exe src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.o -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp -lversion -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
   ```
 - **Setup** (requires `WinDimmer64.exe` in project root — rebuild resources *after* app exe to embed the correct version):
    ```cmd
