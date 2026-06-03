@@ -44,6 +44,8 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
         info.id = mi.szDevice;
         info.friendlyName = GetMonitorFriendlyName(hMonitor, static_cast<int>(list->size()));
         info.rect = mi.rcMonitor;
+        info.hMonitor = hMonitor;
+        info.hasVideo = false;
         list->push_back(info);
     }
     return TRUE;
@@ -206,8 +208,19 @@ void DimmerManager::UpdateCursorDimming() {
     int dimLevel = 0;
     if (m_isIdleState)
         dimLevel = m_idleDimLevel;
-    if (m_videoDetected)
-        dimLevel = 0;
+
+    // Check if the monitor under the cursor is playing video/audio.
+    // If so, do not hide the cursor or dim the cursor.
+    POINT pt;
+    if (GetCursorPos(&pt)) {
+        HMONITOR hMon = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+        for (const auto& mon : m_monitors) {
+            if (mon.hMonitor == hMon && mon.hasVideo) {
+                dimLevel = 0;
+                break;
+            }
+        }
+    }
 
     bool shouldHide = dimLevel >= 5;
 
@@ -354,128 +367,162 @@ static bool IsForegroundWindowFullscreen() {
     return false;
 }
 
+struct PidMonitorInfo {
+    DWORD pid;
+    std::vector<HMONITOR> monitors;
+};
+
+static BOOL CALLBACK EnumWindowsProcForPid(HWND hwnd, LPARAM lParam) {
+    auto* info = reinterpret_cast<PidMonitorInfo*>(lParam);
+    DWORD pid = 0;
+    GetWindowThreadProcessId(hwnd, &pid);
+    if (pid == info->pid && IsWindowVisible(hwnd)) {
+        HMONITOR hMon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if (hMon && std::find(info->monitors.begin(), info->monitors.end(), hMon) == info->monitors.end()) {
+            info->monitors.push_back(hMon);
+        }
+    }
+    return TRUE;
+}
+
+static std::vector<HMONITOR> GetMonitorsForPid(DWORD pid) {
+    PidMonitorInfo info = { pid, {} };
+    EnumWindows(EnumWindowsProcForPid, reinterpret_cast<LPARAM>(&info));
+    return info.monitors;
+}
+
 void DimmerManager::CheckVideoPlayback() {
     m_videoCheckTick++;
     bool doFullCheck = (m_videoCheckTick % 5 == 0);
 
     if (doFullCheck) {
-        bool detected = false;
-
-        // Full suite of checks
-        if (IsForegroundWindowFullscreen() || IsFullscreenAppActive()) {
-            detected = true;
+        // Reset all monitors video state
+        for (auto& mon : m_monitors) {
+            mon.hasVideo = false;
         }
 
-        if (!detected && !m_blockedApps.empty()) {
+        // 1. Check fullscreen window monitor
+        if (IsForegroundWindowFullscreen() || IsFullscreenAppActive()) {
             HWND hFore = GetForegroundWindow();
             if (hFore) {
-                DWORD pid = GetRealProcessId(hFore);
-                std::wstring fname = GetProcessNameFromPid(pid);
-                if (!fname.empty()) {
-                    for (const auto& name : m_blockedApps) {
-                        if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                            detected = true;
-                            break;
-                        }
+                HMONITOR hMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
+                for (auto& mon : m_monitors) {
+                    if (mon.hMonitor == hMon) {
+                        mon.hasVideo = true;
                     }
                 }
             }
         }
 
-        if (!detected && IsAnyBlockedAppPlayingAudio()) {
-            detected = true;
-        }
-
-        if (detected != m_videoDetected) {
-            m_videoDetected = detected;
-            for (auto& mon : m_monitors) {
-                if (mon.hwndOverlay) TriggerFade(mon.hwndOverlay);
-            }
-            UpdateCursorDimming();
-        }
-    } else {
-        // Lightweight tick: we can transition from FALSE -> TRUE instantly
-        // for maximum responsiveness when launching a fullscreen app/game.
-        if (!m_videoDetected) {
-            if (IsForegroundWindowFullscreen()) {
-                m_videoDetected = true;
-                for (auto& mon : m_monitors) {
-                    if (mon.hwndOverlay) TriggerFade(mon.hwndOverlay);
-                }
-                UpdateCursorDimming();
-            }
-        }
-    }
-}
-
-bool DimmerManager::IsAnyBlockedAppPlayingAudio() {
-    if (m_blockedApps.empty()) return false;
-
-    bool found = false;
-    IMMDeviceEnumerator* pEnumerator = nullptr;
-    HRESULT hr = CoCreateInstance(
-        __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-        __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&pEnumerator)
-    );
-    if (FAILED(hr)) { LogError(ErrorCode::E407, hr); return false; }
-
-    IMMDevice* pDevice = nullptr;
-    hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
-    if (SUCCEEDED(hr)) {
-        IAudioSessionManager2* pSessionManager = nullptr;
-        hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
-            reinterpret_cast<void**>(&pSessionManager));
+        // 2. Check audio playback for browsers and blocked apps
+        IMMDeviceEnumerator* pEnumerator = nullptr;
+        HRESULT hr = CoCreateInstance(
+            __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+            __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&pEnumerator)
+        );
         if (SUCCEEDED(hr)) {
-            IAudioSessionEnumerator* pSessionEnumerator = nullptr;
-            hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
+            IMMDevice* pDevice = nullptr;
+            hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
             if (SUCCEEDED(hr)) {
-                int count = 0;
-                if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
-                    for (int i = 0; i < count && !found; ++i) {
-                        IAudioSessionControl* pSessionControl = nullptr;
-                        hr = pSessionEnumerator->GetSession(i, &pSessionControl);
-                        if (SUCCEEDED(hr)) {
-                            IAudioSessionControl2* pSessionControl2 = nullptr;
-                            hr = pSessionControl->QueryInterface(
-                                __uuidof(IAudioSessionControl2),
-                                reinterpret_cast<void**>(&pSessionControl2));
-                            if (SUCCEEDED(hr)) {
-                                DWORD pid = 0;
-                                if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
-                                    std::wstring fname = GetProcessNameFromPid(pid);
-                                    if (!fname.empty()) {
-                                        for (const auto& name : m_blockedApps) {
-                                            if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                IAudioSessionManager2* pSessionManager = nullptr;
+                hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
+                    reinterpret_cast<void**>(&pSessionManager));
+                if (SUCCEEDED(hr)) {
+                    IAudioSessionEnumerator* pSessionEnumerator = nullptr;
+                    hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
+                    if (SUCCEEDED(hr)) {
+                        int count = 0;
+                        if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
+                            for (int i = 0; i < count; ++i) {
+                                IAudioSessionControl* pSessionControl = nullptr;
+                                hr = pSessionEnumerator->GetSession(i, &pSessionControl);
+                                if (SUCCEEDED(hr)) {
+                                    IAudioSessionControl2* pSessionControl2 = nullptr;
+                                    hr = pSessionControl->QueryInterface(
+                                        __uuidof(IAudioSessionControl2),
+                                        reinterpret_cast<void**>(&pSessionControl2));
+                                    if (SUCCEEDED(hr)) {
+                                        DWORD pid = 0;
+                                        if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
+                                            std::wstring fname = GetProcessNameFromPid(pid);
+                                            bool isTarget = false;
+                                            for (const auto& name : m_blockedApps) {
+                                                if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                                                    isTarget = true;
+                                                    break;
+                                                }
+                                            }
+                                            if (!isTarget) {
+                                                // auto-check major browsers
+                                                isTarget = (lstrcmpiW(fname.c_str(), L"chrome.exe") == 0 ||
+                                                            lstrcmpiW(fname.c_str(), L"firefox.exe") == 0 ||
+                                                            lstrcmpiW(fname.c_str(), L"msedge.exe") == 0 ||
+                                                            lstrcmpiW(fname.c_str(), L"opera.exe") == 0 ||
+                                                            lstrcmpiW(fname.c_str(), L"brave.exe") == 0);
+                                            }
+
+                                            if (isTarget) {
                                                 IAudioMeterInformation* pMeter = nullptr;
                                                 hr = pSessionControl->QueryInterface(
                                                     IID_IAudioMeterInformation,
                                                     reinterpret_cast<void**>(&pMeter));
                                                 if (SUCCEEDED(hr)) {
                                                     float peak = 0.0f;
-                                                    if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f)
-                                                        found = true;
+                                                    if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
+                                                        // This process is playing audio. Set hasVideo = true for its monitors
+                                                        std::vector<HMONITOR> mons = GetMonitorsForPid(pid);
+                                                        for (auto hMon : mons) {
+                                                            for (auto& mon : m_monitors) {
+                                                                if (mon.hMonitor == hMon) {
+                                                                    mon.hasVideo = true;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
                                                     pMeter->Release();
                                                 }
-                                                break;
                                             }
-                                            if (found) break;
                                         }
+                                        pSessionControl2->Release();
                                     }
+                                    pSessionControl->Release();
                                 }
-                                pSessionControl2->Release();
                             }
-                            pSessionControl->Release();
                         }
+                        pSessionEnumerator->Release();
+                    }
+                    pSessionManager->Release();
+                }
+                pDevice->Release();
+            }
+            pEnumerator->Release();
+        }
+
+        // Trigger fades for monitor overlays to match their video status
+        for (auto& mon : m_monitors) {
+            if (mon.hwndOverlay) TriggerFade(mon.hwndOverlay);
+        }
+        UpdateCursorDimming();
+    } else {
+        // Lightweight tick: check if foreground window is fullscreen
+        if (IsForegroundWindowFullscreen()) {
+            HWND hFore = GetForegroundWindow();
+            if (hFore) {
+                HMONITOR hMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
+                for (auto& mon : m_monitors) {
+                    if (mon.hMonitor == hMon && !mon.hasVideo) {
+                        mon.hasVideo = true;
+                        if (mon.hwndOverlay) TriggerFade(mon.hwndOverlay);
+                        UpdateCursorDimming();
                     }
                 }
-                pSessionEnumerator->Release();
             }
-            pSessionManager->Release();
         }
-        pDevice->Release();
     }
-    pEnumerator->Release();
-    return found;
+}
+
+bool DimmerManager::IsAnyBlockedAppPlayingAudio() {
+    return false;
 }
 
 void DimmerManager::SetBlockedApps(const std::vector<std::wstring>& apps) {
@@ -523,7 +570,7 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
         case WM_TIMER: {
             if (wp == 1 && info) {
                 int target = 0;
-                if (DimmerManager::Instance().IsVideoDetected()) {
+                if (info->hasVideo) {
                     target = 0;
                 } else if (DimmerManager::Instance().IsIdleState() && info->enabled) {
                     target = (std::max)(info->dimValue, DimmerManager::Instance().GetIdleDimLevel());

@@ -12,6 +12,8 @@ struct ActiveMonitorInfo {
     int dimValue = 30; // 0 to 90
     int currentDimValue = 0; // for smooth transition fading
     bool enabled = true;
+    HMONITOR hMonitor = nullptr;
+    bool hasVideo = false;
 };
 
 class DimmerManager {
@@ -41,7 +43,12 @@ public:
     void UpdateCursorDimming();
     void CheckVideoPlayback();
     void SetBlockedApps(const std::vector<std::wstring>& apps);
-    bool IsVideoDetected() const { return m_videoDetected; }
+    bool IsVideoDetected() const {
+        for (const auto& mon : m_monitors) {
+            if (mon.hasVideo) return true;
+        }
+        return false;
+    }
     bool IsAnyBlockedAppPlayingAudio();
     POINT GetLastMousePos() const { return m_lastMousePos; }
     void SetLastMousePos(POINT pt) { m_lastMousePos = pt; }
