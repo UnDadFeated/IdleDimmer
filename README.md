@@ -4,10 +4,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-6B7280?style=flat-square" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/Version-1.4.7-10B981?style=flat-square" alt="Version 1.4.7">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 10/11">
-  <img src="https://img.shields.io/badge/Arch-x64-FF6B6B?style=flat-square" alt="x64">
   <img src="https://img.shields.io/badge/C%2B%2B17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++17">
-  <img src="https://img.shields.io/badge/Runtime-Zero-10B981?style=flat-square" alt="Zero runtime deps">
-  <img src="https://img.shields.io/badge/Telemetry-None-10B981?style=flat-square" alt="No telemetry">
 </p>
 
 **A tiny, native Windows screen dimmer that respects your eyes, your machine, and your privacy.**
