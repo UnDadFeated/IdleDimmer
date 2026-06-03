@@ -23,16 +23,24 @@
   - `MainWindow.*` — D2D-rendered settings panel with slider cards and toggle switches
   - `DimmerManager.*` — per-monitor layered overlay windows, fade animation (16ms timer)
   - `ConfigManager.*` — config I/O (simple JSON scanner, **not** a full JSON parser)
-- **Window classes**: `WinDimmer64MainClass` / `WinDimmer64OverlayClass`
+- **Window classes**: `WinDimmer64MainClass` / `WinDimmer64OverlayClass` / `WinDimmer64SetupClass`
 - **Overlay style**: `WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST`
 - **Config file**: `%APPDATA%\WinDimmer64\dimmer.ini` (JSON-like, hand-parsed — no external parser library)
+
+## Removed Features (no code remnants)
+
+- **groupDim**: Removed v1.4.0. Config field, struct member, save/load, and dead `else if (GroupDim)` handler all deleted.
+- **FocusMode / Focus Highlight**: Removed v1.4.3. No checkbox, no timer 201, no overlay WM_TIMER focus branching, no `m_focusMode` or `m_lastActiveMonitorId`.
+- **ShowBoundaries / Boundary Diagnostics**: Removed v1.4.3. No checkbox, no overlay boundary drawing in WM_PAINT, no `m_showBoundaries`.
+- **whatsnew.txt**: Release notes go directly to `gh release create --notes "..."`.
 
 ## Timer & Hotkey IDs
 
 | ID | Purpose | Interval |
 |---|---|---|
-| 201 | Focus Mode cursor tracking | 150 ms |
 | 202 | System idle detection (`GetLastInputInfo`) | 1000 ms |
+
+Timer 201 (Focus Mode cursor tracking, 150ms) was removed in v1.4.3.
 
 | ID | Hotkey |
 |---|---|
@@ -52,6 +60,7 @@
 - **Label X**: Monitor slider labels at `slider.rect.left + 60.0f` (X=80) to avoid 34×18 toggle switches cutting through text. Idle sliders (no toggle) use `+20.0f`.
 - **Checkbox text clipping**: Column 1 clipped at `m_windowWidth / 2.0f - 10.0f`, Column 2 at `m_windowWidth - 20.0f`
 - **Window height**: calculated dynamically in `UpdateLayout()` — `m_windowHeight = yOffset + 55`
+- **DISPLAY section**: Only WarmTint (col 0) and LightMode (col 1) checkboxes remain — FocusMode and ShowBoundaries removed.
 
 ## Theme (Premium Monochrome Slate)
 
@@ -71,25 +80,71 @@
 - **Title**: `Segoe UI Variable Display`, semi-bold 20pt
 - **Body**: `Segoe UI Variable Text`, 13pt
 - **Detail**: `Segoe UI Variable Text`, 10.5pt
+- **Setup title**: Segoe UI Variable Display, 20pt, semi-bold
+- **Setup body**: Segoe UI Variable Text, 13pt
+- **Setup log**: Consolas, 13pt
 
 ## Key Behaviors
 
 - **Startup**: `dimmingEnabled` defaults to `false` — never auto-dim on launch
-- **Per-monitor**: Each monitor has its own toggle and slider — no group mode (groupDim removed in v1.4.0)
+- **Per-monitor**: Each monitor has its own toggle and slider — no group mode
 - **Auto-enable**: Dragging/arrowing/scrolling a monitor slider auto-enables `dimmingEnabled` if it was off
 - **Undo**: Session-start config snapshot (`m_backupConfig`); "Undo Changes" button in top-right header restores it
 - **Device loss**: `D2DERR_RECREATED` → discard + recreate graphics resources (`MainWindow.cpp:626-629`)
 - **Hot-plug**: `WM_DISPLAYCHANGE` triggers `RefreshMonitors()` → rebuild overlays, preserve saved per-monitor values
+- **Cursor**: Only hides during idle dimming (`m_isIdleState`), never during active dimming (`DimmerManager.cpp:186`)
+- **Version**: Read from PE version resource at runtime via `GetOwnVersion()` helper — no hardcoded version strings in code
+
+## Video Detection Rules (`CheckVideoPlayback`)
+
+- **State only changes on full-check ticks** (`m_videoCheckTick % 5 == 0`, every 5 seconds)
+- On lightweight ticks: nothing — partial checks caused oscillation in v1.4.2–1.4.4
+- On full-check ticks: runs all checks — `IsForegroundWindowFullscreen`, `IsFullscreenAppActive`, blocked app foreground match, `IsAnyBlockedAppPlayingAudio`
+- `IsForegroundWindowFullscreen()` excludes `WinDimmer64MainClass` and `WinDimmer64OverlayClass`
+- Fullscreen style logic: `isBorderlessFullscreen || isCaptionlessFullscreen` — **not** the old broken `||` of all three flags
+- `IsFullscreenAppActive()` (LoadLibrary shell32.dll) runs inside the throttled path, not every tick
+
+## Overlay Priority
+
+- Idle > video > dimming. If idle, overlays dim even if blocked app is detected. Active dimming engages only when neither idle nor video is active.
+
+## Defender Heuristics (do not reintroduce these patterns)
+
+- `HWND_BROADCAST` + `SC_MONITORPOWER`: use `SendMessageW(GetDesktopWindow(), ...)` or target `Shell_TrayWnd` instead
+- `OpenProcess` / `QueryFullProcessImageNameW`: only inside `doFullCheck` (every 5th tick), not every second
+- `LoadLibraryW("shell32.dll")` / `FreeLibrary`: only inside `doFullCheck` (every 5th tick)
+- `EnumChildWindows` + process name resolution in timer loop: throttled to 5-second cadence
+- No `SetSystemCursor`, no `CreateToolhelp32Snapshot` — use `ShowCursor` and `IAudioSessionEnumerator`
+- Code signing not implemented yet; submit to MSRT false positive portal if needed
+
+## Undo (one-by-one)
+
+- Each change pushes to `m_undoStack`. Each undo pops the latest entry and applies it.
+- NOT a single snapshot restore — `m_backupConfig` is the session-start snapshot for the first use case, but subsequent changes stack individually.
 
 ## Changelog
 
-Write in natural human style in CHANGELOG.md. No AI boilerplate/buzzwords. Sections: **Updates**, **Bug Fixes**, **New Features**. Keep descriptions direct and punchy. Release notes go directly to `gh release create --notes "..."` — no separate whatsnew.txt file in the repo.
+Write in natural human style in CHANGELOG.md. No AI boilerplate/buzzwords. Sections: **Updates**, **Bug Fixes**, **New Features**. Keep descriptions direct and punchy.
+
+## Installer (setup.cpp)
+
+- Dark title bar via `DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark))`
+- Left panel: standard light window colors (no custom WM_CTLCOLORSTATIC/BTN handlers)
+- Log panel: dark background via `WM_CTLCOLOREDIT` returning `RGB(30,30,30)` brush
+- Fonts: Segoe UI Variable Display (20pt semibold), Segoe UI Variable Text (13pt), Consolas (13pt log)
+- "Launch after install" checkbox: checked by default, always visible (not hidden until install completes)
+- No "Location:" label — install path already shown in log header
+- Build with `-ldwmapi` for DWM dark mode, `-lversion` for version resource reading
+- Links `-lversion` for `GetExeVersion()` and `-ldwmapi` for `DwmSetWindowAttribute`
 
 ## Gotchas
 
 - `std::wifstream` with `.c_str()` not `std::wstring` — MinGW may fail otherwise (`ConfigManager.cpp:38,121`)
 - Resource manifest: `1 24 "manifest.xml"` — standard type 24 for MSVC + MinGW compat
 - `m_pRenderTarget->SetColor()` is called each `OnPaint()` to switch theme — brushes are created once, colors swapped at render time
+- Version resources: update all of `resources.rc`, `setup.rc`, and `manifest.xml` on each version bump. Also update the hardcoded `VER` string in `setup.cpp`.
+- `GetOwnVersion()` / `CompareVersion()` in `MainWindow.cpp` read the PE version at runtime — never hardcode `L"1.4.0"` version strings in application code.
+- MinGW pragma `comment(lib, ...)` is silently ignored — use `-l` flags on the clang command line instead.
 
 ## Releases & Headless Publishing
 
@@ -102,5 +157,6 @@ To publish a release to the GitHub web interface when local authentication for t
 2. **Execute Headless Release**: Set the token to the `GH_TOKEN` environment variable so `gh` uses it directly, bypassing scope verification login limits, and run the release create command:
    ```cmd
    $env:GH_TOKEN="<retrieved_token>"
-    gh release create v1.2.8 WinDimmer64-Setup-v1.2.8.exe --title "v1.2.8" --notes "Release notes go here"
+    gh release create v1.4.5 WinDimmer64-Setup-v1.4.5.exe --title "v1.4.5" --notes "Release notes go here"
    ```
+3. **Delete old tags before re-releasing**: `git tag -d vX.Y.Z; git push origin --delete vX.Y.Z` when replacing a release.
