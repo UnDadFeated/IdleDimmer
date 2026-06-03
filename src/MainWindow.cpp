@@ -826,12 +826,12 @@ void MainWindow::OnPaint() {
     wchar_t versionFull[64] = { 0 };
     if (m_updateChecked) {
         if (m_updateAvailable) {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.3.7");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.3.8");
         } else {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.3.7");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.3.8");
         }
     } else {
-        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.3.7");
+        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.3.8");
     }
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
     m_pRenderTarget->DrawText(
@@ -1005,7 +1005,7 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                                             latestVer = new wchar_t[32];
                                             MultiByteToWideChar(CP_UTF8, 0, tag, len, latestVer, 32);
                                             latestVer[len] = L'\0';
-                                            if (wcscmp(latestVer, L"1.3.7") > 0)
+                                            if (wcscmp(latestVer, L"1.3.8") > 0)
                                                 updateAvailable = true;
                                         }
                                     }
@@ -1636,8 +1636,12 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                 } else if (wp == 103) {
                     self->PushUndoState();
                     self->m_config.masterEnabled = !self->m_config.masterEnabled;
+                    DimmerManager::Instance().SetDimmingEnabled(self->m_config.masterEnabled);
                     for (const auto& mon : DimmerManager::Instance().GetActiveMonitors()) {
                         DimmerManager::Instance().SetMonitorEnabled(mon.id, self->m_config.masterEnabled);
+                    }
+                    for (auto& monConf : self->m_config.monitors) {
+                        monConf.enabled = self->m_config.masterEnabled;
                     }
                     for (auto& monConf : self->m_config.monitors) {
                         monConf.enabled = self->m_config.masterEnabled;
@@ -1678,7 +1682,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                     }
                 } else if (wp == 202) {
                     DimmerManager::Instance().CheckVideoPlayback();
-                    if (self->m_config.idleDimEnabled && !DimmerManager::Instance().IsVideoDetected()) {
+                    if (self->m_config.idleDimEnabled) {
                         LASTINPUTINFO lii = { 0 };
                         lii.cbSize = sizeof(lii);
                         if (GetLastInputInfo(&lii)) {
@@ -1688,7 +1692,6 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                                 if (!DimmerManager::Instance().IsIdleState()) {
                                     DimmerManager::Instance().SetIdleState(true, self->m_config.idleDimLevel);
                                     if (self->m_config.idleTurnOff) {
-                                        // SC_MONITORPOWER with parameter 2 turns screens off physically
                                         PostMessageW(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
                                     }
                                 }
@@ -1698,6 +1701,8 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                                 }
                             }
                         }
+                    } else if (DimmerManager::Instance().IsIdleState()) {
+                        DimmerManager::Instance().SetIdleState(false);
                     }
                 }
                 return 0;

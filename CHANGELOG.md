@@ -2,7 +2,18 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
-## [1.3.7] - 2026-06-02
+## [1.3.8] - 2026-06-02
+
+### Bug Fixes
+* **Active dimming not working**: Two issues combined to break all dimming. First, the global `m_dimmingEnabled` flag was never set by the Ctrl+Alt+D hotkey (ID 103) — it only toggled per-monitor `enabled` leaving the global flag in its default `false` state, so the overlay timer's `IsDimmingEnabled() && info->enabled` check always failed. Second, `SetIdleState` was never called to clear idle state when `idleDimEnabled` was toggled off — stuck idle state caused the overlay to enter the idle branch instead of the active dimming branch. Fixed: hotkey now calls `SetDimmingEnabled()` and idle timer explicitly clears idle state when idle dim is disabled.
+
+* **Idle state stuck when idle dim disabled**: Previously `m_isIdleState` stayed `true` indefinitely after toggling idle dim off. Now the timer 202 else-branch calls `SetIdleState(false)` if idle state was set.
+
+* **Overlay timer priority reverted to v1.3.6**: Order is `idle > video > dimming`. If the system is idle, overlays dim even if a blocked app is detected (useful for the "fall asleep watching a movie" case). Active dimming only engages when neither idle nor video detection is active.
+
+* **Idle timer guard removed**: No longer skips idle detection when video is detected. Idle state is managed independently of video state to prevent state from getting stuck.
+
+### Updates
 
 ### Updates
 * **Browser audio detection removed entirely**: v1.3.6's fix tried to let idle dimming override browser audio, but the real problem was deeper — enumerating audio sessions falsely flagged ANY browser audio (Twitch, YouTube, notifications, ads) as "video playing." Now completely reverted to v1.2.8 behavior: a simple foreground-window blocked-app check with zero audio enumeration. No COM audio meter. No IAudioSessionEnumerator. Just `GetForegroundWindow` + process name match. Clean, fast, and reliable.

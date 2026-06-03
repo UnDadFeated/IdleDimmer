@@ -432,11 +432,11 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
         case WM_TIMER: {
             if (wp == 1 && info) {
                 int target = 0;
-                if (DimmerManager::Instance().IsVideoDetected()) {
-                    target = 0;
-                } else if (DimmerManager::Instance().IsIdleState() && info->enabled) {
+                if (DimmerManager::Instance().IsIdleState() && info->enabled) {
                     target = (std::max)(info->dimValue, DimmerManager::Instance().GetIdleDimLevel());
                     if (target > 90) target = 90;
+                } else if (DimmerManager::Instance().IsVideoDetected()) {
+                    target = 0;
                 } else if (DimmerManager::Instance().IsDimmingEnabled() && info->enabled) {
                     // Active dimming is enabled right now
                     target = info->dimValue;

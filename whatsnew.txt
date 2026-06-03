@@ -1,12 +1,14 @@
-v1.3.7 — Browser audio detection ripped out, v1.2.8 rules restored.
+v1.3.8 — Fix active dimming broken by stale idle state + missing global flag
 
-Removed all browser audio enumeration (IAudioSessionEnumerator, audio meters,
-etc.). CheckVideoPlayback is now just: foreground-window fullscreen check +
-blocked app name match. That's it. No Twitch/YouTube tabs blocking dimming
-ever again.
+Bug 1: Ctrl+Alt+D hotkey only toggled per-monitor enabled but never set
+the global m_dimmingEnabled flag. Overlay timer check
+"IsDimmingEnabled() && info->enabled" always failed unless you used the
+GUI toggle first. Fixed: hotkey now calls SetDimmingEnabled().
 
-Overlay timer priority reverted to: video > idle > manual dim. Idle timer
-now checks && !IsVideoDetected() again. Per-monitor idle dimming kept.
+Bug 2: When idle dim was disabled mid-session, m_isIdleState stayed true
+forever. The overlay timer's idle branch would always catch dimming
+before it reached the active dimming branch. Fixed: timer 202 else
+clause clears idle state when idle dim is off.
 
-This is the dimming behavior v1.2.8 users loved, with the per-monitor idle
-improvements from v1.3.6 kept. Simple, reliable, no false positives.
+Overlay priority: idle > video > dimming (v1.3.6 order, proven working).
+Idle timer runs regardless of video detection.
