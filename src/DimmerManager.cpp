@@ -208,10 +208,10 @@ void DimmerManager::UpdateCursorDimming() {
     bool shouldHide = dimLevel >= 5;
 
     if (shouldHide && !m_cursorHidden) {
-        ShowCursor(FALSE);
+        while (ShowCursor(FALSE) >= 0);
         m_cursorHidden = true;
     } else if (!shouldHide && m_cursorHidden) {
-        ShowCursor(TRUE);
+        while (ShowCursor(TRUE) < 0);
         m_cursorHidden = false;
     }
 }
@@ -559,6 +559,21 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                 }
                 FillRect(hdc, &rc, bgBrush);
                 DeleteObject(bgBrush);
+
+                // Draw a fake cursor under the overlay during idle dimming
+                if (DimmerManager::Instance().IsIdleState()) {
+                    POINT pt = DimmerManager::Instance().GetLastMousePos();
+                    RECT rcWnd;
+                    GetWindowRect(hwnd, &rcWnd);
+                    if (PtInRect(&rcWnd, pt)) {
+                        POINT clientPt = pt;
+                        ScreenToClient(hwnd, &clientPt);
+                        HCURSOR hCursor = LoadCursor(nullptr, IDC_ARROW);
+                        if (hCursor) {
+                            DrawIconEx(hdc, clientPt.x, clientPt.y, hCursor, 0, 0, 0, nullptr, DI_NORMAL);
+                        }
+                    }
+                }
             }
             EndPaint(hwnd, &ps);
             return 0;
