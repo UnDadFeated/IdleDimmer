@@ -1,73 +1,203 @@
 # WinDimmer64
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/MIT-6B7280?style=flat-square&label=License" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/1.4.7-10B981?style=flat-square&label=Version" alt="Version 1.4.7">
-
-  <img src="https://img.shields.io/badge/Windows-0078D4?style=flat-square&logo=windows&logoColor=white&label=OS" alt="Windows">
-  <img src="https://img.shields.io/badge/C%2B%2B17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white&label=Language" alt="C++17">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-6B7280?style=flat-square" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Version-1.4.7-10B981?style=flat-square" alt="Version 1.4.7">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 10/11">
+  <img src="https://img.shields.io/badge/Arch-x64-FF6B6B?style=flat-square" alt="x64">
+  <img src="https://img.shields.io/badge/C%2B%2B17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++17">
+  <img src="https://img.shields.io/badge/Runtime-Zero-10B981?style=flat-square" alt="Zero runtime deps">
+  <img src="https://img.shields.io/badge/Telemetry-None-10B981?style=flat-square" alt="No telemetry">
 </p>
 
-A lightweight, modern, and high-performance screen dimming and OLED burn-in prevention utility designed specifically for Windows 11 (x64) in native C++.
+**A tiny, native Windows screen dimmer that respects your eyes, your machine, and your privacy.**
 
-Unlike the default Windows display options that only support physically turning off external monitors after idle periods, WinDimmer64 provides beautiful layered transparency overlays that dynamically dim screens to save energy and protect OLED displays, waking up instantly when user activity is detected.
+WinDimmer64 is a per-monitor screen dimming utility for Windows 10 and 11. It overlays a transparent black layer on each display you choose, so you can dim a second screen to 30% for late-night reading while keeping your main monitor at 80% — without flickering the OSD, fighting DDC, or installing a 50 MB Electron wrapper.
 
----
-
-## Installation
-
-Download the latest installer from the [releases page](https://github.com/UnDadFeated/WinDimmer64/releases):
-
-[**WinDimmer64-Setup-v1.4.7.exe**](https://github.com/UnDadFeated/WinDimmer64/releases/download/v1.4.7/WinDimmer64-Setup-v1.4.7.exe)
-
-Run the installer — it will install WinDimmer64, create a Start Menu shortcut, and register with Settings > Apps & Features for clean uninstallation.
+Built in native C++17 with Direct2D and the raw Win32 API. **~150 KB on disk. Zero runtime dependencies. Zero telemetry. Zero ads.**
 
 ---
 
-## Key Features
+## Download
 
-* **OLED Inactivity Power Saver (Idle Dimming)**: Detects system-wide inactivity using `GetLastInputInfo`. After a user-defined timeout (1 to 60 min), all displays smoothly fade to a selected Idle Dim Level (0% to 100% black overlay) to prevent OLED burn-in. Wakes up instantly on mouse or keyboard movement, bypassing slow hardware power-on delay cycles.
-* **Luxurious Fading Transitions**: Features high-performance, hardware-accelerated exponential-decay animations that fade overlays smoothly during startup, exit, monitor changes, or settings toggles.
-* **Eye-Saver Warm Amber Tint (Blue-Light Filter)**: Transforms standard neutral black dimming overlays into a curated orange/amber tint spectrum `RGB(255, 130, 45)` to actively block eye-straining high-energy blue light for comfortable night use.
-* **Focused Active Screen Highlight (Focus Mode)**: Multi-monitor visual helper that tracks your mouse cursor and highlights your active screen by smoothly dimming inactive screens deeper (+25% dimming offset) to minimize distractions.
-* **System-Wide Keyboard Hotkeys**: Adjust active brightness globally without opening the visual control panel:
-  * `Ctrl + Alt + ArrowUp`   : Brighter (decreases dimming by 5%)
-  * `Ctrl + Alt + ArrowDown` : Darker (increases dimming by 5%)
-  * `Ctrl + Alt + D`         : Toggle all active screen dimmers on/off
-* **Fluent Win32 UI & System Tray**: Custom-drawn Direct2D rounded monitor cards, checkbox toggles, and system tray integration (minimizes to tray, dynamic right-click settings menu).
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Direct installer (GitHub Releases)
+
+[**WinDimmer64-Setup-v1.4.7.exe**](https://github.com/UnDadFeated/WinDimmer64/releases/download/v1.4.7/WinDimmer64-Setup-v1.4.7.exe) — 280 KB
+
+Per-user install to `%LOCALAPPDATA%`. No admin elevation. Clean uninstall from Settings > Apps. Self-extracting installer with dark theme UI.
+
+[All releases →](https://github.com/UnDadFeated/WinDimmer64/releases)
+
+</td>
+<td width="50%" valign="top">
+
+### Microsoft Store
+
+[**Get it from Microsoft Store →**](https://apps.microsoft.com/)
+
+Desktop Bridge MSIX package. Auto-updates. Sandbox-friendly. Paid (cheapest tier).
+
+[Submission walkthrough →](msix/SUBMIT-TO-STORE.md)
+
+</td>
+</tr>
+</table>
+
+---
+
+## What's new in v1.4.7
+
+- **Fixed:** Active dimming was fading out after ~1 second on some systems. `SHQueryUserNotificationState` was misclassifying `QUNS_BUSY` as a "fullscreen app" signal, so the 5-second full check kept forcing the overlay to fade out. Now only `QUNS_RUNNING_D3D_FULL_SCREEN` and `QUNS_PRESENTATION_MODE` trigger the bypass.
+- **Fixed:** Setup installer was reading the PE version resource's *comma-form* fields (`FILEVERSION 1,4,0,0`) instead of the *string-form* (`VALUE "FileVersion" "1.4.6.0"`), so it always reported "Installed: v1.4.0" no matter what version was actually installed. Both forms are now kept in sync.
+- All prior fixes preserved: per-monitor controls, idle detection, blocked-app bypass, fullscreen detection, hotkeys, clean uninstall.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full history.
+
+---
+
+## Features
+
+### Per-monitor dimming with independent controls
+Each connected display gets its own on/off toggle and a 0–90% dim slider. Drag a slider to auto-enable dimming for that monitor. Disable one monitor and leave the rest at full brightness — no group lock-in, no "all-or-nothing" mode.
+
+### Idle detection with smooth fade
+Set a timeout (1–60 minutes) and an idle dim level. When the system reports no keyboard or mouse input, the overlays fade in. When activity resumes, they fade out. The cursor auto-hides during idle dimming and reappears the moment you touch the mouse.
+
+### Blocked-app bypass
+Add any process to the blocked list (Steam, MPC-HC, mpv, Plex, your TV app — whatever you use for video). When a blocked app is in the foreground **or** is playing audio through the default audio endpoint, dimming is automatically suspended so you never get a darkened video.
+
+### Fullscreen detection
+When Direct3D runs fullscreen (games) or a presentation app takes over the shell, dimming fades out. Detection is throttled to a 5-second cadence to keep CPU and Windows Defender happy.
+
+### Global hotkeys
+| Hotkey | Action |
+|---|---|
+| `Ctrl + Alt + ↑` | Brighter (-5%) |
+| `Ctrl + Alt + ↓` | Darker (+5%) |
+| `Ctrl + Alt + D` | Toggle dimming on/off |
+
+Hotkeys register system-wide and work from any focused window.
+
+### Warm tint and light mode overlays
+Two optional cosmetic overlays for low-light sessions: a soft warm tint (`RGB(255, 130, 45)`) that filters blue light, and a monochrome "light mode" wash. Both are off by default — the default dim is a neutral black.
+
+### Auto-start with Windows (optional)
+One-click toggle in the settings panel to register a `HKCU\...\Run` entry. No scheduled tasks, no services, no startup folder pollution.
+
+### In-app update check (optional)
+A single "Check for Updates" button pings GitHub's public releases API to compare your version against the latest. No background updater, no auto-install, no elevated-process tricks. Off by default.
+
+### Clean uninstall
+Settings, Run-key entry, Start Menu shortcut — all removed. No leftover files, no leftover registry keys, no leftover services.
+
+---
+
+## Designed to stay out of your way
+
+- **Tray-resident.** Closing the settings window leaves a single tray icon. No background window, no persistent notification.
+- **One process, ~3 MB working set.** Verified idle.
+- **No driver, no kernel component, no service.** Standard user-mode Win32 application.
+- **Single-instance via a named mutex.** Launching the EXE twice just brings up the existing window.
+- **Defender-friendly.** Heavy API calls (process enumeration, audio session polling, shell32 notification state) are throttled to a 5-second cadence. No `SetSystemCursor`, no `CreateToolhelp32Snapshot`, no `HWND_BROADCAST` power messages.
 
 ---
 
 ## Specifications
 
-* **Standalone Portable Executable**: Under **200 KB** in size.
-* **Zero Runtime Dependencies**: No frameworks (WinUI, Electron, or ImGui), no bloated visual libraries. Built on pure Win32 and Direct2D/DirectWrite.
-* **Mixed-DPI Multi-Monitor Support**: Perfectly scales and positions overlays across multiple monitors with different DPI scales using Per-Monitor DPI Awareness v2.
+| | |
+|---|---|
+| **Executable size** | 150 KB (standalone), 280 KB (installer), 140 KB (MSIX) |
+| **Config file size** | < 1 KB at `%APPDATA%\WinDimmer64\dimmer.ini` |
+| **Memory footprint** | ~3 MB working set at idle |
+| **Disk footprint** | 150 KB exe + 1 KB config |
+| **Runtime dependencies** | None. Statically linked against Windows API. |
+| **Install location** | `%LOCALAPPDATA%\Programs\WinDimmer64\` (or per-user MSIX location) |
+| **Permissions used** | Standard user. No UAC prompts, no admin elevation. |
+| **Supported OS** | Windows 10 1809+ and Windows 11 |
+| **Architecture** | x64 |
 
 ---
 
-## Compilation
+## Privacy
 
-The project can be built using standard Windows compiler toolchains. An automated compilation script is provided:
+The app collects **no personal data, no telemetry, and no analytics**. The only outbound network request is an optional manual "Check for Updates" call to GitHub's public API, which contains no identifying information.
+
+Full policy: [docs/privacy.html](https://undadfeated.github.io/WinDimmer64/privacy.html)
+
+Source is open. You can audit every line: [src/](src/)
+
+---
+
+## Building from source
 
 ### Prerequisites
-* Windows 10 or 11 (x64)
-* Visual Studio 2022 (MSVC compiler `cl.exe`) or **LLVM-MinGW** (based on `clang++`)
+- Windows 10 or 11 (x64)
+- **Visual Studio 2022** (MSVC `cl.exe` + `rc.exe`), or
+- **LLVM-MinGW** (`clang++` + `llvm-windres`)
 
-### Build Steps
-1. Navigate to the root directory in a console.
-2. Run the automated MSVC compilation script:
-   ```cmd
-   build.bat
-   ```
-3. If using LLVM-MinGW/Clang:
-   ```cmd
-   llvm-windres resources\resources.rc -O coff -o resources\resources.o
-   clang++ -O2 -std=c++17 -mwindows -o WinDimmer64.exe src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.o -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid
-   ```
+### MSVC (one command)
+```cmd
+build.bat
+```
+Auto-detects VS 2022, compiles resources, links the app.
+
+### LLVM-MinGW
+```cmd
+llvm-windres resources\resources.rc -O coff -o resources\resources.o
+clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
+    -o WinDimmer64.exe ^
+    src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp ^
+    resources\resources.o ^
+    -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp ^
+    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
+```
+
+### Installer
+```cmd
+llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
+clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
+    -o WinDimmer64-Setup-v1.4.7.exe ^
+    src\setup.cpp resources\setup_res.o ^
+    -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -ldwmapi ^
+    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
+```
+
+### Microsoft Store MSIX
+```cmd
+msix\build_msix.bat
+```
+Requires Windows 10 SDK 10.0.22621 (`winget install --id=Microsoft.WindowsSDK.10.0.22621 -e --silent`). See [msix/SUBMIT-TO-STORE.md](msix/SUBMIT-TO-STORE.md) for the full Partner Center walkthrough.
+
+---
+
+## Architecture
+
+| Component | File | Purpose |
+|---|---|---|
+| Entry point | `src/main.cpp` | COM init, Per-Monitor DPI v2, single-instance mutex, message loop |
+| Settings UI | `src/MainWindow.cpp` | D2D-rendered settings panel, slider cards, toggle switches |
+| Overlay manager | `src/DimmerManager.cpp` | Per-monitor layered overlay windows, fade animation, video detection |
+| Config I/O | `src/ConfigManager.cpp` | JSON-like config at `%APPDATA%\WinDimmer64\dimmer.ini` |
+| Installer | `src/setup.cpp` | Self-extracting installer with dark DWM theme |
+
+Window classes: `WinDimmer64MainClass`, `WinDimmer64OverlayClass`, `WinDimmer64SetupClass`.
+
+Overlay style: `WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST`.
+
+---
+
+## For AI agents and contributors
+
+See [AGENTS.md](AGENTS.md) for the full project rules, build commands, removed features, Defender heuristics, theme tokens, layout rules, and headless release-publishing procedure.
 
 ---
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE details for info.
+MIT License. See [LICENSE](LICENSE).
+
+Copyright © 2026 UnDadFeated.
