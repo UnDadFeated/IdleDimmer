@@ -2,6 +2,13 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.4.3] - 2026-06-02
+
+### Updates
+* **Focus Highlight and Boundary Diagnostics removed**: Dead UI features with no user-facing value. Removed FocusMode/ShowBoundaries checkboxes, timer 201 (150ms cursor tracking), overlay WM_TIMER focus-mode branching, boundary drawing in overlay WM_PAINT, and all config/manager plumbing. LightMode and WarmTint checkboxes now fill the row cleanly.
+* **Fixed false fullscreen detection breaking active dimming**: `IsForegroundWindowFullscreen()` now excludes `WinDimmer64MainClass` and `WinDimmer64OverlayClass` window classes, and the style check no longer flags ordinary restored windows as fullscreen. The geometric check is still fast enough to run every tick.
+* **Moved `IsFullscreenAppActive` into throttled path**: The shell32.dll `SHQueryUserNotificationState` call (LoadLibrary/FreeLibrary every tick) now only runs every 5th second alongside the other heavyweight checks, reducing overhead and Defender signal.
+
 ## [1.4.2] - 2026-06-02
 
 ### Updates

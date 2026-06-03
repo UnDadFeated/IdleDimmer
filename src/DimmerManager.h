@@ -33,9 +33,7 @@ public:
     void DestroyOverlays();
 
     const std::vector<ActiveMonitorInfo>& GetActiveMonitors() const { return m_monitors; }
-    bool GetShowBoundaries() const { return m_showBoundaries; }
     bool GetWarmTint() const { return m_warmTint; }
-    bool GetFocusMode() const { return m_focusMode; }
     bool IsIdleState() const { return m_isIdleState; }
     int GetIdleDimLevel() const { return m_idleDimLevel; }
     void SetDimmingEnabled(bool enabled);
@@ -55,9 +53,7 @@ private:
 
     HINSTANCE m_hInst = nullptr;
     std::vector<ActiveMonitorInfo> m_monitors;
-    bool m_showBoundaries = false;
     bool m_warmTint = false;
-    bool m_focusMode = false;
     bool m_isIdleState = false;
     int m_idleDimLevel = 90;
     bool m_dimmingEnabled = false;

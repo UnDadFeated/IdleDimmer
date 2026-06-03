@@ -146,12 +146,6 @@ void DimmerManager::SetMonitorEnabled(const std::wstring& id, bool enabled) {
 }
 
 void DimmerManager::SetShowBoundaries(bool show) {
-    m_showBoundaries = show;
-    for (auto& mon : m_monitors) {
-        if (mon.hwndOverlay) {
-            InvalidateRect(mon.hwndOverlay, nullptr, TRUE);
-        }
-    }
 }
 
 void DimmerManager::SetWarmTint(bool warm) {
@@ -164,12 +158,6 @@ void DimmerManager::SetWarmTint(bool warm) {
 }
 
 void DimmerManager::SetFocusMode(bool focus) {
-    m_focusMode = focus;
-    for (auto& mon : m_monitors) {
-        if (mon.hwndOverlay) {
-            TriggerFade(mon.hwndOverlay);
-        }
-    }
 }
 
 void DimmerManager::SetIdleState(bool idle, int idleLevel) {
@@ -316,13 +304,15 @@ static bool IsForegroundWindowFullscreen() {
     // A minimized window cannot be fullscreen.
     if (IsIconic(hwnd)) return false;
 
-    // Skip the desktop and taskbar windows
+    // Skip the desktop, taskbar, and WinDimmer64 windows
     wchar_t className[256];
     if (GetClassNameW(hwnd, className, 256)) {
         if (wcscmp(className, L"Progman") == 0 || 
             wcscmp(className, L"WorkerW") == 0 || 
             wcscmp(className, L"Shell_TrayWnd") == 0 ||
-            wcscmp(className, L"Shell_SecondaryTrayWnd") == 0) {
+            wcscmp(className, L"Shell_SecondaryTrayWnd") == 0 ||
+            wcscmp(className, L"WinDimmer64MainClass") == 0 ||
+            wcscmp(className, L"WinDimmer64OverlayClass") == 0) {
             return false;
         }
     }
@@ -338,12 +328,11 @@ static bool IsForegroundWindowFullscreen() {
                 rcWindow.right >= mi.rcMonitor.right &&
                 rcWindow.bottom >= mi.rcMonitor.bottom) {
                 
-                // Exclude standard maximized windows that are not borderless fullscreen.
-                // A maximized window will typically have its rect match or be close to the work area (mi.rcWork),
-                // but a borderless window matches the full monitor area (mi.rcMonitor).
-                // Let's check the window style.
                 LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-                if ((style & WS_POPUP) || !(style & WS_CAPTION) || !(style & WS_MAXIMIZE)) {
+                // True fullscreen = borderless popup OR captionless fullscreen (not just "not maximized")
+                bool isBorderlessFullscreen = (style & WS_POPUP) && !(style & WS_CAPTION);
+                bool isCaptionlessFullscreen = !(style & WS_MAXIMIZE) && !(style & WS_CAPTION);
+                if (isBorderlessFullscreen || isCaptionlessFullscreen) {
                     return true;
                 }
             }
@@ -356,11 +345,19 @@ void DimmerManager::CheckVideoPlayback() {
     bool detected = false;
     m_videoCheckTick++;
 
-    if (IsFullscreenAppActive() || IsForegroundWindowFullscreen()) {
+    bool doFullCheck = (m_videoCheckTick % 5 == 0);
+
+    // Lightweight geometric check every tick
+    if (IsForegroundWindowFullscreen()) {
         detected = true;
     }
 
-    bool doFullCheck = (m_videoCheckTick % 5 == 0);
+    // Heavy checks every 5th tick
+    if (!detected && doFullCheck) {
+        if (IsFullscreenAppActive()) {
+            detected = true;
+        }
+    }
 
     if (!detected && doFullCheck) {
         HWND hFore = GetForegroundWindow();
@@ -518,21 +515,6 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                 } else if (DimmerManager::Instance().IsDimmingEnabled() && info->enabled) {
                     // Active dimming is enabled right now
                     target = info->dimValue;
-                    if (DimmerManager::Instance().GetFocusMode()) {
-                        POINT pt;
-                        if (GetCursorPos(&pt)) {
-                            HMONITOR hActive = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
-                            MONITORINFOEXW mi;
-                            mi.cbSize = sizeof(mi);
-                            if (GetMonitorInfoW(hActive, &mi)) {
-                                if (wcscmp(info->id.c_str(), mi.szDevice) != 0) {
-                                    // Dim inactive monitor deeper (+25%, capped at 90%)
-                                    target = info->dimValue + 25;
-                                    if (target > 90) target = 90;
-                                }
-                            }
-                        }
-                    }
                 }
 
                 int diff = target - info->currentDimValue;
@@ -565,16 +547,6 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                 }
                 FillRect(hdc, &rc, bgBrush);
                 DeleteObject(bgBrush);
-
-                if (DimmerManager::Instance().GetShowBoundaries()) {
-                    HBRUSH yellowBrush = CreateSolidBrush(RGB(255, 235, 59));
-                    FrameRect(hdc, &rc, yellowBrush);
-                    for (int i = 1; i < 5; ++i) {
-                        InflateRect(&rc, -1, -1);
-                        FrameRect(hdc, &rc, yellowBrush);
-                    }
-                    DeleteObject(yellowBrush);
-                }
             }
             EndPaint(hwnd, &ps);
             return 0;

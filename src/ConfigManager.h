@@ -12,10 +12,8 @@ struct MonitorConfig {
 struct AppConfig {
     bool closeToTray = true;
     bool showInTaskbar = false;
-    bool showBoundaries = false;
     bool startWithWindows = false;
     bool warmTint = false;
-    bool focusMode = false;
     
     // Idle Energy & OLED Saver
     bool idleDimEnabled = true;

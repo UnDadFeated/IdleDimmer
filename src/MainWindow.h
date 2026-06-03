@@ -101,9 +101,6 @@ private:
     int m_windowHeight = 520;
     AppConfig m_config;
 
-    // Focus Mode tracking
-    std::wstring m_lastActiveMonitorId;
-
     // Drag-drop tracking
     bool m_isDraggingAny = false;
 

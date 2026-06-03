@@ -143,15 +143,11 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     DimmerManager::Instance().Initialize(hInst);
     DimmerManager::Instance().RefreshMonitors();
 
-    // Restore screen boundary settings
-    DimmerManager::Instance().SetShowBoundaries(m_config.showBoundaries);
-
     // Synchronize monitor settings from loaded configuration
     SyncMonitorsWithConfig();
 
-    // Apply warm tint, focus mode, and active dimming settings
+    // Apply warm tint and active dimming settings
     DimmerManager::Instance().SetWarmTint(m_config.warmTint);
-    DimmerManager::Instance().SetFocusMode(m_config.focusMode);
     DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
 
     // Register global hotkeys
@@ -163,11 +159,6 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     }
     if (!RegisterHotKey(m_hwnd, 103, MOD_CONTROL | MOD_ALT, 0x44)) { // 'D' key
         LogError(ErrorCode::E212, HRESULT_FROM_WIN32(GetLastError()));
-    }
-
-    // Start Focus Mode checking timer (150ms interval)
-    if (!SetTimer(m_hwnd, 201, 150, nullptr)) {
-        LogError(ErrorCode::E208, HRESULT_FROM_WIN32(GetLastError()));
     }
 
     // Start Inactivity/Idle checking timer (1000ms interval)
@@ -403,10 +394,7 @@ void MainWindow::UpdateLayout() {
     yOffset += 8; // gap between sections
     yOffset += 16; // space for section header label
     AddCheckbox(L"WarmTint", m_config.warmTint, &m_config.warmTint, L"Warm Amber Tint", 0, yOffset);
-    AddCheckbox(L"FocusMode", m_config.focusMode, &m_config.focusMode, L"Focus Highlight", 1, yOffset);
-    yOffset += 22;
-    AddCheckbox(L"LightMode", m_config.lightMode, &m_config.lightMode, L"Light Mode", 0, yOffset);
-    AddCheckbox(L"ShowBoundaries", m_config.showBoundaries, &m_config.showBoundaries, L"Boundary Diagnostics", 1, yOffset);
+    AddCheckbox(L"LightMode", m_config.lightMode, &m_config.lightMode, L"Light Mode", 1, yOffset);
     yOffset += 22;
 
     // ── APPLICATION section ──
@@ -1036,8 +1024,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
             }
         }
         DimmerManager::Instance().SetWarmTint(m_config.warmTint);
-        DimmerManager::Instance().SetFocusMode(m_config.focusMode);
-        DimmerManager::Instance().SetShowBoundaries(m_config.showBoundaries);
         DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
         if (!m_config.idleDimEnabled) {
             DimmerManager::Instance().SetIdleState(false);
@@ -1146,14 +1132,10 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 }
             } else if (cb.settingName == L"CloseToTray") {
                 // Handled dynamically
-            } else if (cb.settingName == L"ShowBoundaries") {
-                DimmerManager::Instance().SetShowBoundaries(cb.checked);
             } else if (cb.settingName == L"StartWithWindows") {
                 ToggleStartWithWindows(cb.checked);
             } else if (cb.settingName == L"WarmTint") {
                 DimmerManager::Instance().SetWarmTint(cb.checked);
-            } else if (cb.settingName == L"FocusMode") {
-                DimmerManager::Instance().SetFocusMode(cb.checked);
             } else if (cb.settingName == L"IdleDimEnabled") {
                 if (!cb.checked) {
                     DimmerManager::Instance().SetIdleState(false);
@@ -1454,7 +1436,6 @@ void MainWindow::OnResize(UINT width, UINT height) {
 }
 
 MainWindow::~MainWindow() {
-    KillTimer(m_hwnd, 201);
     KillTimer(m_hwnd, 202);
     UnregisterHotKey(m_hwnd, 101);
     UnregisterHotKey(m_hwnd, 102);
@@ -1566,25 +1547,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                 return 0;
             }
             case WM_TIMER: {
-                if (wp == 201) {
-                    if (self->m_config.focusMode) {
-                        POINT pt;
-                        if (GetCursorPos(&pt)) {
-                            HMONITOR hActive = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
-                            MONITORINFOEXW mi;
-                            mi.cbSize = sizeof(mi);
-                            if (GetMonitorInfoW(hActive, &mi)) {
-                                std::wstring activeId = mi.szDevice;
-                                if (activeId != self->m_lastActiveMonitorId) {
-                                    self->m_lastActiveMonitorId = activeId;
-                                    for (const auto& mon : DimmerManager::Instance().GetActiveMonitors()) {
-                                        DimmerManager::Instance().TriggerFade(mon.hwndOverlay);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else if (wp == 202) {
+                if (wp == 202) {
                     DimmerManager::Instance().CheckVideoPlayback();
                     if (self->m_config.idleDimEnabled) {
                         LASTINPUTINFO lii = { 0 };
