@@ -84,7 +84,7 @@ struct ErrorInfo {
 inline ErrorInfo GetErrorInfo(ErrorCode code) {
     switch (code) {
         case ErrorCode::E101: return { L"E101", L"Single instance mutex creation failed. The operating system could not create the mutex handle." };
-        case ErrorCode::E102: return { L"E102", L"Another instance of WinDimmer64 is already running." };
+        case ErrorCode::E102: return { L"E102", L"Another instance of IdleDimmer is already running." };
         case ErrorCode::E103: return { L"E103", L"COM library initialization failed. CoInitializeEx returned a failure HRESULT." };
         case ErrorCode::E104: return { L"E104", L"Setting the process DPI awareness context failed." };
         case ErrorCode::E105: return { L"E105", L"MainWindow instance creation failed. The class singleton could not be initialized." };
@@ -163,7 +163,7 @@ inline void LogError(ErrorCode code, HRESULT hr = S_OK) {
     SetLastAppError(code);
     ErrorInfo info = GetErrorInfo(code);
     std::wstringstream wss;
-    wss << L"[WinDimmer64 Error Code]: " << info.code << L" - " << info.description;
+    wss << L"[IdleDimmer Error Code]: " << info.code << L" - " << info.description;
     if (hr != S_OK) {
         wss << L" (System HRESULT/Code: 0x" << std::hex << hr << L")";
     }

@@ -59,7 +59,7 @@ void DimmerManager::Initialize(HINSTANCE hInst) {
         wc.hInstance = hInst;
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
         wc.hbrBackground = nullptr; // Let WM_PAINT handle background to support custom warm tints
-        wc.lpszClassName = L"WinDimmer64OverlayClass";
+        wc.lpszClassName = L"IdleDimmerOverlayClass";
         if (!RegisterClassExW(&wc)) {
             LogError(ErrorCode::E402, HRESULT_FROM_WIN32(GetLastError()));
         } else {
@@ -96,8 +96,8 @@ void DimmerManager::CreateOverlayForMonitor(ActiveMonitorInfo& info) {
 
     info.hwndOverlay = CreateWindowExW(
         WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
-        L"WinDimmer64OverlayClass",
-        L"WinDimmer64Overlay",
+        L"IdleDimmerOverlayClass",
+        L"IdleDimmerOverlay",
         WS_POPUP,
         info.rect.left, info.rect.top, w, h,
         nullptr, nullptr, m_hInst, &info
@@ -298,15 +298,15 @@ static bool IsForegroundWindowFullscreen() {
     // A minimized window cannot be fullscreen.
     if (IsIconic(hwnd)) return false;
 
-    // Skip the desktop, taskbar, and WinDimmer64 windows
+    // Skip the desktop, taskbar, and IdleDimmer windows
     wchar_t className[256];
     if (GetClassNameW(hwnd, className, 256)) {
         if (wcscmp(className, L"Progman") == 0 || 
             wcscmp(className, L"WorkerW") == 0 || 
             wcscmp(className, L"Shell_TrayWnd") == 0 ||
             wcscmp(className, L"Shell_SecondaryTrayWnd") == 0 ||
-            wcscmp(className, L"WinDimmer64MainClass") == 0 ||
-            wcscmp(className, L"WinDimmer64OverlayClass") == 0) {
+            wcscmp(className, L"IdleDimmerMainClass") == 0 ||
+            wcscmp(className, L"IdleDimmerOverlayClass") == 0) {
             return false;
         }
     }
@@ -484,7 +484,7 @@ DimmerManager::~DimmerManager() {
         ShowCursor(TRUE);
     }
     if (m_classRegistered) {
-        UnregisterClassW(L"WinDimmer64OverlayClass", m_hInst);
+        UnregisterClassW(L"IdleDimmerOverlayClass", m_hInst);
     }
 }
 

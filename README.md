@@ -1,4 +1,4 @@
-# WinDimmer64
+# IdleDimmer
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-6B7280?style=flat-square" alt="MIT License"></a>
@@ -7,9 +7,9 @@
   <img src="https://img.shields.io/badge/C%2B%2B17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++17">
 </p>
 
-**A tiny, native Windows screen dimmer that respects your eyes, your machine, and your privacy.**
+**A tiny, native Windows screen dimmer that protects OLED screens from burn-in, respects your eyes, and values your privacy.**
 
-WinDimmer64 is a per-monitor screen dimming utility for Windows 10 and 11. It overlays a transparent black layer on each display you choose, so you can dim a second screen to 30% for late-night reading while keeping your main monitor at 80% — without flickering the OSD, fighting DDC, or installing a 50 MB Electron wrapper.
+IdleDimmer is a per-monitor screen dimming utility for Windows 10 and 11. It overlays a transparent black layer on each display you choose to reduce eye strain and protect OLED panels from static burn-in. You can dim a second screen to 30% for late-night reading while keeping your main monitor at 80% — without flickering the OSD, fighting DDC, or installing a 50 MB Electron wrapper.
 
 Built in native C++17 with Direct2D and the raw Win32 API. **~150 KB on disk. Zero runtime dependencies. Zero telemetry. Zero ads.**
 
@@ -23,11 +23,9 @@ Built in native C++17 with Direct2D and the raw Win32 API. **~150 KB on disk. Ze
 
 ### Direct installer (GitHub Releases)
 
-[**WinDimmer64-Setup-v1.4.7.exe**](https://github.com/UnDadFeated/WinDimmer64/releases/download/v1.4.7/WinDimmer64-Setup-v1.4.7.exe) — 280 KB
+[**IdleDimmer-Setup-v1.4.7.exe**](https://github.com/UnDadFeated/IdleDimmer/releases/download/v1.4.7/IdleDimmer-Setup-v1.4.7.exe) — 280 KB
 
 Per-user install to `%LOCALAPPDATA%`. No admin elevation. Clean uninstall from Settings > Apps. Self-extracting installer with dark theme UI.
-
-[All releases →](https://github.com/UnDadFeated/WinDimmer64/releases)
 
 </td>
 <td width="50%" valign="top">
@@ -36,9 +34,7 @@ Per-user install to `%LOCALAPPDATA%`. No admin elevation. Clean uninstall from S
 
 [**Get it from Microsoft Store →**](https://apps.microsoft.com/)
 
-Desktop Bridge MSIX package. Auto-updates. Sandbox-friendly. Paid (cheapest tier).
-
-[Submission walkthrough →](msix/SUBMIT-TO-STORE.md)
+Desktop Bridge MSIX package. Auto-updates. Sandbox-friendly. Free.
 
 </td>
 </tr>
@@ -53,8 +49,8 @@ Desktop Bridge MSIX package. Auto-updates. Sandbox-friendly. Paid (cheapest tier
 ### Per-monitor dimming with independent controls
 Each connected display gets its own on/off toggle and a 0–90% dim slider. Drag a slider to auto-enable dimming for that monitor. Disable one monitor and leave the rest at full brightness — no group lock-in, no "all-or-nothing" mode.
 
-### Idle detection with smooth fade
-Set a timeout (1–60 minutes) and an idle dim level. When the system reports no keyboard or mouse input, the overlays fade in. When activity resumes, they fade out. The cursor auto-hides during idle dimming and reappears the moment you touch the mouse.
+### Idle detection with smooth fade (OLED Protection)
+Set a timeout (1–60 minutes) and an idle dim level (up to 100% black). When the system reports no keyboard or mouse input, the overlays fade in to prevent static element burn-in on OLED displays. When activity resumes, they fade out. The cursor auto-hides during idle dimming and reappears the moment you touch the mouse.
 
 ### Blocked-app bypass
 Add any process to the blocked list (Steam, MPC-HC, mpv, Plex, your TV app — whatever you use for video). When a blocked app is in the foreground **or** is playing audio through the default audio endpoint, dimming is automatically suspended so you never get a darkened video.
@@ -100,11 +96,11 @@ Settings, Run-key entry, Start Menu shortcut — all removed. No leftover files,
 | | |
 |---|---|
 | **Executable size** | 150 KB (standalone), 280 KB (installer), 140 KB (MSIX) |
-| **Config file size** | < 1 KB at `%APPDATA%\WinDimmer64\dimmer.ini` |
+| **Config file size** | < 1 KB at `%APPDATA%\IdleDimmer\dimmer.ini` |
 | **Memory footprint** | ~3 MB working set at idle |
 | **Disk footprint** | 150 KB exe + 1 KB config |
 | **Runtime dependencies** | None. Statically linked against Windows API. |
-| **Install location** | `%LOCALAPPDATA%\Programs\WinDimmer64\` (or per-user MSIX location) |
+| **Install location** | `%LOCALAPPDATA%\Programs\IdleDimmer\` (or per-user MSIX location) |
 | **Permissions used** | Standard user. No UAC prompts, no admin elevation. |
 | **Supported OS** | Windows 10 1809+ and Windows 11 |
 | **Architecture** | x64 |
@@ -115,7 +111,7 @@ Settings, Run-key entry, Start Menu shortcut — all removed. No leftover files,
 
 The app collects **no personal data, no telemetry, and no analytics**. The only outbound network request is an optional manual "Check for Updates" call to GitHub's public API, which contains no identifying information.
 
-Full policy: [docs/privacy.html](https://undadfeated.github.io/WinDimmer64/privacy.html)
+Full policy: [docs/privacy.html](https://undadfeated.github.io/IdleDimmer/privacy.html)
 
 Source is open. You can audit every line: [src/](src/)
 
@@ -138,7 +134,7 @@ Auto-detects VS 2022, compiles resources, links the app.
 ```cmd
 llvm-windres resources\resources.rc -O coff -o resources\resources.o
 clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
-    -o WinDimmer64.exe ^
+    -o IdleDimmer.exe ^
     src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp ^
     resources\resources.o ^
     -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp ^
@@ -149,7 +145,7 @@ clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
 ```cmd
 llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
 clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
-    -o WinDimmer64-Setup-v1.4.7.exe ^
+    -o IdleDimmer-Setup-v1.4.7.exe ^
     src\setup.cpp resources\setup_res.o ^
     -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -ldwmapi ^
     -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
@@ -159,7 +155,7 @@ clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
 ```cmd
 msix\build_msix.bat
 ```
-Requires Windows 10 SDK 10.0.22621 (`winget install --id=Microsoft.WindowsSDK.10.0.22621 -e --silent`). See [msix/SUBMIT-TO-STORE.md](msix/SUBMIT-TO-STORE.md) for the full Partner Center walkthrough.
+Requires Windows 10 SDK 10.0.22621 (`winget install --id=Microsoft.WindowsSDK.10.0.22621 -e --silent`).
 
 ---
 
@@ -170,10 +166,10 @@ Requires Windows 10 SDK 10.0.22621 (`winget install --id=Microsoft.WindowsSDK.10
 | Entry point | `src/main.cpp` | COM init, Per-Monitor DPI v2, single-instance mutex, message loop |
 | Settings UI | `src/MainWindow.cpp` | D2D-rendered settings panel, slider cards, toggle switches |
 | Overlay manager | `src/DimmerManager.cpp` | Per-monitor layered overlay windows, fade animation, video detection |
-| Config I/O | `src/ConfigManager.cpp` | JSON-like config at `%APPDATA%\WinDimmer64\dimmer.ini` |
+| Config I/O | `src/ConfigManager.cpp` | JSON-like config at `%APPDATA%\IdleDimmer\dimmer.ini` |
 | Installer | `src/setup.cpp` | Self-extracting installer with dark DWM theme |
 
-Window classes: `WinDimmer64MainClass`, `WinDimmer64OverlayClass`, `WinDimmer64SetupClass`.
+Window classes: `IdleDimmerMainClass`, `IdleDimmerOverlayClass`, `IdleDimmerSetupClass`.
 
 Overlay style: `WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST`.
 

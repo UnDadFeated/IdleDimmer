@@ -6,7 +6,7 @@
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     // 1. Single Instance Enforcement using Mutex
-    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Global\\WinDimmer64Mutex");
+    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Global\\IdleDimmerMutex");
     if (hMutex == nullptr) {
         LogError(ErrorCode::E101, HRESULT_FROM_WIN32(GetLastError()));
         return 1;
@@ -14,7 +14,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         LogError(ErrorCode::E102);
         // Find existing window, restore and bring to front
-        HWND hwndExisting = FindWindowW(L"WinDimmer64MainClass", nullptr);
+        HWND hwndExisting = FindWindowW(L"IdleDimmerMainClass", nullptr);
         if (hwndExisting) {
             ShowWindow(hwndExisting, SW_SHOW);
             ShowWindow(hwndExisting, SW_RESTORE);

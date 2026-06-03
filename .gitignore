@@ -2,9 +2,9 @@
 AGENTS.md
 
 # Build Artifacts
-WinDimmer64.exe
-WinDimmer64-Setup-*.exe
-WinDimmer64.old
+IdleDimmer.exe
+IdleDimmer-Setup-*.exe
+IdleDimmer.old
 *.o
 *.res
 *.obj
@@ -22,3 +22,6 @@ dimmer.ini
 .vscode/
 *.user
 *.suo
+
+# MSIX Packaging Configuration
+msix/

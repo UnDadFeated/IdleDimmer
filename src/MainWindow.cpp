@@ -34,7 +34,7 @@ static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
 #define ID_TRAY_SHOW 1002
 
 // Add App dialog
-static const wchar_t* ADD_DLG_CLASS = L"WinDimmer64AddAppDlg";
+static const wchar_t* ADD_DLG_CLASS = L"IdleDimmerAddAppDlg";
 static bool g_addDlgRegistered = false;
 static wchar_t g_addDlgResult[128];
 static bool g_addDlgConfirmed;
@@ -106,7 +106,7 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     wc.hInstance = hInst;
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wc.hbrBackground = nullptr;
-    wc.lpszClassName = L"WinDimmer64MainClass";
+    wc.lpszClassName = L"IdleDimmerMainClass";
     wc.hIcon = LoadIconW(hInst, MAKEINTRESOURCEW(101));
     if (!RegisterClassExW(&wc)) {
         LogError(ErrorCode::E106, HRESULT_FROM_WIN32(GetLastError()));
@@ -128,8 +128,8 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
 
     m_hwnd = CreateWindowExW(
         WS_EX_APPWINDOW,
-        L"WinDimmer64MainClass",
-        L"WinDimmer64 - Control Panel",
+        L"IdleDimmerMainClass",
+        L"IdleDimmer - Control Panel",
         style,
         x, y, m_windowWidth, m_windowHeight,
         nullptr, nullptr, hInst, this
@@ -182,7 +182,7 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
 
     // Add to system tray
     HICON hAppIcon = LoadIconW(m_hInst, MAKEINTRESOURCEW(101));
-    if (!AddTrayIcon(m_hwnd, 1, hAppIcon, L"WinDimmer64 Screen Brightness")) {
+    if (!AddTrayIcon(m_hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness")) {
         LogError(ErrorCode::E213, HRESULT_FROM_WIN32(GetLastError()));
     }
 
@@ -955,12 +955,12 @@ void MainWindow::PushUndoState() {
 DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
     MainWindow* self = reinterpret_cast<MainWindow*>(lpParam);
     
-    HINTERNET hSession = WinHttpOpen(L"WinDimmer64/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, nullptr, nullptr, 0);
+    HINTERNET hSession = WinHttpOpen(L"IdleDimmer/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, nullptr, nullptr, 0);
     if (hSession) {
         HINTERNET hConnect = WinHttpConnect(hSession, L"api.github.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
         if (hConnect) {
             HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET",
-                L"/repos/UnDadFeated/WinDimmer64/releases/latest", nullptr, nullptr, nullptr,
+                L"/repos/UnDadFeated/IdleDimmer/releases/latest", nullptr, nullptr, nullptr,
                 WINHTTP_FLAG_SECURE);
             if (hRequest) {
                 if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, nullptr, 0, 0, 0)) {
@@ -1426,12 +1426,12 @@ void MainWindow::ToggleStartWithWindows(bool enable) {
         if (enable) {
             wchar_t exePath[MAX_PATH];
             GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-            LONG lResSet = RegSetValueExW(hKey, L"WinDimmer64", 0, REG_SZ, reinterpret_cast<const BYTE*>(exePath), static_cast<DWORD>((wcslen(exePath) + 1) * sizeof(wchar_t)));
+            LONG lResSet = RegSetValueExW(hKey, L"IdleDimmer", 0, REG_SZ, reinterpret_cast<const BYTE*>(exePath), static_cast<DWORD>((wcslen(exePath) + 1) * sizeof(wchar_t)));
             if (lResSet != ERROR_SUCCESS) {
                 LogError(ErrorCode::E306, HRESULT_FROM_WIN32(lResSet));
             }
         } else {
-            LONG lResDel = RegDeleteValueW(hKey, L"WinDimmer64");
+            LONG lResDel = RegDeleteValueW(hKey, L"IdleDimmer");
             if (lResDel != ERROR_SUCCESS && lResDel != ERROR_FILE_NOT_FOUND) {
                 LogError(ErrorCode::E307, HRESULT_FROM_WIN32(lResDel));
             }
@@ -1611,7 +1611,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                     HMENU hMenu = CreatePopupMenu();
                     AppendMenuW(hMenu, MF_STRING, ID_TRAY_SHOW, L"Open Settings");
                     AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-                    AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit WinDimmer64");
+                    AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit IdleDimmer");
                     
                     // Display popup menu matching dark theme styling (as much as standard Win32 popup menu allows)
                     SetForegroundWindow(hwnd);

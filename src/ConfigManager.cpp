@@ -27,7 +27,7 @@ static int ParseInt(const std::wstring& val) {
 std::wstring ConfigManager::GetConfigPath() {
     wchar_t path[MAX_PATH];
     if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, path))) {
-        std::wstring appDir = std::wstring(path) + L"\\WinDimmer64";
+        std::wstring appDir = std::wstring(path) + L"\\IdleDimmer";
         CreateDirectoryW(appDir.c_str(), NULL);
         return appDir + L"\\dimmer.ini";
     }

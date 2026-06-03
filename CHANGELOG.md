@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the WinDimmer64 project are documented here.
+All notable changes to the IdleDimmer project are documented here.
 
 ## [1.4.7] - 2026-06-02
 
@@ -29,7 +29,7 @@ All notable changes to the WinDimmer64 project are documented here.
 
 ### Updates
 * **Focus Highlight and Boundary Diagnostics removed**: Dead UI features with no user-facing value. Removed FocusMode/ShowBoundaries checkboxes, timer 201 (150ms cursor tracking), overlay WM_TIMER focus-mode branching, boundary drawing in overlay WM_PAINT, and all config/manager plumbing. LightMode and WarmTint checkboxes now fill the row cleanly.
-* **Fixed false fullscreen detection breaking active dimming**: `IsForegroundWindowFullscreen()` now excludes `WinDimmer64MainClass` and `WinDimmer64OverlayClass` window classes, and the style check no longer flags ordinary restored windows as fullscreen. The geometric check is still fast enough to run every tick.
+* **Fixed false fullscreen detection breaking active dimming**: `IsForegroundWindowFullscreen()` now excludes `IdleDimmerMainClass` and `IdleDimmerOverlayClass` window classes, and the style check no longer flags ordinary restored windows as fullscreen. The geometric check is still fast enough to run every tick.
 * **Moved `IsFullscreenAppActive` into throttled path**: The shell32.dll `SHQueryUserNotificationState` call (LoadLibrary/FreeLibrary every tick) now only runs every 5th second alongside the other heavyweight checks, reducing overhead and Defender signal.
 
 ## [1.4.2] - 2026-06-02
@@ -150,7 +150,7 @@ All notable changes to the WinDimmer64 project are documented here.
 * **Global Cursor Hiding on Idle**: Replaced the local thread-restricted `ShowCursor(FALSE)` call with a clean, antivirus-friendly system-wide `SetSystemCursor` using a statically created blank cursor when screens are dimmed during idle. Original cursors are instantly restored globally via `SPI_SETCURSORS` upon waking up or application exit.
 * **Hotkey Active Dimming Auto-Enable**: Adjusting display brightness via global hotkeys (`Ctrl+Alt+ArrowUp/ArrowDown`) now auto-enables active dimming if it was off, so changes take effect immediately.
 * **Hotkey Idle Slider Corruption**: Fixed a layout bug where global brightness hotkeys incorrectly reset the inactivity timeout and dim level slider visual values on the settings panel.
-* **Installer Directory Pre-creation**: Resolved a bug where launching the installer pre-emptively created an empty `%LOCALAPPDATA%\WinDimmer64` directory before the user clicked "Install".
+* **Installer Directory Pre-creation**: Resolved a bug where launching the installer pre-emptively created an empty `%LOCALAPPDATA%\IdleDimmer` directory before the user clicked "Install".
 
 ## [1.2.7] - 2026-05-27
 
@@ -219,13 +219,13 @@ All notable changes to the WinDimmer64 project are documented here.
 ## [1.1.1] - 2026-05-27
 
 ### Bug Fixes
-* **Installer freeze**: Fixed 10-second freeze when "Launch WinDimmer64" checkbox is checked. Replaced `ShellExecuteW` with `CreateProcessW` to avoid COM/shell blocking.
+* **Installer freeze**: Fixed 10-second freeze when "Launch IdleDimmer" checkbox is checked. Replaced `ShellExecuteW` with `CreateProcessW` to avoid COM/shell blocking.
 
 ## [1.1.0] - 2026-05-27
 
 ### Updates
 * **Fixed Installer Layout**: Welcome screen status text no longer overlaps the location text. Increased spacing between controls and taller status box for multiline messages.
-* **Launch on Finish**: The Launch WinDimmer64 checkbox on the completion screen now works — launches the app when checked before closing the installer.
+* **Launch on Finish**: The Launch IdleDimmer checkbox on the completion screen now works — launches the app when checked before closing the installer.
 * **Installer Source Tracked**: `src/setup.cpp` and `resources/setup.rc` are now in the repo for repeatable builds.
 * **Fixed Installer Extraction**: App now extracts correctly with proper error messages. Shows install status on welcome screen — detects running instances, existing versions, and handles each case cleanly.
 * **Installer Icon**: Professional icon and version info metadata on the installer executable.
@@ -236,8 +236,8 @@ All notable changes to the WinDimmer64 project are documented here.
 
 ### Updates
 * **Installer**: Professional setup wizard with welcome screen, install location display, launch option, and clean uninstall via Settings > Apps & Features.
-* **Update Check**: WinDimmer64 now checks GitHub for new releases on startup. Shows "Update Available" or "Up to Date" next to the version number in the footer.
-* **Video Playback Detection**: WinDimmer64 now detects when a video is playing in a browser or media player (windowed or fullscreen) and halts all dimming until playback stops. Supports Chrome, Edge, Firefox, VLC, Plex, MPC, PotPlayer, Spotify, Discord, and more.
+* **Update Check**: IdleDimmer now checks GitHub for new releases on startup. Shows "Update Available" or "Up to Date" next to the version number in the footer.
+* **Video Playback Detection**: IdleDimmer now detects when a video is playing in a browser or media player (windowed or fullscreen) and halts all dimming until playback stops. Supports Chrome, Edge, Firefox, VLC, Plex, MPC, PotPlayer, Spotify, Discord, and more.
 * **Black Cursor**: Dimmed cursor now turns fully black instead of proportionally dimming, with no flipping artifacts.
 * **Footer Undo**: Moved "Undo Changes" into the app footer, centered between the status indicator and version number. Removed the Undo checkbox row from the APPLICATION section, eliminating wasted space.
 * **Tighter Top Margin**: Reduced empty gap between title bar and first slider card from 52 to 30 pixels.
@@ -254,7 +254,7 @@ All notable changes to the WinDimmer64 project are documented here.
 ## [1.0.7] - 2026-05-27
 
 ### Updates
-* **UI Cleanup**: Removed redundant "Group All Monitors" toggle (master slider already syncs all displays). Removed "Show in Taskbar" option. Removed "WinDimmer64" header title (already in the window titlebar). Moved "Undo" counter into the APPLICATION section for a cleaner top area. Tighter overall layout with fewer toggles.
+* **UI Cleanup**: Removed redundant "Group All Monitors" toggle (master slider already syncs all displays). Removed "Show in Taskbar" option. Removed "IdleDimmer" header title (already in the window titlebar). Moved "Undo" counter into the APPLICATION section for a cleaner top area. Tighter overall layout with fewer toggles.
 
 ### Bug Fixes
 * **Idle Dimming Default**: Idle dimming is now enabled by default so monitors dim during inactivity without requiring manual setup.

@@ -24,13 +24,13 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "WinDimmer64"
-            VALUE "FileDescription", "WinDimmer64 Screen Dimmer Utility"
+            VALUE "CompanyName", "IdleDimmer"
+            VALUE "FileDescription", "IdleDimmer Screen Dimmer Utility"
             VALUE "FileVersion", "1.4.7.0"
-            VALUE "InternalName", "WinDimmer64"
+            VALUE "InternalName", "IdleDimmer"
             VALUE "LegalCopyright", "Copyright (C) 2026"
-            VALUE "OriginalFilename", "WinDimmer64.exe"
-            VALUE "ProductName", "WinDimmer64"
+            VALUE "OriginalFilename", "IdleDimmer.exe"
+            VALUE "ProductName", "IdleDimmer"
             VALUE "ProductVersion", "1.4.7.0"
         END
     END

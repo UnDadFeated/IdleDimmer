@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WinDimmer64 Privacy Policy</title>
+<title>IdleDimmer Privacy Policy</title>
 <style>
   body {
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -25,10 +25,10 @@
 </head>
 <body>
 
-<h1>WinDimmer64 Privacy Policy</h1>
+<h1>IdleDimmer Privacy Policy</h1>
 <p class="meta">Last updated: June 2, 2026</p>
 
-<p>WinDimmer64 ("the app", "we", "our") is a native Windows screen-dimming utility. This privacy policy explains what data the app handles, what it does not handle, and what limited network activity occurs.</p>
+<p>IdleDimmer ("the app", "we", "our") is a native Windows screen-dimming utility. This privacy policy explains what data the app handles, what it does not handle, and what limited network activity occurs.</p>
 
 <h2>Summary</h2>
 <p><strong>The app collects no personal data, no telemetry, and no analytics. The app does not use cookies, tracking pixels, or any third-party SDKs.</strong> A single optional network request is made for in-app update checks, and that request contains no identifying information about you.</p>
@@ -45,12 +45,12 @@
 </ul>
 
 <h2>Data the app stores locally on your device</h2>
-<p>The app writes a single configuration file to <code>%LOCALAPPDATA%\WinDimmer64\dimmer.ini</code> (or, when installed from the Microsoft Store, the package-private equivalent location under <code>%LOCALAPPDATA%\Packages\&lt;WinDimmer64&gt;\LocalCache\</code>). This file contains only your dimming preferences (per-monitor brightness levels, idle timeout, blocked-app list). It never leaves your device.</p>
+<p>The app writes a single configuration file to <code>%LOCALAPPDATA%\IdleDimmer\dimmer.ini</code> (or, when installed from the Microsoft Store, the package-private equivalent location under <code>%LOCALAPPDATA%\Packages\&lt;IdleDimmer&gt;\LocalCache\</code>). This file contains only your dimming preferences (per-monitor brightness levels, idle timeout, blocked-app list). It never leaves your device.</p>
 
 <h2>Network activity</h2>
 <p>The only outbound network requests the app makes are:</p>
 <ol>
-  <li><strong>Update check (optional, off by default).</strong> When you click "Check for Updates" in the app, it sends a single HTTPS GET request to <code>https://api.github.com/repos/UnDadFeated/WinDimmer64/releases/latest</code> to compare your installed version against the latest published release. The request does not include any user-specific data, cookies, authentication, or query parameters. GitHub's servers may log the request per their own privacy policy (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement">github.com/privacy</a>).</li>
+  <li><strong>Update check (optional, off by default).</strong> When you click "Check for Updates" in the app, it sends a single HTTPS GET request to <code>https://api.github.com/repos/UnDadFeated/IdleDimmer/releases/latest</code> to compare your installed version against the latest published release. The request does not include any user-specific data, cookies, authentication, or query parameters. GitHub's servers may log the request per their own privacy policy (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement">github.com/privacy</a>).</li>
 </ol>
 <p>The app does not maintain a persistent connection, does not phone home on a schedule, and does not auto-update itself.</p>
 
@@ -60,7 +60,7 @@
   <li><strong>Layered, transparent overlay windows</strong> (WS_EX_LAYERED) to render the dimming effect. These overlays are non-interactive, click-through, and cover each monitor's desktop area only when dimming is active.</li>
   <li><strong>Audio session enumeration</strong> (IAudioSessionEnumerator) to detect when blocked apps are playing audio, so dimming is automatically suspended during their use.</li>
   <li><strong>Process enumeration</strong> (limited to a small allowlist of blocked apps you configure) to detect foreground windows of those apps.</li>
-  <li><strong>Single-instance named mutex</strong> (<code>Global\WinDimmer64Mutex</code>) to prevent multiple copies of the app from running.</li>
+  <li><strong>Single-instance named mutex</strong> (<code>Global\IdleDimmerMutex</code>) to prevent multiple copies of the app from running.</li>
   <li><strong>Registry read/write</strong> under <code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code> only if you explicitly enable "Start with Windows" in the app settings.</li>
 </ul>
 
@@ -71,10 +71,10 @@
 <p>If we ever change what data the app handles, we will update this page and bump the version number above. Substantive changes will be noted in the app's release notes on GitHub.</p>
 
 <h2>Open source</h2>
-<p>The full source code is available at <a href="https://github.com/UnDadFeated/WinDimmer64">github.com/UnDadFeated/WinDimmer64</a>. You can audit every line to verify the claims above.</p>
+<p>The full source code is available at <a href="https://github.com/UnDadFeated/IdleDimmer">github.com/UnDadFeated/IdleDimmer</a>. You can audit every line to verify the claims above.</p>
 
 <div class="contact">
-  <strong>Contact:</strong> Open an issue at <a href="https://github.com/UnDadFeated/WinDimmer64/issues">github.com/UnDadFeated/WinDimmer64/issues</a>
+  <strong>Contact:</strong> Open an issue at <a href="https://github.com/UnDadFeated/IdleDimmer/issues">github.com/UnDadFeated/IdleDimmer/issues</a>
 </div>
 
 </body>

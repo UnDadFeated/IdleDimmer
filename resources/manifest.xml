@@ -3,10 +3,10 @@
   <assemblyIdentity
       version="1.4.7.0"
       processorArchitecture="*"
-      name="WinDimmer64"
+      name="IdleDimmer"
       type="win32"
   />
-  <description>WinDimmer64 screen dimming utility</description>
+  <description>IdleDimmer screen dimming utility</description>
   <dependency>
     <dependentAssembly>
       <assemblyIdentity

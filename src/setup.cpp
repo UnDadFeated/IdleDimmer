@@ -20,9 +20,9 @@
 #define IDI_APP 101
 #define IDR_APP_BIN 102
 
-static const wchar_t* APP_NAME = L"WinDimmer64";
-static const wchar_t* INSTALL_DIR = L"WinDimmer64";
-static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinDimmer64";
+static const wchar_t* APP_NAME = L"IdleDimmer";
+static const wchar_t* INSTALL_DIR = L"IdleDimmer";
+static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\IdleDimmer";
 static const wchar_t* VER = L"1.4.7";
 
 enum State { READY, INSTALLING, COMPLETE };
@@ -50,7 +50,7 @@ static void GetInstallPath(wchar_t* buf, DWORD size) {
 }
 
 static bool IsRunning() {
-    return FindWindowW(L"WinDimmer64MainClass", NULL) != NULL;
+    return FindWindowW(L"IdleDimmerMainClass", NULL) != NULL;
 }
 
 static std::wstring GetExeVersion(const wchar_t* filepath) {
@@ -114,7 +114,7 @@ static bool ExtractApp(const wchar_t* dest) {
 }
 
 static void KillRunning() {
-    HWND hwnd = FindWindowW(L"WinDimmer64MainClass", NULL);
+    HWND hwnd = FindWindowW(L"IdleDimmerMainClass", NULL);
     if (!hwnd) {
         Log(L"  No running instance found\r\n");
         return;
@@ -142,7 +142,7 @@ static void CreateShortcut(const wchar_t* target) {
     Log(L"  Creating Start Menu shortcut...\r\n");
     wchar_t path[MAX_PATH];
     SHGetFolderPathW(NULL, CSIDL_STARTMENU, NULL, 0, path);
-    wcscat_s(path, MAX_PATH, L"\\Programs\\WinDimmer64.lnk");
+    wcscat_s(path, MAX_PATH, L"\\Programs\\IdleDimmer.lnk");
     IShellLinkW* psl;
     if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (void**)&psl))) {
         psl->SetPath(target);
@@ -180,7 +180,7 @@ static void RegisterUninstall() {
 
 static void Uninstall() {
     GetInstallPath(g_installPath, MAX_PATH);
-    Log(L"\r\n=== WinDimmer64 Uninstall ===\r\n\r\n");
+    Log(L"\r\n=== IdleDimmer Uninstall ===\r\n\r\n");
     Log(L"  Install path: %s\r\n", g_installPath);
     KillRunning();
     wchar_t exePath[MAX_PATH];
@@ -190,14 +190,14 @@ static void Uninstall() {
     RemoveDirectoryW(g_installPath);
     wchar_t configDir[MAX_PATH];
     GetEnvironmentVariableW(L"APPDATA", configDir, MAX_PATH);
-    wcscat_s(configDir, MAX_PATH, L"\\WinDimmer64");
+    wcscat_s(configDir, MAX_PATH, L"\\IdleDimmer");
     wchar_t iniPath[MAX_PATH];
     swprintf(iniPath, MAX_PATH, L"%s\\dimmer.ini", configDir);
     DeleteFileW(iniPath);
     RemoveDirectoryW(configDir);
     wchar_t shortcut[MAX_PATH];
     SHGetFolderPathW(NULL, CSIDL_STARTMENU, NULL, 0, shortcut);
-    wcscat_s(shortcut, MAX_PATH, L"\\Programs\\WinDimmer64.lnk");
+    wcscat_s(shortcut, MAX_PATH, L"\\Programs\\IdleDimmer.lnk");
     DeleteFileW(shortcut);
     RegDeleteKeyW(HKEY_CURRENT_USER, REG_PATH);
     Log(L"  Uninstall complete\r\n");
@@ -271,7 +271,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             SendMessageW(g_hLaunchCheck, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
             SendMessageW(g_hLog, WM_SETFONT, (WPARAM)g_hFontLog, TRUE);
 
-            Log(L">>> WinDimmer64 Setup v%s\r\n", VER);
+            Log(L">>> IdleDimmer Setup v%s\r\n", VER);
             Log(L">>> %s\r\n\r\n", g_installPath);
             if (installed) Log(L"  Installed: v%s\r\n", installedVer.c_str());
             if (running)  Log(L"  App is running\r\n");
@@ -350,7 +350,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
-    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Local\\WinDimmer64SetupMutex");
+    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Local\\IdleDimmerSetupMutex");
     if (hMutex == nullptr) {
         LogError(ErrorCode::E507, HRESULT_FROM_WIN32(GetLastError()));
         return 1;
@@ -368,7 +368,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
         CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
         Uninstall();
         CoUninitialize();
-        MessageBoxW(NULL, L"WinDimmer64 has been uninstalled.", APP_NAME, MB_OK | MB_ICONINFORMATION);
+        MessageBoxW(NULL, L"IdleDimmer has been uninstalled.", APP_NAME, MB_OK | MB_ICONINFORMATION);
         CloseHandle(hMutex);
         return 0;
     }
@@ -380,10 +380,10 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
     wc.hIcon = LoadIconW(hInst, MAKEINTRESOURCEW(IDI_APP));
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszClassName = L"WinDimmer64SetupClass";
+    wc.lpszClassName = L"IdleDimmerSetupClass";
     RegisterClassExW(&wc);
 
-    HWND hwnd = CreateWindowExW(0, L"WinDimmer64SetupClass", L"WinDimmer64 Setup",
+    HWND hwnd = CreateWindowExW(0, L"IdleDimmerSetupClass", L"IdleDimmer Setup",
         WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         CW_USEDEFAULT, CW_USEDEFAULT, 540, 240,
         NULL, NULL, hInst, NULL);

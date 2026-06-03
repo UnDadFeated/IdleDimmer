@@ -1,7 +1,7 @@
 @echo off
-title WinDimmer64 MSVC Build Script
+title IdleDimmer MSVC Build Script
 echo ===================================================
-echo WinDimmer64 - C++ Windows 11 Build script
+echo IdleDimmer - C++ Windows 11 Build script
 echo ===================================================
 echo.
 
@@ -40,13 +40,13 @@ if %errorlevel% neq 0 (
 echo [INFO] Compiling resources...
 rc.exe /nologo resources\resources.rc
 
-echo [INFO] Compiling WinDimmer64 executable...
-cl.exe /nologo /O2 /MT /std:c++17 /EHsc /Fe:WinDimmer64.exe src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.res user32.lib gdi32.lib d2d1.lib dwrite.lib dwmapi.lib shell32.lib ole32.lib advapi.lib /link /SUBSYSTEM:WINDOWS /DYNAMICBASE /NXCOMPAT /GUARD:CF /HIGHENTROPYVA
+echo [INFO] Compiling IdleDimmer executable...
+cl.exe /nologo /O2 /MT /std:c++17 /EHsc /Fe:IdleDimmer.exe src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.res user32.lib gdi32.lib d2d1.lib dwrite.lib dwmapi.lib shell32.lib ole32.lib advapi.lib /link /SUBSYSTEM:WINDOWS /DYNAMICBASE /NXCOMPAT /GUARD:CF /HIGHENTROPYVA
 
 if %errorlevel% equ 0 (
     echo.
     echo ===================================================
-    echo [SUCCESS] WinDimmer64.exe built successfully!
+    echo [SUCCESS] IdleDimmer.exe built successfully!
     echo ===================================================
 ) else (
     echo.

@@ -14,12 +14,12 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "CompanyName", "UnDadFeated"
-            VALUE "FileDescription", "WinDimmer64 Setup"
+            VALUE "FileDescription", "IdleDimmer Setup"
             VALUE "FileVersion", "1.4.7.0"
-            VALUE "InternalName", "WinDimmer64"
+            VALUE "InternalName", "IdleDimmer"
             VALUE "LegalCopyright", "Copyright (C) 2026"
-            VALUE "OriginalFilename", "WinDimmer64-Setup.exe"
-            VALUE "ProductName", "WinDimmer64 Setup"
+            VALUE "OriginalFilename", "IdleDimmer-Setup.exe"
+            VALUE "ProductName", "IdleDimmer Setup"
             VALUE "ProductVersion", "1.4.7.0"
         END
     END
@@ -30,6 +30,6 @@ BEGIN
 END
 
 101 ICON "app.ico"
-102 RCDATA "..\\WinDimmer64.exe"
+102 RCDATA "..\\IdleDimmer.exe"
 
 1 24 "manifest.xml"
