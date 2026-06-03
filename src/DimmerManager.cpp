@@ -95,7 +95,7 @@ void DimmerManager::CreateOverlayForMonitor(ActiveMonitorInfo& info) {
     int h = info.rect.bottom - info.rect.top;
 
     info.hwndOverlay = CreateWindowExW(
-        WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+        WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
         L"IdleDimmerOverlayClass",
         L"IdleDimmerOverlay",
         WS_POPUP,
@@ -173,15 +173,6 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
 
         for (auto& mon : m_monitors) {
             if (mon.hwndOverlay) {
-                LONG_PTR exStyle = GetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE);
-                if (idle) {
-                    exStyle &= ~WS_EX_TRANSPARENT;
-                } else {
-                    exStyle |= WS_EX_TRANSPARENT;
-                }
-                SetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE, exStyle);
-                SetWindowPos(mon.hwndOverlay, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-                
                 TriggerFade(mon.hwndOverlay);
             }
         }
@@ -577,6 +568,13 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
             wpos->hwndInsertAfter = HWND_TOPMOST;
             wpos->flags &= ~SWP_NOZORDER;
             return 0;
+        }
+        case WM_NCHITTEST: {
+            if (DimmerManager::Instance().IsIdleState()) {
+                return HTCLIENT;
+            } else {
+                return HTTRANSPARENT;
+            }
         }
         case WM_SETCURSOR: {
             if (DimmerManager::Instance().IsIdleState()) {
