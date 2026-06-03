@@ -84,8 +84,7 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     m_canUndo = false;
     m_changeCount = 0;
 
-    HANDLE hThread = CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
-    if (hThread) CloseHandle(hThread);
+    CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
 
     // Register MainWindow Class
     WNDCLASSEXW wc = { 0 };
@@ -231,32 +230,28 @@ HRESULT MainWindow::CreateGraphicsResources() {
             // Create brushes
             HRESULT hrBrush = S_OK;
             hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x131315), &m_pBrushBg);
-            if (FAILED(hrBrush)) { LogError(ErrorCode::E207, hrBrush); hr = hrBrush; }
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
 
             hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1F1F24), &m_pBrushCard);
-            if (FAILED(hrBrush)) { LogError(ErrorCode::E207, hrBrush); hr = hrBrush; }
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
 
             hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2D2D34), &m_pBrushCardBorder);
-            if (FAILED(hrBrush)) { LogError(ErrorCode::E207, hrBrush); hr = hrBrush; }
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
 
             hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFFFFF), &m_pBrushText);
-            if (FAILED(hrBrush)) { LogError(ErrorCode::E207, hrBrush); hr = hrBrush; }
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
 
             hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x8E8E93), &m_pBrushTextMuted);
-            if (FAILED(hrBrush)) { LogError(ErrorCode::E207, hrBrush); hr = hrBrush; }
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
 
             hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0078D4), &m_pBrushAccent);
-            if (FAILED(hrBrush)) { LogError(ErrorCode::E207, hrBrush); hr = hrBrush; }
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
 
             hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2B88D8), &m_pBrushAccentHover);
-            if (FAILED(hrBrush)) { LogError(ErrorCode::E207, hrBrush); hr = hrBrush; }
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
 
             hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x44444A), &m_pBrushTrack);
-            if (FAILED(hrBrush)) { LogError(ErrorCode::E207, hrBrush); hr = hrBrush; }
-
-            if (FAILED(hr)) {
-                DiscardGraphicsResources();
-            }
+            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
         }
     }
 
@@ -278,25 +273,21 @@ HRESULT MainWindow::CreateGraphicsResources() {
                 DWRITE_FONT_WEIGHT_SEMI_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
                 20.0f, L"en-us", &m_pTextFormatTitle
             );
-            if (FAILED(hrFmt)) { LogError(ErrorCode::E203, hrFmt); hr = hrFmt; }
+            if (FAILED(hrFmt)) LogError(ErrorCode::E203, hrFmt);
 
             hrFmt = m_pDWriteFactory->CreateTextFormat(
                 L"Segoe UI Variable Text", nullptr,
                 DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
                 13.0f, L"en-us", &m_pTextFormatBody
             );
-            if (FAILED(hrFmt)) { LogError(ErrorCode::E204, hrFmt); hr = hrFmt; }
+            if (FAILED(hrFmt)) LogError(ErrorCode::E204, hrFmt);
 
             hrFmt = m_pDWriteFactory->CreateTextFormat(
                 L"Segoe UI Variable Text", nullptr,
                 DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
                 10.5f, L"en-us", &m_pTextFormatDetail
             );
-            if (FAILED(hrFmt)) { LogError(ErrorCode::E205, hrFmt); hr = hrFmt; }
-
-            if (FAILED(hr)) {
-                DiscardGraphicsResources();
-            }
+            if (FAILED(hrFmt)) LogError(ErrorCode::E205, hrFmt);
         }
     }
 
@@ -826,12 +817,12 @@ void MainWindow::OnPaint() {
     wchar_t versionFull[64] = { 0 };
     if (m_updateChecked) {
         if (m_updateAvailable) {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.3.8");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.3.9");
         } else {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.3.8");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.3.9");
         }
     } else {
-        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.3.8");
+        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.3.9");
     }
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
     m_pRenderTarget->DrawText(
@@ -975,10 +966,7 @@ void MainWindow::PushUndoState() {
 
 DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
     MainWindow* self = reinterpret_cast<MainWindow*>(lpParam);
-
-    bool updateAvailable = false;
-    wchar_t* latestVer = nullptr;
-
+    
     HINTERNET hSession = WinHttpOpen(L"WinDimmer64/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, nullptr, nullptr, 0);
     if (hSession) {
         HINTERNET hConnect = WinHttpConnect(hSession, L"api.github.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
@@ -990,7 +978,8 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                 if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, nullptr, 0, 0, 0)) {
                     if (WinHttpReceiveResponse(hRequest, nullptr)) {
                         DWORD size = 0;
-                        if (WinHttpQueryDataAvailable(hRequest, &size) && size > 0) {
+                        WinHttpQueryDataAvailable(hRequest, &size);
+                        if (size > 0) {
                             std::vector<char> buf(size + 1);
                             DWORD read = 0;
                             if (WinHttpReadData(hRequest, buf.data(), size, &read)) {
@@ -1002,11 +991,14 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                                     if (end) {
                                         int len = static_cast<int>(end - tag);
                                         if (len > 0 && len < 20) {
-                                            latestVer = new wchar_t[32];
-                                            MultiByteToWideChar(CP_UTF8, 0, tag, len, latestVer, 32);
-                                            latestVer[len] = L'\0';
-                                            if (wcscmp(latestVer, L"1.3.8") > 0)
-                                                updateAvailable = true;
+                                            wchar_t ver[32] = { 0 };
+                                            MultiByteToWideChar(CP_UTF8, 0, tag, len, ver, 32);
+                                            wchar_t* latestVer = new wchar_t[32];
+                                            StringCchCopyW(latestVer, 32, ver);
+                                            if (wcscmp(ver, L"1.3.9") > 0)
+                                                PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 1);
+                                            else
+                                                PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 0);
                                         }
                                     }
                                 }
@@ -1020,17 +1012,20 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
         }
         WinHttpCloseHandle(hSession);
     }
-
-    PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, updateAvailable ? 1 : 0,
-        reinterpret_cast<LPARAM>(latestVer));
+    
+    self->m_updateChecked = true;
+    PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, 0, 0);
     return 0;
 }
 
-void MainWindow::OnUpdateCheckComplete() {
-    // Called on main thread — safe to update members
-    if (!m_updateChecked) {
-        m_updateChecked = true;
+void MainWindow::OnUpdateCheckComplete(WPARAM wp, LPARAM lp) {
+    wchar_t* latestVer = reinterpret_cast<wchar_t*>(wp);
+    if (latestVer) {
+        m_latestVersion = latestVer;
+        m_updateAvailable = (lp != 0);
+        delete[] latestVer;
     }
+    m_updateChecked = true;
     InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
@@ -1643,16 +1638,12 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                     for (auto& monConf : self->m_config.monitors) {
                         monConf.enabled = self->m_config.masterEnabled;
                     }
-                    for (auto& monConf : self->m_config.monitors) {
-                        monConf.enabled = self->m_config.masterEnabled;
-                    }
                     for (auto& sl : self->m_sliders) {
                         sl.active = self->m_config.masterEnabled;
                     }
                     for (auto& cb : self->m_checkboxes) {
-                        if (cb.settingName == L"MasterEnabled") {
+                        if (cb.settingName == L"MasterEnabled" || !cb.monitorId.empty()) {
                             cb.checked = self->m_config.masterEnabled;
-                            break;
                         }
                     }
                     DimmerManager::Instance().UpdateCursorDimming();
@@ -1715,14 +1706,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                 return 0;
             }
             case WM_UPDATE_CHECK: {
-                self->m_updateChecked = true;
-                self->m_updateAvailable = (wp != 0);
-                wchar_t* verStr = reinterpret_cast<wchar_t*>(lp);
-                if (verStr) {
-                    self->m_latestVersion = verStr;
-                    delete[] verStr;
-                }
-                self->OnUpdateCheckComplete();
+                self->OnUpdateCheckComplete(wp, lp);
                 return 0;
             }
             case WM_TRAYICON: {

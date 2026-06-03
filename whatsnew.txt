@@ -1,14 +1,9 @@
-v1.3.8 — Fix active dimming broken by stale idle state + missing global flag
+v1.3.9 — Seven bug fixes, working per-monitor control, active dimming restored.
 
-Bug 1: Ctrl+Alt+D hotkey only toggled per-monitor enabled but never set
-the global m_dimmingEnabled flag. Overlay timer check
-"IsDimmingEnabled() && info->enabled" always failed unless you used the
-GUI toggle first. Fixed: hotkey now calls SetDimmingEnabled().
-
-Bug 2: When idle dim was disabled mid-session, m_isIdleState stayed true
-forever. The overlay timer's idle branch would always catch dimming
-before it reached the active dimming branch. Fixed: timer 202 else
-clause clears idle state when idle dim is off.
-
-Overlay priority: idle > video > dimming (v1.3.6 order, proven working).
-Idle timer runs regardless of video detection.
+• groupDim default changed to false — each monitor toggles independently
+• Ctrl+Alt+D hotkey now calls SetDimmingEnabled() so it actually works
+• Idle timer no longer skips when video is detected (idle state doesn't stick)
+• Idle state cleared when idle dim is disabled (was stuck forever)
+• Overlay idle branch checks info->enabled (disabled monitors stay off during idle)
+• Overlay idle branch uses max(dimValue, idleDimLevel) (per-monitor slider respected)
+• Update check thread data race fixed (PostMessage instead of direct write)

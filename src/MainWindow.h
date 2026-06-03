@@ -119,7 +119,7 @@ private:
     bool m_updateAvailable = false;
     std::wstring m_latestVersion;
     static DWORD WINAPI CheckForUpdatesThread(LPVOID lpParam);
-    void OnUpdateCheckComplete();
+    void OnUpdateCheckComplete(WPARAM wp, LPARAM lp);
 
     // Blocked apps UI
     static const int CONTENT_WIDTH = 480;

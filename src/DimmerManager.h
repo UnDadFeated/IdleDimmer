@@ -44,6 +44,7 @@ public:
     void CheckVideoPlayback();
     void SetBlockedApps(const std::vector<std::wstring>& apps);
     bool IsVideoDetected() const { return m_videoDetected; }
+    bool IsAnyBlockedAppPlayingAudio();
 
 private:
     DimmerManager() = default;

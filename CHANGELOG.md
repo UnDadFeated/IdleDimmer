@@ -2,7 +2,18 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
-## [1.3.8] - 2026-06-02
+## [1.3.9] - 2026-06-02
+
+### Bug Fixes
+* **Per-monitor toggles all controls tied together**: `groupDim` defaulted to `true` but no GroupDim checkbox was shown in the UI, so every monitor toggle and slider adjusted ALL monitors. Changed default to `false` so each monitor controls independently.
+* **Ctrl+Alt+D hotkey never enabled dimming**: Hotkey only toggled `info->enabled` per monitor but never set the global `m_dimmingEnabled` flag. The overlay timer's `IsDimmingEnabled() && info->enabled` check always failed, keeping overlays transparent. Now calls `SetDimmingEnabled()`.
+* **Idle state stuck when video detected**: The `&& !IsVideoDetected()` guard on timer 202 prevented the idle timer from clearing idle state when a blocked app was playing. If idle activated before video started, idle state stayed true indefinitely, causing the overlay to always use idle dim level instead of the per-monitor slider value. Removed guard; idle timer now always runs.
+* **Idle state never cleared when idle dimming disabled**: No else clause existed — when `idleDimEnabled` was toggled off, `m_isIdleState` stayed `true` forever. Added explicit `SetIdleState(false)` in the timer else branch.
+* **Overlay idle dim ignored per-monitor enabled**: `IsIdleState()` branch didn't check `info->enabled`, so disabled monitors still dimmed during idle. Added `info->enabled` guard.
+* **Overlay idle dim ignored per-monitor slider value**: Used only `GetIdleDimLevel()`, ignoring the per-monitor slider. Now uses `max(info->dimValue, idleDimLevel)` so each monitor's dim level is respected even during idle.
+* **Update check thread data race**: Background thread wrote directly to `m_latestVersion` and `m_updateAvailable` while `OnPaint` read them. Now passes results through `PostMessage` WPARAM/LPARAM.
+
+### Updates
 
 ### Bug Fixes
 * **Active dimming not working**: Two issues combined to break all dimming. First, the global `m_dimmingEnabled` flag was never set by the Ctrl+Alt+D hotkey (ID 103) — it only toggled per-monitor `enabled` leaving the global flag in its default `false` state, so the overlay timer's `IsDimmingEnabled() && info->enabled` check always failed. Second, `SetIdleState` was never called to clear idle state when `idleDimEnabled` was toggled off — stuck idle state caused the overlay to enter the idle branch instead of the active dimming branch. Fixed: hotkey now calls `SetDimmingEnabled()` and idle timer explicitly clears idle state when idle dim is disabled.
