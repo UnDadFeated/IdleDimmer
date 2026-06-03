@@ -75,15 +75,15 @@
 ## Key Behaviors
 
 - **Startup**: `dimmingEnabled` defaults to `false` — never auto-dim on launch
-- **Group Dim**: When `groupDim` is on, any slider drag/wheel/key syncs all monitors to the same value immediately
+- **Per-monitor**: Each monitor has its own toggle and slider — no group mode (groupDim removed in v1.4.0)
 - **Auto-enable**: Dragging/arrowing/scrolling a monitor slider auto-enables `dimmingEnabled` if it was off
 - **Undo**: Session-start config snapshot (`m_backupConfig`); "Undo Changes" button in top-right header restores it
 - **Device loss**: `D2DERR_RECREATED` → discard + recreate graphics resources (`MainWindow.cpp:626-629`)
 - **Hot-plug**: `WM_DISPLAYCHANGE` triggers `RefreshMonitors()` → rebuild overlays, preserve saved per-monitor values
 
-## Changelog (`whatsnew.txt`)
+## Changelog
 
-Write in natural human style. No AI boilerplate/buzzwords. Sections: **Updates**, **Bug Fixes**, **New Features**. Keep descriptions direct and punchy.
+Write in natural human style in CHANGELOG.md. No AI boilerplate/buzzwords. Sections: **Updates**, **Bug Fixes**, **New Features**. Keep descriptions direct and punchy. Release notes go directly to `gh release create --notes "..."` — no separate whatsnew.txt file in the repo.
 
 ## Gotchas
 
@@ -102,5 +102,5 @@ To publish a release to the GitHub web interface when local authentication for t
 2. **Execute Headless Release**: Set the token to the `GH_TOKEN` environment variable so `gh` uses it directly, bypassing scope verification login limits, and run the release create command:
    ```cmd
    $env:GH_TOKEN="<retrieved_token>"
-   gh release create v1.2.8 WinDimmer64-Setup-v1.2.8.exe --title "v1.2.8" --notes-file release_notes.txt
+    gh release create v1.2.8 WinDimmer64-Setup-v1.2.8.exe --title "v1.2.8" --notes "Release notes go here"
    ```
