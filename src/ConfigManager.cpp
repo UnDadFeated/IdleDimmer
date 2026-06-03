@@ -87,6 +87,7 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     if (findValue(L"LightMode", val)) config.lightMode = ParseBool(val);
     if (findValue(L"DimmingEnabled", val)) config.dimmingEnabled = ParseBool(val);
     if (findValue(L"GroupDim", val)) config.groupDim = ParseBool(val);
+    config.groupDim = false; // Force off — group mode was removed
 
     // Parse BlockedApps array
     size_t blockedPos = content.find(L"\"BlockedApps\"");

@@ -1,9 +1,10 @@
-v1.3.9 — Seven bug fixes, working per-monitor control, active dimming restored.
+v1.4.0 — Bug audit sweep: group dim removed, hotkey config sync, wheel coordinates
 
-• groupDim default changed to false — each monitor toggles independently
-• Ctrl+Alt+D hotkey now calls SetDimmingEnabled() so it actually works
-• Idle timer no longer skips when video is detected (idle state doesn't stick)
-• Idle state cleared when idle dim is disabled (was stuck forever)
-• Overlay idle branch checks info->enabled (disabled monitors stay off during idle)
-• Overlay idle branch uses max(dimValue, idleDimLevel) (per-monitor slider respected)
-• Update check thread data race fixed (PostMessage instead of direct write)
+• Removed all groupDim branching from toggle/drag/scroll/arrow handlers
+  — per-monitor is now the only mode. Stale INI files can't re-enable it.
+• Ctrl+Alt+D now updates m_config.dimmingEnabled so the DimmingEnabled
+  checkbox stays in sync and saves/restores correctly.
+• WM_MOUSEWHEEL screen→client coordinate bug fixed (slider hit-testing
+  was using screen-space coordinates).
+• Fixes 2 (auto-enable SetDimmingEnabled) and 4 (CoInitializeEx) from
+  the audit report were already in place — verified.

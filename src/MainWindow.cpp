@@ -817,12 +817,12 @@ void MainWindow::OnPaint() {
     wchar_t versionFull[64] = { 0 };
     if (m_updateChecked) {
         if (m_updateAvailable) {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.3.9");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | v1.4.0");
         } else {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.3.9");
+            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | v1.4.0");
         }
     } else {
-        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.3.9");
+        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), L"v1.4.0");
     }
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
     m_pRenderTarget->DrawText(
@@ -890,27 +890,11 @@ void MainWindow::HandleMouseMove(int x, int y) {
                 }
             } else {
                 int actualDim = static_cast<int>(slider.value * 90.0f);
-                if (m_config.groupDim) {
-                    m_config.masterValue = actualDim;
-                    const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
-                    for (const auto& mon : activeMons) {
-                        DimmerManager::Instance().SetMonitorDim(mon.id, actualDim);
-                    }
-                    for (auto& monConf : m_config.monitors) {
+                DimmerManager::Instance().SetMonitorDim(slider.monitorId, actualDim);
+                for (auto& monConf : m_config.monitors) {
+                    if (monConf.id == slider.monitorId) {
                         monConf.value = actualDim;
-                    }
-                    for (auto& other : m_sliders) {
-                        if (!other.isIdleMinutes && !other.isIdleDimLevel) {
-                            other.value = slider.value;
-                        }
-                    }
-                } else {
-                    DimmerManager::Instance().SetMonitorDim(slider.monitorId, actualDim);
-                    for (auto& monConf : m_config.monitors) {
-                        if (monConf.id == slider.monitorId) {
-                            monConf.value = actualDim;
-                            break;
-                        }
+                        break;
                     }
                 }
             }
@@ -995,7 +979,7 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                                             MultiByteToWideChar(CP_UTF8, 0, tag, len, ver, 32);
                                             wchar_t* latestVer = new wchar_t[32];
                                             StringCchCopyW(latestVer, 32, ver);
-                                            if (wcscmp(ver, L"1.3.9") > 0)
+                                            if (wcscmp(ver, L"1.4.0") > 0)
                                                 PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 1);
                                             else
                                                 PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 0);
@@ -1126,40 +1110,17 @@ void MainWindow::HandleLButtonDown(int x, int y) {
 
             // Apply setting immediately
             if (!cb.monitorId.empty()) {
-                // Individual screen checkbox
-                if (m_config.groupDim) {
-                    m_config.masterEnabled = cb.checked;
-                    const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
-                    for (const auto& mon : activeMons) {
-                        DimmerManager::Instance().SetMonitorEnabled(mon.id, cb.checked);
-                    }
-                    for (auto& monConf : m_config.monitors) {
+                DimmerManager::Instance().SetMonitorEnabled(cb.monitorId, cb.checked);
+                for (auto& monConf : m_config.monitors) {
+                    if (monConf.id == cb.monitorId) {
                         monConf.enabled = cb.checked;
+                        break;
                     }
-                    for (auto& sl : m_sliders) {
-                        if (!sl.isIdleMinutes && !sl.isIdleDimLevel) {
-                            sl.active = cb.checked;
-                        }
-                    }
-                    for (auto& otherCb : m_checkboxes) {
-                        if (!otherCb.monitorId.empty() || otherCb.settingName == L"MasterEnabled") {
-                            otherCb.checked = cb.checked;
-                        }
-                    }
-                } else {
-                    DimmerManager::Instance().SetMonitorEnabled(cb.monitorId, cb.checked);
-                    for (auto& monConf : m_config.monitors) {
-                        if (monConf.id == cb.monitorId) {
-                            monConf.enabled = cb.checked;
-                            break;
-                        }
-                    }
-                    // Refresh slider active status
-                    for (auto& sl : m_sliders) {
-                        if (sl.monitorId == cb.monitorId) {
-                            sl.active = cb.checked;
-                            break;
-                        }
+                }
+                for (auto& sl : m_sliders) {
+                    if (sl.monitorId == cb.monitorId) {
+                        sl.active = cb.checked;
+                        break;
                     }
                 }
             } else if (cb.settingName == L"MasterEnabled") {
@@ -1251,10 +1212,11 @@ void MainWindow::HandleLButtonUp(int x, int y) {
 }
 
 void MainWindow::HandleMouseWheel(short delta, int x, int y) {
+    POINT pt = { x, y };
+    ScreenToClient(m_hwnd, &pt);
+
     // Panel scroll: if mouse is over the right-side panel
     if (m_blockedExpanded) {
-        POINT pt = { x, y };
-        ScreenToClient(m_hwnd, &pt);
         if (pt.x >= m_blockedPanelRect.left && pt.x <= m_blockedPanelRect.right &&
             pt.y >= m_blockedPanelRect.top && pt.y <= m_blockedPanelRect.bottom) {
             int visibleHeight = m_blockedPanelRect.bottom - m_blockedPanelRect.top - 60;
@@ -1269,9 +1231,6 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
     }
 
     // Zoom/increment the slider currently hovered
-    POINT pt = { x, y };
-    ScreenToClient(m_hwnd, &pt);
-
     bool changed = false;
     for (auto& slider : m_sliders) {
         if (slider.active && pt.x >= slider.rect.left && pt.x <= slider.rect.right && pt.y >= slider.rect.top && pt.y <= slider.rect.bottom) {
@@ -1311,24 +1270,11 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
                 }
             } else {
                 int actualDim = static_cast<int>(slider.value * 90.0f);
-                if (m_config.groupDim) {
-                    m_config.masterValue = actualDim;
-                    for (auto& mon : DimmerManager::Instance().GetActiveMonitors()) {
-                        DimmerManager::Instance().SetMonitorDim(mon.id, actualDim);
-                    }
-                    for (auto& monConf : m_config.monitors) {
+                DimmerManager::Instance().SetMonitorDim(slider.monitorId, actualDim);
+                for (auto& monConf : m_config.monitors) {
+                    if (monConf.id == slider.monitorId) {
                         monConf.value = actualDim;
-                    }
-                    for (auto& other : m_sliders) {
-                        if (!other.isIdleMinutes && !other.isIdleDimLevel) other.value = slider.value;
-                    }
-                } else {
-                    DimmerManager::Instance().SetMonitorDim(slider.monitorId, actualDim);
-                    for (auto& monConf : m_config.monitors) {
-                        if (monConf.id == slider.monitorId) {
-                            monConf.value = actualDim;
-                            break;
-                        }
+                        break;
                     }
                 }
             }
@@ -1389,24 +1335,11 @@ void MainWindow::HandleKeyDown(WPARAM key) {
                     }
                 } else {
                     int actualDim = static_cast<int>(slider.value * 90.0f);
-                    if (m_config.groupDim) {
-                        m_config.masterValue = actualDim;
-                        for (auto& mon : DimmerManager::Instance().GetActiveMonitors()) {
-                            DimmerManager::Instance().SetMonitorDim(mon.id, actualDim);
-                        }
-                        for (auto& monConf : m_config.monitors) {
+                    DimmerManager::Instance().SetMonitorDim(slider.monitorId, actualDim);
+                    for (auto& monConf : m_config.monitors) {
+                        if (monConf.id == slider.monitorId) {
                             monConf.value = actualDim;
-                        }
-                        for (auto& other : m_sliders) {
-                            if (!other.isIdleMinutes && !other.isIdleDimLevel) other.value = slider.value;
-                        }
-                    } else {
-                        DimmerManager::Instance().SetMonitorDim(slider.monitorId, actualDim);
-                        for (auto& monConf : m_config.monitors) {
-                            if (monConf.id == slider.monitorId) {
-                                monConf.value = actualDim;
-                                break;
-                            }
+                            break;
                         }
                     }
                 }
@@ -1631,6 +1564,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                 } else if (wp == 103) {
                     self->PushUndoState();
                     self->m_config.masterEnabled = !self->m_config.masterEnabled;
+                    self->m_config.dimmingEnabled = self->m_config.masterEnabled;
                     DimmerManager::Instance().SetDimmingEnabled(self->m_config.masterEnabled);
                     for (const auto& mon : DimmerManager::Instance().GetActiveMonitors()) {
                         DimmerManager::Instance().SetMonitorEnabled(mon.id, self->m_config.masterEnabled);
@@ -1642,7 +1576,7 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                         sl.active = self->m_config.masterEnabled;
                     }
                     for (auto& cb : self->m_checkboxes) {
-                        if (cb.settingName == L"MasterEnabled" || !cb.monitorId.empty()) {
+                        if (cb.settingName == L"MasterEnabled" || !cb.monitorId.empty() || cb.settingName == L"DimmingEnabled") {
                             cb.checked = self->m_config.masterEnabled;
                         }
                     }

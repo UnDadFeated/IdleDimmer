@@ -2,7 +2,16 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
-## [1.3.9] - 2026-06-02
+## [1.4.0] - 2026-06-02
+
+### Bug Fixes
+* **Per-monitor toggles silently grouped (reported)**: `groupDim` branching was still wired into every toggle, drag, scroll, and arrow-key handler even though the checkbox was removed from the UI. A stale `true` value in the INI file made per-monitor toggles behave as master toggles, syncing all monitors at once. Removed every `if (m_config.groupDim)` branch across HandleLButtonDown, HandleMouseMove, HandleMouseWheel, and HandleKeyDown — individual path only. Forced `config.groupDim = false` on config load so stale files can't re-enable it.
+* **Hotkey Ctrl+Alt+D didn't update dimmingEnabled config**: `SetDimmingEnabled()` was called but `m_config.dimmingEnabled` was never set, so the DimmingEnabled checkbox showed stale state and saves/restores used the wrong value. Now both are in sync.
+* **WM_MOUSEWHEEL screen coordinates not converted to client**: Used raw `x,y` from `lParam` (screen-space) for slider hit-testing. On non-zero window positions or mixed-DPI setups, scroll-wheel adjustments silently targeted wrong locations. Unified to a single `ScreenToClient` conversion at the top of the function.
+
+### Notes
+* Fixes 2 (auto-enable SetDimmingEnabled) and 4 (CoInitializeEx) from the audit were already present — confirmed in code.
+* Active dimming, per-monitor independent control, and idle state management are all based on the v1.3.9 foundation which resolved 7 prior bugs.
 
 ### Bug Fixes
 * **Per-monitor toggles all controls tied together**: `groupDim` defaulted to `true` but no GroupDim checkbox was shown in the UI, so every monitor toggle and slider adjusted ALL monitors. Changed default to `false` so each monitor controls independently.
