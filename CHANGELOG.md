@@ -2,6 +2,12 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.4.7] - 2026-06-02
+
+### Bug Fixes
+* **Active dimming dying after 1 second**: `SHQueryUserNotificationState` in `IsFullscreenAppActive()` was treating `QUNS_BUSY` as a fullscreen signal. On a normal active desktop, the default state is `QUNS_ACCEPTS_NOTIFICATIONS`, but various Windows activities (focus assist transitioning, lock screen, UAC dialog) can land the session in `QUNS_BUSY` briefly — every 5-second full check then set `m_videoDetected = true` and forced the overlay to fade out, even when nothing was actually playing video. Reverted to checking only `QUNS_RUNNING_D3D_FULL_SCREEN` and `QUNS_PRESENTATION_MODE`, which are the two states that genuinely indicate a fullscreen app is occupying the foreground.
+* **Setup showing "Installed: v1.4.0" for the current installation**: `FILEVERSION` and `PRODUCTVERSION` (the comma-form) in `resources\resources.rc` and `resources\setup.rc` were never bumped past `1,4,0,0` — only the `VALUE "FileVersion"` / `VALUE "ProductVersion"` strings were updated each release. `GetExeVersion()` in `setup.cpp` reads the comma-form via `VerQueryValue`, so it always reported `1.4.0.0` regardless of what the strings said. Both forms are now kept in sync at `1,4,7,0` / `1.4.7.0` across all four resource locations, and the `APP_VERSION` constant in `MainWindow.cpp` + `VER` in `setup.cpp` match them. The version field in the UI header and the installer's "Detected installed:" readout will now read correctly on every release going forward.
+
 ## [1.4.6] - 2026-06-02
 
 ### Bug Fixes

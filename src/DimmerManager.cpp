@@ -230,7 +230,7 @@ static bool IsFullscreenAppActive() {
         if (pfn) {
             QUERY_USER_NOTIFICATION_STATE state;
             if (SUCCEEDED(pfn(&state))) {
-                if (state == QUNS_BUSY || state == QUNS_RUNNING_D3D_FULL_SCREEN || state == QUNS_PRESENTATION_MODE) {
+                if (state == QUNS_RUNNING_D3D_FULL_SCREEN || state == QUNS_PRESENTATION_MODE) {
                     active = true;
                 }
             }

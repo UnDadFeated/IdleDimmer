@@ -11,9 +11,9 @@
 - **Setup** (requires `WinDimmer64.exe` in project root — rebuild resources *after* app exe to embed the correct version):
    ```cmd
    llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
-   clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -o WinDimmer64-Setup-v1.4.6.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -ldwmapi -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
+   clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -o WinDimmer64-Setup-v1.4.7.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -ldwmapi -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
 
-- Output: `WinDimmer64.exe` (~100 KB), `WinDimmer64-Setup-v1.4.6.exe` (~200 KB with embedded exe)
+- Output: `WinDimmer64.exe` (~100 KB), `WinDimmer64-Setup-v1.4.7.exe` (~200 KB with embedded exe)
 
 ## Architecture
 
@@ -157,6 +157,6 @@ To publish a release to the GitHub web interface when local authentication for t
 2. **Execute Headless Release**: Set the token to the `GH_TOKEN` environment variable so `gh` uses it directly, bypassing scope verification login limits, and run the release create command:
    ```cmd
    $env:GH_TOKEN="<retrieved_token>"
-    gh release create v1.4.6 WinDimmer64-Setup-v1.4.6.exe --title "v1.4.6" --notes "Release notes go here"
+    gh release create v1.4.7 WinDimmer64-Setup-v1.4.7.exe --title "v1.4.7" --notes "Release notes go here"
    ```
 3. **Delete old tags before re-releasing**: `git tag -d vX.Y.Z; git push origin --delete vX.Y.Z` when replacing a release.
