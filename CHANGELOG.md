@@ -2,6 +2,12 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.4.2] - 2026-06-02
+
+### Updates
+* **Defender heuristic reduction**: Replaced `HWND_BROADCAST` + `SC_MONITORPOWER` broadcast with a targeted `SendMessage` to `GetDesktopWindow()` and `Shell_TrayWnd` — eliminates a top malware-class heuristic flag.
+* **Throttled process enumeration**: Added `m_videoCheckTick` counter in `CheckVideoPlayback()` so `OpenProcess`/`QueryFullProcessImageNameW` and COM audio enumeration only run every 5th second instead of every second, reducing surveillance-like API patterns.
+
 ## [1.4.1] - 2026-06-02
 
 ### Bug Fixes

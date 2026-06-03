@@ -354,12 +354,15 @@ static bool IsForegroundWindowFullscreen() {
 
 void DimmerManager::CheckVideoPlayback() {
     bool detected = false;
+    m_videoCheckTick++;
 
     if (IsFullscreenAppActive() || IsForegroundWindowFullscreen()) {
         detected = true;
     }
 
-    if (!detected) {
+    bool doFullCheck = (m_videoCheckTick % 5 == 0);
+
+    if (!detected && doFullCheck) {
         HWND hFore = GetForegroundWindow();
         if (hFore) {
             DWORD pid = GetRealProcessId(hFore);
@@ -375,7 +378,7 @@ void DimmerManager::CheckVideoPlayback() {
         }
     }
 
-    if (!detected) {
+    if (!detected && doFullCheck) {
         if (IsAnyBlockedAppPlayingAudio()) {
             detected = true;
         }

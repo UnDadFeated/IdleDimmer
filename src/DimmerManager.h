@@ -65,5 +65,6 @@ private:
 
     bool m_cursorHidden = false;
     bool m_videoDetected = false;
+    int m_videoCheckTick = 0;
     std::vector<std::wstring> m_blockedApps;
 };

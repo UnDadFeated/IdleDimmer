@@ -1596,7 +1596,12 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                                 if (!DimmerManager::Instance().IsIdleState()) {
                                     DimmerManager::Instance().SetIdleState(true, self->m_config.idleDimLevel);
                                     if (self->m_config.idleTurnOff) {
-                                        PostMessageW(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
+                                        HWND hShell = FindWindowW(L"Shell_TrayWnd", NULL);
+                                        if (hShell) {
+                                            PostMessageW(hShell, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
+                                        } else {
+                                            SendMessageW(GetDesktopWindow(), WM_SYSCOMMAND, SC_MONITORPOWER, 2);
+                                        }
                                     }
                                 }
                             } else {
