@@ -45,6 +45,8 @@ public:
     bool IsAnyBlockedAppPlayingAudio();
     POINT GetLastMousePos() const { return m_lastMousePos; }
     void SetLastMousePos(POINT pt) { m_lastMousePos = pt; }
+    bool IsSettingCursorPos() const { return m_isSettingCursorPos; }
+    void SetSettingCursorPos(bool val) { m_isSettingCursorPos = val; }
 
 private:
     DimmerManager() = default;
@@ -66,4 +68,5 @@ private:
     int m_videoCheckTick = 0;
     std::vector<std::wstring> m_blockedApps;
     POINT m_lastMousePos = { -1, -1 };
+    bool m_isSettingCursorPos = false;
 };

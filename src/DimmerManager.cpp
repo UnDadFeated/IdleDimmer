@@ -179,10 +179,14 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
         UpdateCursorDimming();
 
         if (idle) {
-            // Force cursor to update/hide immediately
+            // Force cursor to update/hide immediately by shifting it 1px to trigger WM_SETCURSOR and hit-testing
             POINT pt;
             if (GetCursorPos(&pt)) {
+                m_isSettingCursorPos = true;
+                int dx = (pt.x > 0) ? -1 : 1;
+                SetCursorPos(pt.x + dx, pt.y);
                 SetCursorPos(pt.x, pt.y);
+                m_isSettingCursorPos = false;
             }
         }
     }
@@ -604,6 +608,9 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN: {
             if (DimmerManager::Instance().IsIdleState()) {
+                if (DimmerManager::Instance().IsSettingCursorPos()) {
+                    return DefWindowProcW(hwnd, msg, wp, lp);
+                }
                 POINT pt;
                 if (GetCursorPos(&pt)) {
                     POINT lastPt = DimmerManager::Instance().GetLastMousePos();
