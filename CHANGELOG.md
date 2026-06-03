@@ -2,6 +2,12 @@
 
 All notable changes to the WinDimmer64 project are documented here.
 
+## [1.4.1] - 2026-06-02
+
+### Bug Fixes
+* **Dead GroupDim handler removed**: The `else if (cb.settingName == L"GroupDim")` block in `MainWindow.cpp` was left over from v1.4.0 — no UI can trigger it, but the code inside forcibly synced all monitors to `masterValue`. Deleted. Also stripped `groupDim` from `ConfigManager.h` struct and from `SaveConfig`/`LoadConfig`. No remaining trace of the flag.
+* **SYSTEM: ACTIVE status now respects dimmingEnabled toggle**: The footer status indicator checked per-monitor `enabled && dimValue > 0` but ignored the global `dimmingEnabled` flag. If dimming was toggled off with non-zero slider values saved, it incorrectly showed "ACTIVE". Now gated behind `if (m_config.dimmingEnabled)`.
+
 ## [1.4.0] - 2026-06-02
 
 ### Bug Fixes

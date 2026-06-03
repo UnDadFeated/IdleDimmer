@@ -86,9 +86,6 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     if (findValue(L"MasterEnabled", val)) config.masterEnabled = ParseBool(val);
     if (findValue(L"LightMode", val)) config.lightMode = ParseBool(val);
     if (findValue(L"DimmingEnabled", val)) config.dimmingEnabled = ParseBool(val);
-    if (findValue(L"GroupDim", val)) config.groupDim = ParseBool(val);
-    config.groupDim = false; // Force off — group mode was removed
-
     // Parse BlockedApps array
     size_t blockedPos = content.find(L"\"BlockedApps\"");
     if (blockedPos != std::wstring::npos) {
@@ -168,7 +165,6 @@ void ConfigManager::SaveConfig(const std::wstring& filePath, const AppConfig& co
     file << L"  \"MasterEnabled\": " << (config.masterEnabled ? L"true" : L"false") << L",\n";
     file << L"  \"LightMode\": " << (config.lightMode ? L"true" : L"false") << L",\n";
     file << L"  \"DimmingEnabled\": " << (config.dimmingEnabled ? L"true" : L"false") << L",\n";
-    file << L"  \"GroupDim\": " << (config.groupDim ? L"true" : L"false") << L",\n";
 
     file << L"  \"BlockedApps\": [";
     for (size_t i = 0; i < config.blockedApps.size(); ++i) {

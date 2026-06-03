@@ -27,7 +27,6 @@ struct AppConfig {
     bool masterEnabled = true;
     bool lightMode = false;
     bool dimmingEnabled = false; // Default to false so it does NOT dim on startup!
-    bool groupDim = false;
     std::vector<MonitorConfig> monitors;
     std::vector<std::wstring> blockedApps;
     AppConfig() {

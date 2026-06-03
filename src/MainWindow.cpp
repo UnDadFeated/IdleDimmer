@@ -775,11 +775,13 @@ void MainWindow::OnPaint() {
 
     // Dynamic Dimmer Status Indicator
     bool anyDimmerActive = false;
-    const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
-    for (const auto& mon : activeMons) {
-        if (mon.enabled && mon.dimValue > 0) {
-            anyDimmerActive = true;
-            break;
+    if (m_config.dimmingEnabled) {
+        const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
+        for (const auto& mon : activeMons) {
+            if (mon.enabled && mon.dimValue > 0) {
+                anyDimmerActive = true;
+                break;
+            }
         }
     }
 
@@ -1161,29 +1163,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 // Handled dynamically
             } else if (cb.settingName == L"DimmingEnabled") {
                 DimmerManager::Instance().SetDimmingEnabled(cb.checked);
-            } else if (cb.settingName == L"GroupDim") {
-                if (cb.checked) {
-                    const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
-                    for (const auto& mon : activeMons) {
-                        DimmerManager::Instance().SetMonitorDim(mon.id, m_config.masterValue);
-                        DimmerManager::Instance().SetMonitorEnabled(mon.id, m_config.masterEnabled);
-                    }
-                    for (auto& monConf : m_config.monitors) {
-                        monConf.value = m_config.masterValue;
-                        monConf.enabled = m_config.masterEnabled;
-                    }
-                    for (auto& sl : m_sliders) {
-                        if (!sl.isMaster && !sl.isIdleMinutes && !sl.isIdleDimLevel) {
-                            sl.value = m_config.masterValue / 90.0f;
-                            sl.active = m_config.masterEnabled;
-                        }
-                    }
-                    for (auto& otherCb : m_checkboxes) {
-                        if (!otherCb.monitorId.empty()) {
-                            otherCb.checked = m_config.masterEnabled;
-                        }
-                    }
-                }
             } else if (cb.settingName == L"LightMode") {
                 BOOL useDark = !cb.checked;
                 DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
