@@ -49,14 +49,6 @@ Desktop Bridge MSIX package. Auto-updates. Sandbox-friendly. Paid (cheapest tier
 
 ---
 
-## What's new in v1.4.7
-
-- **Fixed:** Active dimming was fading out after ~1 second on some systems. `SHQueryUserNotificationState` was misclassifying `QUNS_BUSY` as a "fullscreen app" signal, so the 5-second full check kept forcing the overlay to fade out. Now only `QUNS_RUNNING_D3D_FULL_SCREEN` and `QUNS_PRESENTATION_MODE` trigger the bypass.
-- **Fixed:** Setup installer was reading the PE version resource's *comma-form* fields (`FILEVERSION 1,4,0,0`) instead of the *string-form* (`VALUE "FileVersion" "1.4.6.0"`), so it always reported "Installed: v1.4.0" no matter what version was actually installed. Both forms are now kept in sync.
-- All prior fixes preserved: per-monitor controls, idle detection, blocked-app bypass, fullscreen detection, hotkeys, clean uninstall.
-
-See [CHANGELOG.md](CHANGELOG.md) for the full history.
-
 ---
 
 ## Features
