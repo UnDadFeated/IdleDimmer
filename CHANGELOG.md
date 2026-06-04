@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.1] - 2026-06-04
+
+### Bug Fixes
+* **Conditional Cursor Hiding**: Updated the mouse cursor hiding logic during idle dimming so that the cursor only hides if all connected/enabled monitors are actually dimming. If any monitor is bypassing dimming (e.g. because of active audio or video playback), the cursor will remain visible globally since the user is considered nearby.
+
 ## [1.5.0] - 2026-06-04
 
 ### Bug Fixes

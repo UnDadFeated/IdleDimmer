@@ -204,16 +204,13 @@ void DimmerManager::SetDimmingEnabled(bool enabled) {
 
 void DimmerManager::UpdateCursorDimming() {
     int dimLevel = 0;
-    if (m_isIdleState)
+    if (m_isIdleState) {
         dimLevel = m_idleDimLevel;
 
-    // Check if the monitor under the cursor is playing video/audio.
-    // If so, do not hide the cursor or dim the cursor.
-    POINT pt;
-    if (GetCursorPos(&pt)) {
-        HMONITOR hMon = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+        // If any connected monitor has video playing, the user is nearby.
+        // In that case, we should not hide the cursor.
         for (const auto& mon : m_monitors) {
-            if (mon.hMonitor == hMon && mon.hasVideo) {
+            if (mon.hasVideo) {
                 dimLevel = 0;
                 break;
             }
