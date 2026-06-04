@@ -16,7 +16,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.4.9";
+static const wchar_t* APP_VERSION = L"v1.5.0";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -96,7 +96,7 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     m_canUndo = false;
     m_changeCount = 0;
 
-    CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
+    // Thread will be created after m_hwnd exists to prevent race condition
 
     // Register MainWindow Class
     WNDCLASSEXW wc = { 0 };
@@ -185,6 +185,8 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     if (!AddTrayIcon(m_hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness")) {
         LogError(ErrorCode::E213, HRESULT_FROM_WIN32(GetLastError()));
     }
+
+    m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
 
     UpdateLayout();
 
@@ -528,9 +530,15 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                             DWORD read = 0;
                             if (WinHttpReadData(hRequest, buf.data(), size, &read)) {
                                 buf[read] = 0;
-                                const char* tag = strstr(buf.data(), "\"tag_name\":\"v");
+                                const char* tag = strstr(buf.data(), "\"tag_name\"");
                                 if (tag) {
-                                    tag += 12;
+                                    tag += 10; // skip "tag_name"
+                                    while (*tag == ' ' || *tag == '\t' || *tag == ':') {
+                                        tag++;
+                                    }
+                                    if (*tag == '\"') tag++;
+                                    if (*tag == 'v') tag++;
+                                    
                                     const char* end = strchr(tag, '\"');
                                     if (end) {
                                         int len = static_cast<int>(end - tag);
@@ -539,10 +547,15 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                                             MultiByteToWideChar(CP_UTF8, 0, tag, len, ver, 32);
                                             wchar_t* latestVer = new wchar_t[32];
                                             StringCchPrintfW(latestVer, 32, L"v%s", ver);
+                                            BOOL posted = FALSE;
                                             if (CompareVersion(latestVer, self->m_appVersion.c_str()) > 0)
-                                                PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 1);
+                                                posted = PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 1);
                                             else
-                                                PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 0);
+                                                posted = PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 0);
+                                            
+                                            if (!posted) {
+                                                delete[] latestVer;
+                                            }
                                         }
                                     }
                                 }
@@ -706,6 +719,11 @@ MainWindow::~MainWindow() {
     if (m_pTextFormatTitle) m_pTextFormatTitle->Release();
     if (m_pTextFormatBody) m_pTextFormatBody->Release();
     if (m_pTextFormatDetail) m_pTextFormatDetail->Release();
+    if (m_hUpdateThread) {
+        WaitForSingleObject(m_hUpdateThread, 1000);
+        CloseHandle(m_hUpdateThread);
+        m_hUpdateThread = nullptr;
+    }
 }
 
 LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {

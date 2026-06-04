@@ -118,6 +118,7 @@ private:
     bool m_updateChecked = false;
     bool m_updateAvailable = false;
     std::wstring m_latestVersion;
+    HANDLE m_hUpdateThread = nullptr;
     static DWORD WINAPI CheckForUpdatesThread(LPVOID lpParam);
     void OnUpdateCheckComplete(WPARAM wp, LPARAM lp);
 

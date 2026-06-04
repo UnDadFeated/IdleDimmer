@@ -14,6 +14,8 @@ struct ActiveMonitorInfo {
     bool enabled = true;
     HMONITOR hMonitor = nullptr;
     bool hasVideo = false;
+    bool hasAudioVideo = false;
+    bool hasFullscreenVideo = false;
 };
 
 class DimmerManager {

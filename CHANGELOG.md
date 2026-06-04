@@ -2,6 +2,15 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.0] - 2026-06-04
+
+### Bug Fixes
+* **Memory Leak in Update Thread**: Fixed a heap-allocated memory leak of the version string if the window is closed before the thread completes.
+* **Robust Update Checking Parser**: Refactored the GitHub API tag parser to handle different JSON formatting styles, such as spaces after colons.
+* **Instant Fullscreen Dismissal**: Split monitor dimming suspension flags into source-specific states, allowing immediate fade-in when fullscreen applications are closed or moved.
+* **Opaque Idle Dimming**: Removed the 90% dimming cap for idle mode to allow fully black overlays when configured.
+* **Thread Handle Race Condition**: Delayed the update thread spawning until the main window handle is fully initialized to avoid posting to a null handle.
+
 ## [1.4.9] - 2026-06-03
 
 ### Bug Fixes

@@ -414,26 +414,22 @@ void DimmerManager::CheckVideoPlayback() {
     m_videoCheckTick++;
     bool doFullCheck = (m_videoCheckTick % 5 == 0);
 
+    // Determine current fullscreen monitor (on every second tick)
+    HMONITOR hCurrentFullscreenMon = nullptr;
+    if (IsForegroundWindowFullscreen() || IsFullscreenAppActive()) {
+        HWND hFore = GetForegroundWindow();
+        if (hFore) {
+            hCurrentFullscreenMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
+        }
+    }
+
     if (doFullCheck) {
-        // Reset all monitors video state
+        // Reset audio video state on full check (every 5 seconds)
         for (auto& mon : m_monitors) {
-            mon.hasVideo = false;
+            mon.hasAudioVideo = false;
         }
 
-        // 1. Check fullscreen window monitor
-        if (IsForegroundWindowFullscreen() || IsFullscreenAppActive()) {
-            HWND hFore = GetForegroundWindow();
-            if (hFore) {
-                HMONITOR hMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
-                for (auto& mon : m_monitors) {
-                    if (mon.hMonitor == hMon) {
-                        mon.hasVideo = true;
-                    }
-                }
-            }
-        }
-
-        // 2. Check audio playback for browsers and blocked apps
+        // Check audio playback for browsers and blocked apps
         IMMDeviceEnumerator* pEnumerator = nullptr;
         HRESULT hr = CoCreateInstance(
             __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
@@ -488,12 +484,12 @@ void DimmerManager::CheckVideoPlayback() {
                                                 if (SUCCEEDED(hr)) {
                                                     float peak = 0.0f;
                                                     if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
-                                                        // This process is playing audio. Set hasVideo = true for its monitors
+                                                        // This process is playing audio. Set hasAudioVideo = true for its monitors
                                                         std::vector<HMONITOR> mons = GetMonitorsForProcessName(fname);
                                                         for (auto hMon : mons) {
                                                             for (auto& mon : m_monitors) {
                                                                 if (mon.hMonitor == hMon) {
-                                                                    mon.hasVideo = true;
+                                                                    mon.hasAudioVideo = true;
                                                                 }
                                                             }
                                                         }
@@ -516,26 +512,17 @@ void DimmerManager::CheckVideoPlayback() {
             }
             pEnumerator->Release();
         }
+    }
 
-        // Trigger fades for monitor overlays to match their video status
-        for (auto& mon : m_monitors) {
+    // Update hasFullscreenVideo on every tick and combine with hasAudioVideo
+    for (auto& mon : m_monitors) {
+        mon.hasFullscreenVideo = (mon.hMonitor == hCurrentFullscreenMon);
+        
+        bool newHasVideo = mon.hasAudioVideo || mon.hasFullscreenVideo;
+        if (newHasVideo != mon.hasVideo) {
+            mon.hasVideo = newHasVideo;
             if (mon.hwndOverlay) TriggerFade(mon.hwndOverlay);
-        }
-        UpdateCursorDimming();
-    } else {
-        // Lightweight tick: check if foreground window is fullscreen
-        if (IsForegroundWindowFullscreen()) {
-            HWND hFore = GetForegroundWindow();
-            if (hFore) {
-                HMONITOR hMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
-                for (auto& mon : m_monitors) {
-                    if (mon.hMonitor == hMon && !mon.hasVideo) {
-                        mon.hasVideo = true;
-                        if (mon.hwndOverlay) TriggerFade(mon.hwndOverlay);
-                        UpdateCursorDimming();
-                    }
-                }
-            }
+            UpdateCursorDimming();
         }
     }
 }
@@ -593,7 +580,7 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                     target = 0;
                 } else if (DimmerManager::Instance().IsIdleState() && info->enabled) {
                     target = (std::max)(info->dimValue, DimmerManager::Instance().GetIdleDimLevel());
-                    if (target > 90) target = 90;
+                    if (target > 100) target = 100;
                 } else if (DimmerManager::Instance().IsDimmingEnabled() && info->enabled) {
                     // Active dimming is enabled right now
                     target = info->dimValue;
