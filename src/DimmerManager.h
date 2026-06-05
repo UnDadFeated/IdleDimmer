@@ -56,6 +56,8 @@ public:
     void SetLastMousePos(POINT pt) { m_lastMousePos = pt; }
     bool IsSettingCursorPos() const { return m_isSettingCursorPos; }
     void SetSettingCursorPos(bool val) { m_isSettingCursorPos = val; }
+    bool HasShiftedCursor() const { return m_cursorShifted; }
+    void ShiftCursorForIdle();
 
 private:
     DimmerManager() = default;
@@ -78,4 +80,5 @@ private:
     std::vector<std::wstring> m_blockedApps;
     POINT m_lastMousePos = { -1, -1 };
     bool m_isSettingCursorPos = false;
+    bool m_cursorShifted = false;
 };

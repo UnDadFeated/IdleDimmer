@@ -166,6 +166,7 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
     if (m_isIdleState != idle || m_idleDimLevel != idleLevel) {
         m_isIdleState = idle;
         m_idleDimLevel = idleLevel;
+        m_cursorShifted = false;
         
         if (idle) {
             GetCursorPos(&m_lastMousePos);
@@ -179,16 +180,6 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
             }
         }
         UpdateCursorDimming();
-
-        if (idle) {
-            // Force cursor to update/hide immediately by shifting it 1px to trigger WM_SETCURSOR and hit-testing
-            POINT pt;
-            if (GetCursorPos(&pt)) {
-                m_isSettingCursorPos = true;
-                int dx = (pt.x > 0) ? -1 : 1;
-                SetCursorPos(pt.x + dx, pt.y);
-            }
-        }
     }
 }
 
@@ -225,6 +216,18 @@ void DimmerManager::UpdateCursorDimming() {
     } else if (!shouldHide && m_cursorHidden) {
         while (ShowCursor(TRUE) < 0);
         m_cursorHidden = false;
+    }
+}
+
+void DimmerManager::ShiftCursorForIdle() {
+    if (m_cursorShifted) return;
+    m_cursorShifted = true;
+
+    POINT pt;
+    if (GetCursorPos(&pt)) {
+        m_isSettingCursorPos = true;
+        int dx = (pt.x > 0) ? -1 : 1;
+        SetCursorPos(pt.x + dx, pt.y);
     }
 }
 
@@ -595,6 +598,17 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                     BYTE alpha = static_cast<BYTE>((info->currentDimValue / 100.0) * 255.0);
                     SetLayeredWindowAttributes(hwnd, 0, alpha, LWA_ALPHA);
                     InvalidateRect(hwnd, nullptr, TRUE);
+
+                    if (DimmerManager::Instance().IsIdleState() && info->currentDimValue >= 1 && !DimmerManager::Instance().HasShiftedCursor()) {
+                        POINT pt;
+                        if (GetCursorPos(&pt)) {
+                            RECT rcWnd;
+                            GetWindowRect(hwnd, &rcWnd);
+                            if (PtInRect(&rcWnd, pt)) {
+                                DimmerManager::Instance().ShiftCursorForIdle();
+                            }
+                        }
+                    }
                 }
             }
             return 0;
@@ -613,21 +627,6 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                 }
                 FillRect(hdc, &rc, bgBrush);
                 DeleteObject(bgBrush);
-
-                // Draw a fake cursor under the overlay during idle dimming
-                if (DimmerManager::Instance().IsIdleState()) {
-                    POINT pt = DimmerManager::Instance().GetLastMousePos();
-                    RECT rcWnd;
-                    GetWindowRect(hwnd, &rcWnd);
-                    if (PtInRect(&rcWnd, pt)) {
-                        POINT clientPt = pt;
-                        ScreenToClient(hwnd, &clientPt);
-                        HCURSOR hCursor = LoadCursor(nullptr, IDC_ARROW);
-                        if (hCursor) {
-                            DrawIconEx(hdc, clientPt.x, clientPt.y, hCursor, 0, 0, 0, nullptr, DI_NORMAL);
-                        }
-                    }
-                }
             }
             EndPaint(hwnd, &ps);
             return 0;

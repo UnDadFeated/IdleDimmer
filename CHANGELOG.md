@@ -2,6 +2,12 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.2] - 2026-06-04
+
+### Bug Fixes
+* **Cursor Hiding Deferral**: Solved a bug where the cursor remained visible during idle dimming even when all screens dimmed. This was resolved by removing the immediate 1px cursor shift on entering idle (which occurred while the layered overlay was still at 0% opacity and thus transparent to hit-testing, sending `WM_SETCURSOR` to background windows) and deferring the shift to the first timer tick when the overlay under the cursor reaches at least 1% opacity and becomes hit-testable.
+* **Removed Fake Cursor Rendering**: Removed the duplicate fake cursor rendering from `WM_PAINT` which kept a visible mouse arrow on the screen during idle dimming.
+
 ## [1.5.1] - 2026-06-04
 
 ### Bug Fixes
