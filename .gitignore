@@ -25,3 +25,6 @@ dimmer.ini
 
 # MSIX Packaging Configuration
 msix/
+
+# Fallow tools
+.fallow/

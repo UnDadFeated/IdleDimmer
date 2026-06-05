@@ -6,7 +6,7 @@
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     // 1. Single Instance Enforcement using Mutex
-    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Global\\IdleDimmerMutex");
+    HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Local\\IdleDimmerMutex");
     if (hMutex == nullptr) {
         LogError(ErrorCode::E101, HRESULT_FROM_WIN32(GetLastError()));
         return 1;

@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.3] - 2026-06-05
+
+### Bug Fixes
+* **Launch Crash Fix**: Changed the single-instance mutex namespace from `Global\\` to `Local\\` in `src/main.cpp`. Packaged store-submitted apps (MSIX) run as standard users and lack `SeCreateGlobalPrivilege`, which caused the previous `Global\\` mutex to fail with `ERROR_ACCESS_DENIED` at launch, exiting early and being flagged as a crash by the Microsoft Store certification.
+
 ## [1.5.2] - 2026-06-04
 
 ### Bug Fixes
