@@ -16,7 +16,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.5.3";
+static const wchar_t* APP_VERSION = L"v1.5.4";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -186,7 +186,11 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
         LogError(ErrorCode::E213, HRESULT_FROM_WIN32(GetLastError()));
     }
 
-    m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
+    if (!IsPackaged()) {
+        m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
+    } else {
+        m_updateChecked = true;
+    }
 
     UpdateLayout();
 
@@ -584,6 +588,24 @@ void MainWindow::OnUpdateCheckComplete(WPARAM wp, LPARAM lp) {
     }
     m_updateChecked = true;
     InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+typedef LONG(WINAPI* PFN_GetCurrentPackageFullName)(UINT32*, PWSTR);
+
+bool MainWindow::IsPackaged() const {
+    HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
+    if (hKernel32) {
+        auto pfn = reinterpret_cast<PFN_GetCurrentPackageFullName>(
+            GetProcAddress(hKernel32, "GetCurrentPackageFullName")
+        );
+        if (pfn) {
+            UINT32 length = 0;
+            LONG rc = pfn(&length, nullptr);
+            // APPMODEL_ERROR_NO_PACKAGE is 15700L
+            return (rc != 15700L);
+        }
+    }
+    return false;
 }
 
 

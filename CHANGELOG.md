@@ -2,6 +2,13 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.4] - 2026-06-08
+
+### Bug Fixes
+* **Store Launch Crash Fix**: Reset mutex creation error status using `SetLastError(ERROR_SUCCESS)` to prevent stale startup errors from false-triggering the duplicate instance check.
+* **Packaged Sandbox Safety**: Disabled the GitHub update checking thread entirely when running inside a packaged MSIX container to prevent network failures or access violations.
+* **Audio Session Robustness**: Added null-pointer checks for COM interfaces inside the audio playback detection loop.
+
 ## [1.5.3] - 2026-06-05
 
 ### Bug Fixes

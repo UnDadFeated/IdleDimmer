@@ -121,6 +121,7 @@ private:
     HANDLE m_hUpdateThread = nullptr;
     static DWORD WINAPI CheckForUpdatesThread(LPVOID lpParam);
     void OnUpdateCheckComplete(WPARAM wp, LPARAM lp);
+    bool IsPackaged() const;
 
     // Blocked apps UI
     static const int CONTENT_WIDTH = 480;

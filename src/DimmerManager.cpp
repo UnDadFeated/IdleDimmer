@@ -435,28 +435,28 @@ void DimmerManager::CheckVideoPlayback() {
             __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
             __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&pEnumerator)
         );
-        if (SUCCEEDED(hr)) {
+        if (SUCCEEDED(hr) && pEnumerator) {
             IMMDevice* pDevice = nullptr;
             hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
-            if (SUCCEEDED(hr)) {
+            if (SUCCEEDED(hr) && pDevice) {
                 IAudioSessionManager2* pSessionManager = nullptr;
                 hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
                     reinterpret_cast<void**>(&pSessionManager));
-                if (SUCCEEDED(hr)) {
+                if (SUCCEEDED(hr) && pSessionManager) {
                     IAudioSessionEnumerator* pSessionEnumerator = nullptr;
                     hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
-                    if (SUCCEEDED(hr)) {
+                    if (SUCCEEDED(hr) && pSessionEnumerator) {
                         int count = 0;
                         if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
                             for (int i = 0; i < count; ++i) {
                                 IAudioSessionControl* pSessionControl = nullptr;
                                 hr = pSessionEnumerator->GetSession(i, &pSessionControl);
-                                if (SUCCEEDED(hr)) {
+                                if (SUCCEEDED(hr) && pSessionControl) {
                                     IAudioSessionControl2* pSessionControl2 = nullptr;
                                     hr = pSessionControl->QueryInterface(
                                         __uuidof(IAudioSessionControl2),
                                         reinterpret_cast<void**>(&pSessionControl2));
-                                    if (SUCCEEDED(hr)) {
+                                    if (SUCCEEDED(hr) && pSessionControl2) {
                                         DWORD pid = 0;
                                         if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
                                             std::wstring fname = GetProcessNameFromPid(pid);
@@ -475,22 +475,22 @@ void DimmerManager::CheckVideoPlayback() {
                                                             lstrcmpiW(fname.c_str(), L"opera.exe") == 0 ||
                                                             lstrcmpiW(fname.c_str(), L"brave.exe") == 0);
                                             }
-
+ 
                                             if (isTarget) {
                                                 IAudioMeterInformation* pMeter = nullptr;
                                                 hr = pSessionControl->QueryInterface(
                                                     IID_IAudioMeterInformation,
                                                     reinterpret_cast<void**>(&pMeter));
-                                                if (SUCCEEDED(hr)) {
+                                                if (SUCCEEDED(hr) && pMeter) {
                                                     float peak = 0.0f;
                                                     if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
                                                         // This process is playing audio. Set hasAudioVideo = true for its monitors
                                                         std::vector<HMONITOR> mons = GetMonitorsForProcessName(fname);
                                                         for (auto hMon : mons) {
                                                             for (auto& mon : m_monitors) {
-                                                                if (mon.hMonitor == hMon) {
-                                                                    mon.hasAudioVideo = true;
-                                                                }
+                                                                 if (mon.hMonitor == hMon) {
+                                                                     mon.hasAudioVideo = true;
+                                                                 }
                                                             }
                                                         }
                                                     }
