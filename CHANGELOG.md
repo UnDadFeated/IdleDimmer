@@ -2,6 +2,12 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.5] - 2026-06-09
+
+### Bug Fixes
+* **Store Launch Crash Fix**: Updated main thread COM initialization to safely ignore `RPC_E_CHANGED_MODE` (which commonly occurs when launching inside the Windows App Store MSIX container when COM is pre-initialized as multithreaded by telemetry/sandbox layers) and managed `CoUninitialize` cleanup dynamically.
+* **Packaged Sandbox Safety**: Hardened the `IsPackaged` detection helper to pass a valid `wchar_t` buffer to `GetCurrentPackageFullName` instead of `nullptr`, preventing potential access violations and crashes on various Windows OS builds.
+
 ## [1.5.4] - 2026-06-08
 
 ### Bug Fixes

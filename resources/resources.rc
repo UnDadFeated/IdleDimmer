@@ -8,8 +8,8 @@
 
 // Version Information
 VS_VERSION_INFO VERSIONINFO
-  FILEVERSION 1,5,4,0
-  PRODUCTVERSION 1,5,4,0
+  FILEVERSION 1,5,5,0
+  PRODUCTVERSION 1,5,5,0
   FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
   FILEFLAGS 0x1L
@@ -26,12 +26,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "IdleDimmer"
             VALUE "FileDescription", "IdleDimmer Screen Dimmer Utility"
-            VALUE "FileVersion", "1.5.4.0"
+            VALUE "FileVersion", "1.5.5.0"
             VALUE "InternalName", "IdleDimmer"
             VALUE "LegalCopyright", "Copyright (C) 2026"
             VALUE "OriginalFilename", "IdleDimmer.exe"
             VALUE "ProductName", "IdleDimmer"
-            VALUE "ProductVersion", "1.5.4.0"
+            VALUE "ProductVersion", "1.5.5.0"
         END
     END
     BLOCK "VarFileInfo"

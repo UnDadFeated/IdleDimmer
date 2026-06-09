@@ -27,11 +27,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // 2. Initialize COM for DirectWrite / Shell functions
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    if (FAILED(hr)) {
+    if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
         LogError(ErrorCode::E103, hr);
         CloseHandle(hMutex);
         return 1;
     }
+    bool comInitialized = SUCCEEDED(hr);
 
     // 3. Set high-DPI awareness dynamically
     // Per-monitor v2 ensures perfect layout on multi-monitor systems with different DPI scales
@@ -49,7 +50,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // 4. Create and show settings panel
     if (!MainWindow::Instance().Create(hInstance, nCmdShow)) {
         LogError(ErrorCode::E105);
-        CoUninitialize();
+        if (comInitialized) CoUninitialize();
         CloseHandle(hMutex);
         return 1;
     }
@@ -64,7 +65,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Clean up overlays and managers
     DimmerManager::Instance().DestroyOverlays();
 
-    CoUninitialize();
+    if (comInitialized) CoUninitialize();
     CloseHandle(hMutex);
     return static_cast<int>(msg.wParam);
 }

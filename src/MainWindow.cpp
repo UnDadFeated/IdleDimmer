@@ -16,7 +16,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.5.4";
+static const wchar_t* APP_VERSION = L"v1.5.5";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -599,8 +599,9 @@ bool MainWindow::IsPackaged() const {
             GetProcAddress(hKernel32, "GetCurrentPackageFullName")
         );
         if (pfn) {
-            UINT32 length = 0;
-            LONG rc = pfn(&length, nullptr);
+            wchar_t name[128];
+            UINT32 length = 128;
+            LONG rc = pfn(&length, name);
             // APPMODEL_ERROR_NO_PACKAGE is 15700L
             return (rc != 15700L);
         }
