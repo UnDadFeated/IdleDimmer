@@ -77,6 +77,7 @@ private:
     bool m_cursorHidden = false;
     bool m_videoDetected = false;
     int m_videoCheckTick = 0;
+    bool m_isFullscreenAppActive = false;
     std::vector<std::wstring> m_blockedApps;
     POINT m_lastMousePos = { -1, -1 };
     bool m_isSettingCursorPos = false;

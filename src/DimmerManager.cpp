@@ -231,23 +231,6 @@ void DimmerManager::ShiftCursorForIdle() {
     }
 }
 
-// Helper struct for child window enumeration (UWP app container breakout)
-struct UwpWindowSearchInfo {
-    DWORD hostPid;
-    DWORD targetPid;
-};
-
-static BOOL CALLBACK EnumUwpChildProc(HWND hwnd, LPARAM lParam) {
-    auto* info = reinterpret_cast<UwpWindowSearchInfo*>(lParam);
-    DWORD childPid = 0;
-    GetWindowThreadProcessId(hwnd, &childPid);
-    if (childPid != 0 && childPid != info->hostPid) {
-        info->targetPid = childPid;
-        return FALSE; // Found the real application window, stop enumerating
-    }
-    return TRUE;
-}
-
 typedef HRESULT (WINAPI* PFN_SHQueryUserNotificationState)(QUERY_USER_NOTIFICATION_STATE*);
 
 static bool IsFullscreenAppActive() {
@@ -268,38 +251,6 @@ static bool IsFullscreenAppActive() {
         FreeLibrary(hShell32);
     }
     return active;
-}
-
-static DWORD GetRealProcessId(HWND hwnd) {
-    if (!hwnd) return 0;
-    DWORD pid = 0;
-    GetWindowThreadProcessId(hwnd, &pid);
-
-    // Check if the foreground window process is ApplicationFrameHost.exe
-    wchar_t exe[MAX_PATH] = { 0 };
-    HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-    if (hProc) {
-        DWORD size = MAX_PATH;
-        if (!QueryFullProcessImageNameW(hProc, 0, exe, &size)) {
-            LogError(ErrorCode::E406, HRESULT_FROM_WIN32(GetLastError()));
-        }
-        CloseHandle(hProc);
-    } else {
-        LogError(ErrorCode::E417, HRESULT_FROM_WIN32(GetLastError()));
-    }
-
-    if (exe[0]) {
-        const wchar_t* fname = wcsrchr(exe, L'\\');
-        fname = fname ? fname + 1 : exe;
-        if (lstrcmpiW(fname, L"ApplicationFrameHost.exe") == 0) {
-            UwpWindowSearchInfo info = { pid, 0 };
-            EnumChildWindows(hwnd, EnumUwpChildProc, reinterpret_cast<LPARAM>(&info));
-            if (info.targetPid != 0) {
-                return info.targetPid;
-            }
-        }
-    }
-    return pid;
 }
 
 static std::wstring GetProcessNameFromPid(DWORD pid) {
@@ -414,9 +365,13 @@ void DimmerManager::CheckVideoPlayback() {
     m_videoCheckTick++;
     bool doFullCheck = (m_videoCheckTick % 5 == 0);
 
+    if (doFullCheck) {
+        m_isFullscreenAppActive = IsFullscreenAppActive();
+    }
+
     // Determine current fullscreen monitor (on every second tick)
     HMONITOR hCurrentFullscreenMon = nullptr;
-    if (IsForegroundWindowFullscreen() || IsFullscreenAppActive()) {
+    if (IsForegroundWindowFullscreen() || m_isFullscreenAppActive) {
         HWND hFore = GetForegroundWindow();
         if (hFore) {
             hCurrentFullscreenMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);

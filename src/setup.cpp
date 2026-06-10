@@ -23,7 +23,7 @@
 static const wchar_t* APP_NAME = L"IdleDimmer";
 static const wchar_t* INSTALL_DIR = L"IdleDimmer";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\IdleDimmer";
-static const wchar_t* VER = L"1.5.5";
+static const wchar_t* VER = L"1.5.7";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;

@@ -2,6 +2,19 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.7] - 2026-06-10
+
+### Bug Fixes
+* **HP Spectre x360 Launch Crash Fix**: Resolved a critical launch crash on devices with screen rotation, touchscreen, and custom DPI configurations (such as the HP Spectre x360 2-in-1). The window handle (`m_hwnd`) is now initialized early during the `WM_NCCREATE` message in `WndProc`, preventing access violation crashes when early messages (like repaint or size changes) trigger Direct2D resource initialization (`GetClientRect` and `CreateHwndRenderTarget`) before the main window creation completes.
+* **Defender Heuristics Optimization**: Optimized fullscreen app checking by caching the result of `IsFullscreenAppActive()` inside the 5-second check interval. This avoids calling `LoadLibraryW`/`FreeLibrary` on `shell32.dll` every second, satisfying security heuristic patterns.
+* **Dynamic Version Resource Loading**: Implemented a `GetOwnVersion()` runtime helper that extracts the application version directly from the PE version resource, eliminating hardcoded version variables in the display loop.
+* **Cleaned Up Obsolete UWP Tracking**: Removed unused UWP child window and PID helper functions to reduce potential AV scanner flags.
+
+## [1.5.6] - 2026-06-10
+
+### Updates
+* **Smart App Control Mitigation**: Bumped application and installer versions to trigger a reputation hash refresh to address false-positive Smart App Control blocking after system reboots.
+
 ## [1.5.5] - 2026-06-09
 
 ### Bug Fixes

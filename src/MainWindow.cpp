@@ -6,6 +6,7 @@
 #include <shellapi.h>
 #include <strsafe.h>
 #include <winhttp.h>
+#include <winver.h>
 
 #ifndef D2DERR_RECREATED
 #define D2DERR_RECREATED ((HRESULT)0x8898000CL)
@@ -16,7 +17,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.5.5";
+static const wchar_t* APP_VERSION = L"v1.5.7";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -26,6 +27,29 @@ static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     if (majA != majB) return majA - majB;
     if (minA != minB) return minA - minB;
     return patA - patB;
+}
+
+static std::wstring GetOwnVersion() {
+    wchar_t filepath[MAX_PATH];
+    if (GetModuleFileNameW(nullptr, filepath, MAX_PATH) == 0) {
+        return L"unknown";
+    }
+    DWORD dummy = 0;
+    DWORD size = GetFileVersionInfoSizeW(filepath, &dummy);
+    if (size == 0) return L"unknown";
+    std::vector<BYTE> data(size);
+    if (!GetFileVersionInfoW(filepath, 0, size, data.data())) return L"unknown";
+    VS_FIXEDFILEINFO* pFileInfo = nullptr;
+    UINT len = 0;
+    if (VerQueryValueW(data.data(), L"\\", reinterpret_cast<void**>(&pFileInfo), &len) && len > 0 && pFileInfo) {
+        wchar_t buf[64];
+        swprintf(buf, 64, L"v%d.%d.%d",
+            static_cast<int>(HIWORD(pFileInfo->dwProductVersionMS)),
+            static_cast<int>(LOWORD(pFileInfo->dwProductVersionMS)),
+            static_cast<int>(HIWORD(pFileInfo->dwProductVersionLS)));
+        return buf;
+    }
+    return L"unknown";
 }
 
 #define WM_TRAYICON (WM_USER + 100)
@@ -152,7 +176,7 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
         return false;
     }
 
-    m_appVersion = APP_VERSION;
+    m_appVersion = GetOwnVersion();
 
     DimmerManager::Instance().Initialize(hInst);
     DimmerManager::Instance().RefreshMonitors();
@@ -754,6 +778,9 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
     if (msg == WM_NCCREATE) {
         CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lp);
         self = reinterpret_cast<MainWindow*>(cs->lpCreateParams);
+        if (self) {
+            self->m_hwnd = hwnd;
+        }
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
     } else {
         self = reinterpret_cast<MainWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
