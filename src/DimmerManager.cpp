@@ -30,6 +30,7 @@ static std::wstring GetMonitorFriendlyName(HMONITOR hMonitor, int index) {
     MONITORINFOEXW mi;
     mi.cbSize = sizeof(mi);
     if (GetMonitorInfoW(hMonitor, &mi)) {
+        mi.szDevice[CCHDEVICENAME - 1] = L'\0';
         return L"Monitor " + std::to_wstring(index + 1) + L" (" + std::wstring(mi.szDevice) + L")";
     }
     return L"Monitor " + std::to_wstring(index + 1);
@@ -40,6 +41,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
     MONITORINFOEXW mi;
     mi.cbSize = sizeof(mi);
     if (GetMonitorInfoW(hMonitor, &mi)) {
+        mi.szDevice[CCHDEVICENAME - 1] = L'\0';
         ActiveMonitorInfo info;
         info.id = mi.szDevice;
         info.friendlyName = GetMonitorFriendlyName(hMonitor, static_cast<int>(list->size()));

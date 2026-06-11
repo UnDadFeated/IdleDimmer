@@ -2,6 +2,13 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.8] - 2026-06-11
+
+### Bug Fixes
+* **Direct2D/DirectWrite Resource Robustness**: Refactored graphics resource initialization to return appropriate failure HRESULTs if any brush or text format fails to initialize. This prevents access violation crashes on startup if DirectWrite fails to load requested fonts on the device or if the render target cannot allocate resources during initialization.
+* **Safe Monitor String Resolution**: Explicitly null-terminated the device name buffer in monitor enumeration (`mi.szDevice`). This prevents access violation crashes when querying monitor details on specific laptop/tablet configurations (such as Dell Inspiron 13, Surface Go 4, and Dell Latitude 5520) which could otherwise construct `std::wstring` from un-terminated memory.
+* **Safe Version Extraction**: Hardened executable path retrieval inside `GetOwnVersion()` with safe length checking and explicit null-termination.
+
 ## [1.5.7] - 2026-06-10
 
 ### Bug Fixes

@@ -17,7 +17,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.5.7";
+static const wchar_t* APP_VERSION = L"v1.5.8";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -31,9 +31,11 @@ static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
 
 static std::wstring GetOwnVersion() {
     wchar_t filepath[MAX_PATH];
-    if (GetModuleFileNameW(nullptr, filepath, MAX_PATH) == 0) {
+    DWORD pathLen = GetModuleFileNameW(nullptr, filepath, MAX_PATH);
+    if (pathLen == 0 || pathLen >= MAX_PATH) {
         return L"unknown";
     }
+    filepath[pathLen] = L'\0';
     DWORD dummy = 0;
     DWORD size = GetFileVersionInfoSizeW(filepath, &dummy);
     if (size == 0) return L"unknown";
@@ -244,9 +246,10 @@ HRESULT MainWindow::CreateGraphicsResources() {
         hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pFactory);
         if (FAILED(hr)) {
             LogError(ErrorCode::E201, hr);
+            return hr;
         }
     }
-    if (SUCCEEDED(hr) && !m_pRenderTarget) {
+    if (!m_pRenderTarget) {
         RECT rc;
         GetClientRect(m_hwnd, &rc);
         D2D1_SIZE_U size = D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top);
@@ -259,38 +262,36 @@ HRESULT MainWindow::CreateGraphicsResources() {
 
         if (FAILED(hr)) {
             LogError(ErrorCode::E206, hr);
+            return hr;
         }
 
-        if (SUCCEEDED(hr)) {
-            // Create brushes
-            HRESULT hrBrush = S_OK;
-            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x131315), &m_pBrushBg);
-            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+        // Create brushes
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x131315), &m_pBrushBg);
+        if (FAILED(hr)) { LogError(ErrorCode::E207, hr); DiscardGraphicsResources(); return hr; }
 
-            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1F1F24), &m_pBrushCard);
-            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x1F1F24), &m_pBrushCard);
+        if (FAILED(hr)) { LogError(ErrorCode::E207, hr); DiscardGraphicsResources(); return hr; }
 
-            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2D2D34), &m_pBrushCardBorder);
-            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2D2D34), &m_pBrushCardBorder);
+        if (FAILED(hr)) { LogError(ErrorCode::E207, hr); DiscardGraphicsResources(); return hr; }
 
-            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFFFFF), &m_pBrushText);
-            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0xFFFFFF), &m_pBrushText);
+        if (FAILED(hr)) { LogError(ErrorCode::E207, hr); DiscardGraphicsResources(); return hr; }
 
-            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x8E8E93), &m_pBrushTextMuted);
-            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x8E8E93), &m_pBrushTextMuted);
+        if (FAILED(hr)) { LogError(ErrorCode::E207, hr); DiscardGraphicsResources(); return hr; }
 
-            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0078D4), &m_pBrushAccent);
-            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x0078D4), &m_pBrushAccent);
+        if (FAILED(hr)) { LogError(ErrorCode::E207, hr); DiscardGraphicsResources(); return hr; }
 
-            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2B88D8), &m_pBrushAccentHover);
-            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x2B88D8), &m_pBrushAccentHover);
+        if (FAILED(hr)) { LogError(ErrorCode::E207, hr); DiscardGraphicsResources(); return hr; }
 
-            hrBrush = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x44444A), &m_pBrushTrack);
-            if (FAILED(hrBrush)) LogError(ErrorCode::E207, hrBrush);
-        }
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(0x44444A), &m_pBrushTrack);
+        if (FAILED(hr)) { LogError(ErrorCode::E207, hr); DiscardGraphicsResources(); return hr; }
     }
 
-    if (SUCCEEDED(hr) && !m_pDWriteFactory) {
+    if (!m_pDWriteFactory) {
         hr = DWriteCreateFactory(
             DWRITE_FACTORY_TYPE_SHARED,
             __uuidof(IDWriteFactory),
@@ -299,31 +300,29 @@ HRESULT MainWindow::CreateGraphicsResources() {
 
         if (FAILED(hr)) {
             LogError(ErrorCode::E202, hr);
+            return hr;
         }
 
-        if (SUCCEEDED(hr)) {
-            HRESULT hrFmt = S_OK;
-            hrFmt = m_pDWriteFactory->CreateTextFormat(
-                L"Segoe UI Variable Display", nullptr,
-                DWRITE_FONT_WEIGHT_SEMI_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-                20.0f, L"en-us", &m_pTextFormatTitle
-            );
-            if (FAILED(hrFmt)) LogError(ErrorCode::E203, hrFmt);
+        hr = m_pDWriteFactory->CreateTextFormat(
+            L"Segoe UI Variable Display", nullptr,
+            DWRITE_FONT_WEIGHT_SEMI_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+            20.0f, L"en-us", &m_pTextFormatTitle
+        );
+        if (FAILED(hr)) { LogError(ErrorCode::E203, hr); DiscardGraphicsResources(); return hr; }
 
-            hrFmt = m_pDWriteFactory->CreateTextFormat(
-                L"Segoe UI Variable Text", nullptr,
-                DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-                13.0f, L"en-us", &m_pTextFormatBody
-            );
-            if (FAILED(hrFmt)) LogError(ErrorCode::E204, hrFmt);
+        hr = m_pDWriteFactory->CreateTextFormat(
+            L"Segoe UI Variable Text", nullptr,
+            DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+            13.0f, L"en-us", &m_pTextFormatBody
+        );
+        if (FAILED(hr)) { LogError(ErrorCode::E204, hr); DiscardGraphicsResources(); return hr; }
 
-            hrFmt = m_pDWriteFactory->CreateTextFormat(
-                L"Segoe UI Variable Text", nullptr,
-                DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-                10.5f, L"en-us", &m_pTextFormatDetail
-            );
-            if (FAILED(hrFmt)) LogError(ErrorCode::E205, hrFmt);
-        }
+        hr = m_pDWriteFactory->CreateTextFormat(
+            L"Segoe UI Variable Text", nullptr,
+            DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+            10.5f, L"en-us", &m_pTextFormatDetail
+        );
+        if (FAILED(hr)) { LogError(ErrorCode::E205, hr); DiscardGraphicsResources(); return hr; }
     }
 
     return hr;
