@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define _WIN32_IE 0x0600
 #define UNICODE
+#define NOMINMAX
 #include <windows.h>
 #include <wchar.h>
 #include <shlobj.h>
@@ -13,9 +14,12 @@
 #include <string>
 #include <vector>
 #include <winver.h>
+#include <wrl/client.h>
 #include "ErrorCodes.h"
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
+using Microsoft::WRL::ComPtr;
 
 #define IDI_APP 101
 #define IDR_APP_BIN 102
@@ -23,7 +27,7 @@
 static const wchar_t* APP_NAME = L"IdleDimmer";
 static const wchar_t* INSTALL_DIR = L"IdleDimmer";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\IdleDimmer";
-static const wchar_t* VER = L"1.5.8";
+static const wchar_t* VER = L"1.5.9";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
@@ -141,19 +145,17 @@ static void KillRunning() {
 static void CreateShortcut(const wchar_t* target) {
     Log(L"  Creating Start Menu shortcut...\r\n");
     wchar_t path[MAX_PATH];
-    SHGetFolderPathW(NULL, CSIDL_STARTMENU, NULL, 0, path);
+    SHGetFolderPathW(nullptr, CSIDL_STARTMENU, nullptr, 0, path);
     wcscat_s(path, MAX_PATH, L"\\Programs\\IdleDimmer.lnk");
-    IShellLinkW* psl;
-    if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (void**)&psl))) {
+    ComPtr<IShellLinkW> psl;
+    if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&psl)))) {
         psl->SetPath(target);
         psl->SetDescription(L"Monitor dimmer with per-monitor controls, hotkeys, and idle detection");
-        IPersistFile* ppf;
-        if (SUCCEEDED(psl->QueryInterface(IID_IPersistFile, (void**)&ppf))) {
+        ComPtr<IPersistFile> ppf;
+        if (SUCCEEDED(psl.As(&ppf))) {
             ppf->Save(path, TRUE);
-            ppf->Release();
             Log(L"  Shortcut saved\r\n");
         }
-        psl->Release();
     }
 }
 

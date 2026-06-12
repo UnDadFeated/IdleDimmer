@@ -25,9 +25,6 @@ enum class ErrorCode {
     E207 = 207, // Solid color brush creation failed
     E208 = 208, // Focus Mode cursor tracking timer registration failed
     E209 = 209, // System idle detection timer registration failed
-    E210 = 210, // Hotkey Ctrl+Alt+Up registration failed
-    E211 = 211, // Hotkey Ctrl+Alt+Down registration failed
-    E212 = 212, // Hotkey Ctrl+Alt+D registration failed
     E213 = 213, // Tray icon addition failed
     E214 = 214, // RegisterClassExW failed for Add App Dialog
     E215 = 215, // CreateWindowExW failed for Add App Dialog
@@ -100,9 +97,6 @@ inline ErrorInfo GetErrorInfo(ErrorCode code) {
         case ErrorCode::E207: return { L"E207", L"Solid color brush creation failed (CreateSolidColorBrush)." };
         case ErrorCode::E208: return { L"E208", L"Focus Mode cursor tracking timer registration failed (SetTimer)." };
         case ErrorCode::E209: return { L"E209", L"System idle detection timer registration failed (SetTimer)." };
-        case ErrorCode::E210: return { L"E210", L"Hotkey Ctrl+Alt+ArrowUp registration failed (RegisterHotKey)." };
-        case ErrorCode::E211: return { L"E211", L"Hotkey Ctrl+Alt+ArrowDown registration failed (RegisterHotKey)." };
-        case ErrorCode::E212: return { L"E212", L"Hotkey Ctrl+Alt+D registration failed (RegisterHotKey)." };
         case ErrorCode::E213: return { L"E213", L"Tray icon addition failed (Shell_NotifyIconW)." };
         case ErrorCode::E214: return { L"E214", L"RegisterClassExW failed for Add App Dialog." };
         case ErrorCode::E215: return { L"E215", L"CreateWindowExW failed for Add App Dialog." };

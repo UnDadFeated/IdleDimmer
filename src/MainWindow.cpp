@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "MainWindow.h"
 #include "ErrorCodes.h"
 #include "DimmerManager.h"
@@ -17,7 +18,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.5.8";
+static const wchar_t* APP_VERSION = L"v1.5.9";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -189,17 +190,6 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     // Apply warm tint and active dimming settings
     DimmerManager::Instance().SetWarmTint(m_config.warmTint);
     DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
-
-    // Register global hotkeys
-    if (!RegisterHotKey(m_hwnd, 101, MOD_CONTROL | MOD_ALT, VK_UP)) {
-        LogError(ErrorCode::E210, HRESULT_FROM_WIN32(GetLastError()));
-    }
-    if (!RegisterHotKey(m_hwnd, 102, MOD_CONTROL | MOD_ALT, VK_DOWN)) {
-        LogError(ErrorCode::E211, HRESULT_FROM_WIN32(GetLastError()));
-    }
-    if (!RegisterHotKey(m_hwnd, 103, MOD_CONTROL | MOD_ALT, 0x44)) { // 'D' key
-        LogError(ErrorCode::E212, HRESULT_FROM_WIN32(GetLastError()));
-    }
 
     // Start Inactivity/Idle checking timer (1000ms interval)
     if (!SetTimer(m_hwnd, 202, 1000, nullptr)) {
@@ -755,9 +745,6 @@ void MainWindow::OnResize(UINT width, UINT height) {
 
 MainWindow::~MainWindow() {
     KillTimer(m_hwnd, 202);
-    UnregisterHotKey(m_hwnd, 101);
-    UnregisterHotKey(m_hwnd, 102);
-    UnregisterHotKey(m_hwnd, 103);
     RemoveTrayIcon(m_hwnd, 1);
     DiscardGraphicsResources();
     if (m_pFactory) m_pFactory->Release();
@@ -816,62 +803,6 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                 self->HandleKeyDown(wp);
                 return 0;
             }
-            case WM_HOTKEY: {
-                if (wp == 101 || wp == 102) {
-                    self->PushUndoState();
-                    int delta = (wp == 101) ? -5 : 5;
-                    self->m_config.masterValue += delta;
-                    if (self->m_config.masterValue < 0) self->m_config.masterValue = 0;
-                    if (self->m_config.masterValue > 90) self->m_config.masterValue = 90;
-
-                    // If active dimming is off, auto-enable it so the hotkey takes effect immediately!
-                    if (!self->m_config.dimmingEnabled) {
-                        self->m_config.dimmingEnabled = true;
-                        DimmerManager::Instance().SetDimmingEnabled(true);
-                        for (auto& cb : self->m_checkboxes) {
-                            if (cb.settingName == L"DimmingEnabled") { cb.checked = true; break; }
-                        }
-                    }
-
-                    for (const auto& mon : DimmerManager::Instance().GetActiveMonitors()) {
-                        DimmerManager::Instance().SetMonitorDim(mon.id, self->m_config.masterValue);
-                    }
-                    for (auto& monConf : self->m_config.monitors) {
-                        monConf.value = self->m_config.masterValue;
-                    }
-                    for (auto& sl : self->m_sliders) {
-                        if (!sl.isIdleMinutes && !sl.isIdleDimLevel) {
-                            sl.value = self->m_config.masterValue / 90.0f;
-                        }
-                    }
-                    DimmerManager::Instance().UpdateCursorDimming();
-                    self->SaveSettings();
-                    InvalidateRect(hwnd, nullptr, FALSE);
-                } else if (wp == 103) {
-                    self->PushUndoState();
-                    self->m_config.masterEnabled = !self->m_config.masterEnabled;
-                    self->m_config.dimmingEnabled = self->m_config.masterEnabled;
-                    DimmerManager::Instance().SetDimmingEnabled(self->m_config.masterEnabled);
-                    for (const auto& mon : DimmerManager::Instance().GetActiveMonitors()) {
-                        DimmerManager::Instance().SetMonitorEnabled(mon.id, self->m_config.masterEnabled);
-                    }
-                    for (auto& monConf : self->m_config.monitors) {
-                        monConf.enabled = self->m_config.masterEnabled;
-                    }
-                    for (auto& sl : self->m_sliders) {
-                        sl.active = self->m_config.masterEnabled;
-                    }
-                    for (auto& cb : self->m_checkboxes) {
-                        if (cb.settingName == L"MasterEnabled" || !cb.monitorId.empty() || cb.settingName == L"DimmingEnabled") {
-                            cb.checked = self->m_config.masterEnabled;
-                        }
-                    }
-                    DimmerManager::Instance().UpdateCursorDimming();
-                    self->SaveSettings();
-                    InvalidateRect(hwnd, nullptr, FALSE);
-                }
-                return 0;
-            }
             case WM_TIMER: {
                 if (wp == 202) {
                     DimmerManager::Instance().CheckVideoPlayback();
@@ -911,6 +842,15 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                 self->UpdateLayout();
                 InvalidateRect(hwnd, nullptr, TRUE);
                 return 0;
+            }
+            case WM_POWERBROADCAST: {
+                if (wp == PBT_APMRESUMESUSPEND || wp == PBT_APMRESUMEAUTOMATIC) {
+                    DimmerManager::Instance().RefreshMonitors();
+                    self->SyncMonitorsWithConfig();
+                    self->UpdateLayout();
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                }
+                return TRUE;
             }
             case WM_UPDATE_CHECK: {
                 self->OnUpdateCheckComplete(wp, lp);

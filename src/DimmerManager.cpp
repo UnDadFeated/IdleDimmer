@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "DimmerManager.h"
 #include "ErrorCodes.h"
 #include <vector>
@@ -6,13 +7,13 @@
 #include <audiopolicy.h>
 #include <endpointvolume.h>
 #include <shellapi.h>
+#include <wrl/client.h>
+
+using Microsoft::WRL::ComPtr;
 
 // Define IAudioMeterInformation manually as MinGW headers only forward declare it
 #ifndef __IAudioMeterInformation_INTERFACE_DEFINED__
 #define __IAudioMeterInformation_INTERFACE_DEFINED__
-
-const IID IID_IAudioMeterInformation = {0xC02216F6, 0x8C67, 0x4B5B, {0x9D, 0x00, 0xD0, 0x08, 0xE7, 0x3E, 0x00, 0x64}};
-
 #if defined(__cplusplus) && !defined(CINTERFACE)
 interface IAudioMeterInformation : public IUnknown
 {
@@ -23,6 +24,9 @@ interface IAudioMeterInformation : public IUnknown
 };
 #endif
 #endif
+
+#include <initguid.h>
+DEFINE_GUID(IID_IAudioMeterInformation, 0xC02216F6, 0x8C67, 0x4B5B, 0x9D, 0x00, 0xD0, 0x08, 0xE7, 0x3E, 0x00, 0x64);
 
 
 // Helper to get friendly monitor name
@@ -123,7 +127,7 @@ void DimmerManager::CreateOverlayForMonitor(ActiveMonitorInfo& info) {
     }
 }
 
-void DimmerManager::SetMonitorDim(const std::wstring& id, int value) {
+void DimmerManager::SetMonitorDim(std::wstring_view id, int value) {
     for (auto& mon : m_monitors) {
         if (mon.id == id) {
             mon.dimValue = value;
@@ -136,7 +140,7 @@ void DimmerManager::SetMonitorDim(const std::wstring& id, int value) {
     UpdateCursorDimming();
 }
 
-void DimmerManager::SetMonitorEnabled(const std::wstring& id, bool enabled) {
+void DimmerManager::SetMonitorEnabled(std::wstring_view id, bool enabled) {
     for (auto& mon : m_monitors) {
         if (mon.id == id) {
             mon.enabled = enabled;
@@ -387,32 +391,29 @@ void DimmerManager::CheckVideoPlayback() {
         }
 
         // Check audio playback for browsers and blocked apps
-        IMMDeviceEnumerator* pEnumerator = nullptr;
+        ComPtr<IMMDeviceEnumerator> pEnumerator;
         HRESULT hr = CoCreateInstance(
             __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-            __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&pEnumerator)
+            __uuidof(IMMDeviceEnumerator), &pEnumerator
         );
         if (SUCCEEDED(hr) && pEnumerator) {
-            IMMDevice* pDevice = nullptr;
+            ComPtr<IMMDevice> pDevice;
             hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
             if (SUCCEEDED(hr) && pDevice) {
-                IAudioSessionManager2* pSessionManager = nullptr;
-                hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
-                    reinterpret_cast<void**>(&pSessionManager));
+                ComPtr<IAudioSessionManager2> pSessionManager;
+                hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, &pSessionManager);
                 if (SUCCEEDED(hr) && pSessionManager) {
-                    IAudioSessionEnumerator* pSessionEnumerator = nullptr;
+                    ComPtr<IAudioSessionEnumerator> pSessionEnumerator;
                     hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
                     if (SUCCEEDED(hr) && pSessionEnumerator) {
                         int count = 0;
                         if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
                             for (int i = 0; i < count; ++i) {
-                                IAudioSessionControl* pSessionControl = nullptr;
+                                ComPtr<IAudioSessionControl> pSessionControl;
                                 hr = pSessionEnumerator->GetSession(i, &pSessionControl);
                                 if (SUCCEEDED(hr) && pSessionControl) {
-                                    IAudioSessionControl2* pSessionControl2 = nullptr;
-                                    hr = pSessionControl->QueryInterface(
-                                        __uuidof(IAudioSessionControl2),
-                                        reinterpret_cast<void**>(&pSessionControl2));
+                                    ComPtr<IAudioSessionControl2> pSessionControl2;
+                                    hr = pSessionControl->QueryInterface(__uuidof(IAudioSessionControl2), &pSessionControl2);
                                     if (SUCCEEDED(hr) && pSessionControl2) {
                                         DWORD pid = 0;
                                         if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
@@ -434,10 +435,8 @@ void DimmerManager::CheckVideoPlayback() {
                                             }
  
                                             if (isTarget) {
-                                                IAudioMeterInformation* pMeter = nullptr;
-                                                hr = pSessionControl->QueryInterface(
-                                                    IID_IAudioMeterInformation,
-                                                    reinterpret_cast<void**>(&pMeter));
+                                                ComPtr<IAudioMeterInformation> pMeter;
+                                                hr = pSessionControl->QueryInterface(IID_IAudioMeterInformation, &pMeter);
                                                 if (SUCCEEDED(hr) && pMeter) {
                                                     float peak = 0.0f;
                                                     if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
@@ -451,23 +450,16 @@ void DimmerManager::CheckVideoPlayback() {
                                                             }
                                                         }
                                                     }
-                                                    pMeter->Release();
                                                 }
                                             }
                                         }
-                                        pSessionControl2->Release();
                                     }
-                                    pSessionControl->Release();
                                 }
                             }
                         }
-                        pSessionEnumerator->Release();
                     }
-                    pSessionManager->Release();
                 }
-                pDevice->Release();
             }
-            pEnumerator->Release();
         }
     }
 

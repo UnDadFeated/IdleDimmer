@@ -1,6 +1,8 @@
 #pragma once
+#define NOMINMAX
 #include <windows.h>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <map>
 
@@ -27,8 +29,8 @@ public:
 
     void Initialize(HINSTANCE hInst);
     void RefreshMonitors();
-    void SetMonitorDim(const std::wstring& id, int value);
-    void SetMonitorEnabled(const std::wstring& id, bool enabled);
+    void SetMonitorDim(std::wstring_view id, int value);
+    void SetMonitorEnabled(std::wstring_view id, bool enabled);
     void SetShowBoundaries(bool show);
     void SetWarmTint(bool warm);
     void SetFocusMode(bool focus);

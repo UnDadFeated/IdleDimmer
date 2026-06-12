@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "ConfigManager.h"
 #include "ErrorCodes.h"
 #include <fstream>

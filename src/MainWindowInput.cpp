@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "MainWindow.h"
 #include "DimmerManager.h"
 #include <dwmapi.h>
@@ -283,7 +284,7 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
         if (pt.x >= m_blockedPanelRect.left && pt.x <= m_blockedPanelRect.right &&
             pt.y >= m_blockedPanelRect.top && pt.y <= m_blockedPanelRect.bottom) {
             int visibleHeight = m_blockedPanelRect.bottom - m_blockedPanelRect.top - 60;
-            int maxOffset = std::max(0, m_blockedContentHeight - visibleHeight);
+            int maxOffset = (std::max)(0, m_blockedContentHeight - visibleHeight);
             int step = (delta > 0) ? -30 : 30;
             m_blockedScrollOffset += step;
             if (m_blockedScrollOffset < 0) m_blockedScrollOffset = 0;

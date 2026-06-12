@@ -2,6 +2,13 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.9] - 2026-06-12
+
+### Updates
+* **Removed Global Hotkeys**: Removed all global system-wide keybinds (`Ctrl+Alt+ArrowUp`, `Ctrl+Alt+ArrowDown`, `Ctrl+Alt+D`) to resolve hotkey conflicts and issues.
+* **Modern C++17 Codebase Refactoring**: Hardened codebase with modern C++17 standards, including using `Microsoft::WRL::ComPtr` for COM resource lifetime safety in audio checking and shortcut creation, standardizing on `std::wstring_view` for string parameters, and using standard C++ structured bindings.
+* **Sleep Resume & Power State Robustness**: Handled `WM_POWERBROADCAST` sleep resume events to automatically recreate and refresh monitor overlays, fixing the issue where dimming would stop working after the system woke up from long periods of inactivity/sleep.
+
 ## [1.5.8] - 2026-06-11
 
 ### Bug Fixes

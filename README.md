@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-6B7280?style=flat-square" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/Version-1.5.8-10B981?style=flat-square" alt="Version 1.5.8">
+  <img src="https://img.shields.io/badge/Version-1.5.9-10B981?style=flat-square" alt="Version 1.5.9">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 10/11">
   <img src="https://img.shields.io/badge/C%2B%2B17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++17">
 </p>
@@ -23,7 +23,7 @@ Built in native C++17 with Direct2D and the raw Win32 API. **~150 KB on disk. Ze
 
 ### Direct installer (GitHub Releases)
 
-[**IdleDimmer-Setup-v1.5.8.exe**](https://github.com/UnDadFeated/IdleDimmer/releases/download/v1.5.8/IdleDimmer-Setup-v1.5.8.exe) — 280 KB
+[**IdleDimmer-Setup-v1.5.9.exe**](https://github.com/UnDadFeated/IdleDimmer/releases/download/v1.5.9/IdleDimmer-Setup-v1.5.9.exe) — 280 KB
 
 Per-user install to `%LOCALAPPDATA%`. No admin elevation. Clean uninstall from Settings > Apps. Self-extracting installer with dark theme UI.
 
@@ -57,15 +57,6 @@ Add any process to the blocked list (Steam, MPC-HC, mpv, Plex, your TV app — w
 
 ### Fullscreen detection
 When Direct3D runs fullscreen (games) or a presentation app takes over the shell, dimming fades out. Detection is throttled to a 5-second cadence to keep CPU and Windows Defender happy.
-
-### Global hotkeys
-| Hotkey | Action |
-|---|---|
-| `Ctrl + Alt + ↑` | Brighter (-5%) |
-| `Ctrl + Alt + ↓` | Darker (+5%) |
-| `Ctrl + Alt + D` | Toggle dimming on/off |
-
-Hotkeys register system-wide and work from any focused window.
 
 ### Warm tint and light mode overlays
 Two optional cosmetic overlays for low-light sessions: a soft warm tint (`RGB(255, 130, 45)`) that filters blue light, and a monochrome "light mode" wash. Both are off by default — the default dim is a neutral black.
@@ -145,7 +136,7 @@ clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
 ```cmd
 llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
 clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
-    -o IdleDimmer-Setup-v1.5.8.exe ^
+    -o IdleDimmer-Setup-v1.5.9.exe ^
     src\setup.cpp resources\setup_res.o ^
     -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -ldwmapi ^
     -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
