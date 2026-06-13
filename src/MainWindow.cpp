@@ -18,7 +18,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.5.9";
+static const wchar_t* APP_VERSION = L"v1.5.10";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -174,10 +174,6 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     DWORD cornerPreference = DWMWCP_ROUND;
     DwmSetWindowAttribute(m_hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
 
-    // Initialize D2D
-    if (FAILED(CreateGraphicsResources())) {
-        return false;
-    }
 
     m_appVersion = GetOwnVersion();
 
@@ -242,7 +238,10 @@ HRESULT MainWindow::CreateGraphicsResources() {
     if (!m_pRenderTarget) {
         RECT rc;
         GetClientRect(m_hwnd, &rc);
-        D2D1_SIZE_U size = D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top);
+        D2D1_SIZE_U size = D2D1::SizeU(
+            std::max<UINT32>(1, rc.right - rc.left),
+            std::max<UINT32>(1, rc.bottom - rc.top)
+        );
         
         hr = m_pFactory->CreateHwndRenderTarget(
             D2D1::RenderTargetProperties(),
@@ -281,16 +280,21 @@ HRESULT MainWindow::CreateGraphicsResources() {
         if (FAILED(hr)) { LogError(ErrorCode::E207, hr); DiscardGraphicsResources(); return hr; }
     }
 
-    if (!m_pDWriteFactory) {
-        hr = DWriteCreateFactory(
-            DWRITE_FACTORY_TYPE_SHARED,
-            __uuidof(IDWriteFactory),
-            reinterpret_cast<IUnknown**>(&m_pDWriteFactory)
-        );
-
-        if (FAILED(hr)) {
-            LogError(ErrorCode::E202, hr);
-            return hr;
+    if (!m_pDWriteFactory || !m_pTextFormatTitle || !m_pTextFormatBody || !m_pTextFormatDetail) {
+        // Clean up first if any is missing to prevent partial initialization issues
+        if (m_pTextFormatTitle) { m_pTextFormatTitle->Release(); m_pTextFormatTitle = nullptr; }
+        if (m_pTextFormatBody) { m_pTextFormatBody->Release(); m_pTextFormatBody = nullptr; }
+        if (m_pTextFormatDetail) { m_pTextFormatDetail->Release(); m_pTextFormatDetail = nullptr; }
+        if (!m_pDWriteFactory) {
+            hr = DWriteCreateFactory(
+                DWRITE_FACTORY_TYPE_SHARED,
+                __uuidof(IDWriteFactory),
+                reinterpret_cast<IUnknown**>(&m_pDWriteFactory)
+            );
+            if (FAILED(hr)) {
+                LogError(ErrorCode::E202, hr);
+                return hr;
+            }
         }
 
         hr = m_pDWriteFactory->CreateTextFormat(
@@ -738,7 +742,7 @@ void MainWindow::ToggleStartWithWindows(bool enable) {
 
 void MainWindow::OnResize(UINT width, UINT height) {
     if (m_pRenderTarget) {
-        D2D1_SIZE_U size = D2D1::SizeU(width, height);
+        D2D1_SIZE_U size = D2D1::SizeU(std::max<UINT32>(1, width), std::max<UINT32>(1, height));
         m_pRenderTarget->Resize(size);
     }
 }

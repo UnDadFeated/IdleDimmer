@@ -2,6 +2,12 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.10] - 2026-06-12
+
+### Bug Fixes
+* **Surface & High-DPI Startup Crash Fix**: Resolved a critical launch crash on devices with touchscreen and high-DPI scaling (such as the Surface Laptop Go). Deferred the creation of Direct2D graphics resources from initial creation to the first frame repaint, and enforced a minimum `1x1` target size during render target creation and window resizing. This prevents invalid hardware allocations (zero width/height dimensions) that cause driver crashes and startup failures on Intel graphics and virtualized environments.
+* **DirectWrite Partial-Initialization Crash Fix**: Fixed a bug where partial DirectWrite initialization failures during startup would leave text format pointers as null on subsequent paint loops, causing immediate access violations. The factory and all text formats are now safely verified and recreated on any resource mismatch.
+
 ## [1.5.9] - 2026-06-12
 
 ### Updates
