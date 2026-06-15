@@ -103,7 +103,7 @@ void DimmerManager::CreateOverlayForMonitor(ActiveMonitorInfo& info) {
     int h = info.rect.bottom - info.rect.top;
 
     info.hwndOverlay = CreateWindowExW(
-        WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+        WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
         L"IdleDimmerOverlayClass",
         L"IdleDimmerOverlay",
         WS_POPUP,
@@ -121,7 +121,8 @@ void DimmerManager::CreateOverlayForMonitor(ActiveMonitorInfo& info) {
         ShowWindow(info.hwndOverlay, SW_SHOWNOACTIVATE);
         UpdateWindow(info.hwndOverlay);
 
-        TriggerFade(info.hwndOverlay);
+        // Defer fade start so WM_NCCREATE/GWLP_USERDATA is fully processed first
+        PostMessageW(info.hwndOverlay, WM_APP + 1, 0, 0);
     } else {
         LogError(ErrorCode::E403, HRESULT_FROM_WIN32(GetLastError()));
     }
@@ -182,6 +183,15 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
 
         for (auto& mon : m_monitors) {
             if (mon.hwndOverlay) {
+                // Toggle WS_EX_TRANSPARENT: remove during idle (capture mouse for cursor hiding),
+                // add back when exiting idle (click-through mode)
+                LONG_PTR exStyle = GetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE);
+                if (idle) {
+                    exStyle &= ~WS_EX_TRANSPARENT;
+                } else {
+                    exStyle |= WS_EX_TRANSPARENT;
+                }
+                SetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE, exStyle);
                 TriggerFade(mon.hwndOverlay);
             }
         }
@@ -522,6 +532,11 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
     }
 
     switch (msg) {
+        case WM_APP + 1: {
+            // Deferred fade start after overlay creation
+            DimmerManager::Instance().TriggerFade(hwnd);
+            return 0;
+        }
         case WM_TIMER: {
             if (wp == 1 && info) {
                 int target = 0;

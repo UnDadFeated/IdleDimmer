@@ -14,6 +14,7 @@ enum class ErrorCode {
     E105 = 105, // MainWindow instance creation failed
     E106 = 106, // Main window class registration failed
     E107 = 107, // Main window handle creation failed
+    E108 = 108, // MainWindow initialization crash / structured exception
     
     // Area 2: Settings Window & GUI (E200 - E299)
     E201 = 201, // Direct2D factory creation failed
@@ -87,6 +88,7 @@ inline ErrorInfo GetErrorInfo(ErrorCode code) {
         case ErrorCode::E105: return { L"E105", L"MainWindow instance creation failed. The class singleton could not be initialized." };
         case ErrorCode::E106: return { L"E106", L"Main window class registration failed (RegisterClassExW)." };
         case ErrorCode::E107: return { L"E107", L"Main window handle creation failed (CreateWindowExW)." };
+        case ErrorCode::E108: return { L"E108", L"MainWindow initialization crash / structured exception." };
         
         case ErrorCode::E201: return { L"E201", L"Direct2D factory creation failed (D2D1CreateFactory)." };
         case ErrorCode::E202: return { L"E202", L"DirectWrite factory creation failed (DWriteCreateFactory)." };

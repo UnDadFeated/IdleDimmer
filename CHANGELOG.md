@@ -2,6 +2,17 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.5.11] - 2026-06-15
+
+### Bug Fixes
+* **MS Store Certification Crash Fix (Windows Build 26200)**: Resolved a launch crash on Windows 11 25H2 build 26200.7840 observed on HP Spectre x360 and Surface Laptop devices.
+  * Added `WS_EX_TRANSPARENT` to overlay creation style so overlays start in click-through mode, avoiding digitizer/touch input conflicts during startup.
+  * Deferred the initial fade trigger on overlay creation using `PostMessageW` (rather than a direct call) to allow the message queue to process standard creation events first.
+  * Safely check the return value of `DwmSetWindowAttribute` calls and ignore failures gracefully if attributes are not supported or fail to apply.
+  * Wrapped the main window creation sequence in a structured exception handler (`__try`/`__except`) to safely log initialization crashes and avoid sudden termination.
+  * Guarded registry-based startup configuration with an `IsPackaged()` check to prevent virtualized registry write failures when running inside the MSIX container.
+  * Bumped `MaxVersionTested` in the MSIX manifest to `10.0.26100.0` to prevent Windows from applying buggy compatibility shims on newer 25H2 OS builds.
+
 ## [1.5.10] - 2026-06-12
 
 ### Bug Fixes

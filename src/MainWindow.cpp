@@ -18,7 +18,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.5.10";
+static const wchar_t* APP_VERSION = L"v1.5.11";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -117,6 +117,16 @@ static bool RemoveTrayIcon(HWND hwnd, UINT uID) {
 }
 
 bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
+    __try {
+        return CreateImpl(hInst, nCmdShow);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        LogError(ErrorCode::E108, static_cast<HRESULT>(GetExceptionCode()));
+        return false;
+    }
+}
+
+bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
     m_hInst = hInst;
     LoadSettings();
     m_undoStack.clear();
@@ -169,10 +179,16 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
 
     // Enable Windows 11 rounded corners and dark/light theme
     BOOL useDark = !m_config.lightMode;
-    DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
+    HRESULT hrDark = DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
+    if (FAILED(hrDark)) {
+        OutputDebugStringW(L"[IdleDimmer] DwmSetWindowAttribute (DWMWA_USE_IMMERSIVE_DARK_MODE) failed.\n");
+    }
     
     DWORD cornerPreference = DWMWCP_ROUND;
-    DwmSetWindowAttribute(m_hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
+    HRESULT hrCorner = DwmSetWindowAttribute(m_hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
+    if (FAILED(hrCorner)) {
+        OutputDebugStringW(L"[IdleDimmer] DwmSetWindowAttribute (DWMWA_WINDOW_CORNER_PREFERENCE) failed.\n");
+    }
 
 
     m_appVersion = GetOwnVersion();
@@ -718,6 +734,9 @@ void MainWindow::SyncMonitorsWithConfig() {
 }
 
 void MainWindow::ToggleStartWithWindows(bool enable) {
+    if (IsPackaged()) {
+        return;
+    }
     HKEY hKey;
     LONG lRes = RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_WRITE, &hKey);
     if (lRes == ERROR_SUCCESS) {
