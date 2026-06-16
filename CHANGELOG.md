@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.6.2] - 2026-06-16
+
+### Bug Fixes
+* **Statically Linked MinGW Runtime**: Configured LLVM-MinGW `clang++` compilation with the `-static` flag to statically link C++ standard library (`libc++`) and unwind (`libunwind`) resources. This resolves the load-time `0xc000007b` (invalid image format/missing DLL dependencies) application error when running on environments that lack the LLVM development toolchain.
+
 ## [1.6.1] - 2026-06-16
 
 ### Bug Fixes
