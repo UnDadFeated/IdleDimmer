@@ -1,6 +1,7 @@
 #pragma once
 #define NOMINMAX
 #include <windows.h>
+#include <winhttp.h>
 #include <d2d1.h>
 #include <dwrite.h>
 #include <vector>
@@ -122,6 +123,7 @@ private:
     bool m_updateAvailable = false;
     std::wstring m_latestVersion;
     HANDLE m_hUpdateThread = nullptr;
+    HINTERNET m_hSession = nullptr;
     static DWORD WINAPI CheckForUpdatesThread(LPVOID lpParam);
     void OnUpdateCheckComplete(WPARAM wp, LPARAM lp);
     bool IsPackaged() const;

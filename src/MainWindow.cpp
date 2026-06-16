@@ -18,7 +18,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.5.11";
+static const wchar_t* APP_VERSION = L"v1.6.0";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -215,7 +215,7 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
     }
 
     if (!IsPackaged()) {
-        m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
+        SetTimer(m_hwnd, 203, 15000, nullptr);
     } else {
         m_updateChecked = true;
     }
@@ -551,6 +551,7 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
     MainWindow* self = reinterpret_cast<MainWindow*>(lpParam);
     
     HINTERNET hSession = WinHttpOpen(L"IdleDimmer/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, nullptr, nullptr, 0);
+    self->m_hSession = hSession;
     if (hSession) {
         HINTERNET hConnect = WinHttpConnect(hSession, L"api.github.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
         if (hConnect) {
@@ -561,8 +562,7 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                 if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, nullptr, 0, 0, 0)) {
                     if (WinHttpReceiveResponse(hRequest, nullptr)) {
                         DWORD size = 0;
-                        WinHttpQueryDataAvailable(hRequest, &size);
-                        if (size > 0) {
+                        if (WinHttpQueryDataAvailable(hRequest, &size) && size > 0) {
                             std::vector<char> buf(size + 1);
                             DWORD read = 0;
                             if (WinHttpReadData(hRequest, buf.data(), size, &read)) {
@@ -604,7 +604,13 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
             }
             WinHttpCloseHandle(hConnect);
         }
-        WinHttpCloseHandle(hSession);
+        HINTERNET hSes = reinterpret_cast<HINTERNET>(InterlockedExchangePointer(
+            reinterpret_cast<PVOID volatile*>(&self->m_hSession),
+            nullptr
+        ));
+        if (hSes) {
+            WinHttpCloseHandle(hSes);
+        }
     }
     
     self->m_updateChecked = true;
@@ -768,6 +774,7 @@ void MainWindow::OnResize(UINT width, UINT height) {
 
 MainWindow::~MainWindow() {
     KillTimer(m_hwnd, 202);
+    KillTimer(m_hwnd, 203);
     RemoveTrayIcon(m_hwnd, 1);
     DiscardGraphicsResources();
     if (m_pFactory) m_pFactory->Release();
@@ -775,8 +782,16 @@ MainWindow::~MainWindow() {
     if (m_pTextFormatTitle) m_pTextFormatTitle->Release();
     if (m_pTextFormatBody) m_pTextFormatBody->Release();
     if (m_pTextFormatDetail) m_pTextFormatDetail->Release();
+    
+    HINTERNET hSes = reinterpret_cast<HINTERNET>(InterlockedExchangePointer(
+        reinterpret_cast<PVOID volatile*>(&m_hSession),
+        nullptr
+    ));
+    if (hSes) {
+        WinHttpCloseHandle(hSes);
+    }
     if (m_hUpdateThread) {
-        WaitForSingleObject(m_hUpdateThread, 1000);
+        WaitForSingleObject(m_hUpdateThread, INFINITE);
         CloseHandle(m_hUpdateThread);
         m_hUpdateThread = nullptr;
     }
@@ -855,6 +870,11 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                         }
                     } else if (DimmerManager::Instance().IsIdleState()) {
                         DimmerManager::Instance().SetIdleState(false);
+                    }
+                } else if (wp == 203) {
+                    KillTimer(hwnd, 203);
+                    if (!self->m_hUpdateThread) {
+                        self->m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, self, 0, nullptr);
                     }
                 }
                 return 0;

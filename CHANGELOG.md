@@ -2,6 +2,16 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.6.0] - 2026-06-16
+
+### Bug Fixes
+* **MS Store Certification Launch Crash**: Resolved a launch crash observed on Windows 11 build 26200.8457.
+  * Explicitly set the PE subsystem version to 10.0 and OS version to 10.0 in compiler and linker settings (MSVC and Clang/MinGW) to match the target environment and avoid loader shim mismatch issues.
+  * Updated MSIX manifest `MaxVersionTested` to `10.0.26200.0` to explicitly support the certification test environment OS version.
+  * Delayed the manual update checking process by 15 seconds after app launch to ensure a smooth startup.
+  * Stored the update check WinHTTP session handle and safely cancelled any pending synchronous requests using `InterlockedExchangePointer` and `WinHttpCloseHandle` at window destruction. This prevents a use-after-free crash if the app is closed while the network request is still blocking/pending.
+  * Removed legacy configuration migration code referencing the old `WinDimmer64` application directory to eliminate potential file access issues and clean up unused config references.
+
 ## [1.5.11] - 2026-06-15
 
 ### Bug Fixes

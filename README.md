@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-6B7280?style=flat-square" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/Version-1.5.11-10B981?style=flat-square" alt="Version 1.5.11">
+  <img src="https://img.shields.io/badge/Version-1.6.0-10B981?style=flat-square" alt="Version 1.6.0">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 10/11">
   <img src="https://img.shields.io/badge/C%2B%2B17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++17">
 </p>
@@ -23,7 +23,7 @@ Built in native C++17 with Direct2D and the raw Win32 API. **~150 KB on disk. Ze
 
 ### Direct installer (GitHub Releases)
 
-[**IdleDimmer-Setup-v1.5.11.exe**](https://github.com/UnDadFeated/IdleDimmer/releases/download/v1.5.11/IdleDimmer-Setup-v1.5.11.exe) — 280 KB
+[**IdleDimmer-Setup-v1.6.0.exe**](https://github.com/UnDadFeated/IdleDimmer/releases/download/v1.6.0/IdleDimmer-Setup-v1.6.0.exe) — 280 KB
 
 Per-user install to `%LOCALAPPDATA%`. No admin elevation. Clean uninstall from Settings > Apps. Self-extracting installer with dark theme UI.
 
@@ -124,22 +124,22 @@ Auto-detects VS 2022, compiles resources, links the app.
 ### LLVM-MinGW
 ```cmd
 llvm-windres resources\resources.rc -O coff -o resources\resources.o
-clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
+clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -fms-extensions ^
     -o IdleDimmer.exe ^
-    src\main.cpp src\MainWindow.cpp src\DimmerManager.cpp src\ConfigManager.cpp ^
+    src\main.cpp src\MainWindow.cpp src\MainWindowDraw.cpp src\MainWindowInput.cpp src\DimmerManager.cpp src\ConfigManager.cpp ^
     resources\resources.o ^
-    -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp ^
-    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
+    -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp -lversion ^
+    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows:10.0
 ```
 
 ### Installer
 ```cmd
 llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
 clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
-    -o IdleDimmer-Setup-v1.5.11.exe ^
+    -o IdleDimmer-Setup-v1.6.0.exe ^
     src\setup.cpp resources\setup_res.o ^
     -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -ldwmapi ^
-    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va
+    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows:10.0
 ```
 
 ### Microsoft Store MSIX
