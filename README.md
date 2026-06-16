@@ -124,7 +124,7 @@ Auto-detects VS 2022, compiles resources, links the app.
 ### LLVM-MinGW
 ```cmd
 llvm-windres resources\resources.rc -O coff -o resources\resources.o
-clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -fms-extensions ^
+clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -fms-extensions -static ^
     -o IdleDimmer.exe ^
     src\main.cpp src\MainWindow.cpp src\MainWindowDraw.cpp src\MainWindowInput.cpp src\DimmerManager.cpp src\ConfigManager.cpp ^
     resources\resources.o ^
@@ -135,7 +135,7 @@ clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -fms-extensions ^
 ### Installer
 ```cmd
 llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
-clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf ^
+clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -static ^
     -o IdleDimmer-Setup-v1.6.1.exe ^
     src\setup.cpp resources\setup_res.o ^
     -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -ldwmapi ^
