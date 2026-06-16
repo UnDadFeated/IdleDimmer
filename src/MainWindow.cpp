@@ -18,7 +18,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.6.0";
+static const wchar_t* APP_VERSION = L"v1.6.1";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -791,7 +791,7 @@ MainWindow::~MainWindow() {
         WinHttpCloseHandle(hSes);
     }
     if (m_hUpdateThread) {
-        WaitForSingleObject(m_hUpdateThread, INFINITE);
+        WaitForSingleObject(m_hUpdateThread, 3000);
         CloseHandle(m_hUpdateThread);
         m_hUpdateThread = nullptr;
     }

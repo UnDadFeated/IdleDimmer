@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.6.1] - 2026-06-16
+
+### Bug Fixes
+* **MS Store Certification Exit Hang Fix**: Changed the `WaitForSingleObject` wait timeout in the `MainWindow` destructor from `INFINITE` to `3000` milliseconds. This prevents a potential shutdown hang if the update checking thread fails to abort quickly during program exit.
+
 ## [1.6.0] - 2026-06-16
 
 ### Bug Fixes
