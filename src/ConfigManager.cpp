@@ -3,6 +3,7 @@
 #include "ErrorCodes.h"
 #include <fstream>
 #include <sstream>
+#include <locale>
 #include <shlobj.h>
 #include <algorithm>
 
@@ -39,6 +40,7 @@ std::wstring ConfigManager::GetConfigPath() {
 AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     AppConfig config;
     std::wifstream file(filePath.c_str());
+    file.imbue(std::locale(""));
     if (!file.is_open()) {
         DWORD attrs = GetFileAttributesW(filePath.c_str());
         if (attrs != INVALID_FILE_ATTRIBUTES) {
@@ -144,6 +146,7 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
 
 void ConfigManager::SaveConfig(const std::wstring& filePath, const AppConfig& config) {
     std::wofstream file(filePath.c_str());
+    file.imbue(std::locale(""));
     if (!file.is_open()) {
         LogError(ErrorCode::E304, HRESULT_FROM_WIN32(GetLastError()));
         return;

@@ -18,7 +18,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.6.2";
+static const wchar_t* APP_VERSION = L"v1.6.3";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -318,6 +318,14 @@ HRESULT MainWindow::CreateGraphicsResources() {
             DWRITE_FONT_WEIGHT_SEMI_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
             20.0f, L"en-us", &m_pTextFormatTitle
         );
+        if (FAILED(hr)) {
+            // Fallback for systems without Segoe UI Variable
+            hr = m_pDWriteFactory->CreateTextFormat(
+                L"Segoe UI", nullptr,
+                DWRITE_FONT_WEIGHT_SEMI_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+                20.0f, L"en-us", &m_pTextFormatTitle
+            );
+        }
         if (FAILED(hr)) { LogError(ErrorCode::E203, hr); DiscardGraphicsResources(); return hr; }
 
         hr = m_pDWriteFactory->CreateTextFormat(
@@ -325,6 +333,13 @@ HRESULT MainWindow::CreateGraphicsResources() {
             DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
             13.0f, L"en-us", &m_pTextFormatBody
         );
+        if (FAILED(hr)) {
+            hr = m_pDWriteFactory->CreateTextFormat(
+                L"Segoe UI", nullptr,
+                DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+                13.0f, L"en-us", &m_pTextFormatBody
+            );
+        }
         if (FAILED(hr)) { LogError(ErrorCode::E204, hr); DiscardGraphicsResources(); return hr; }
 
         hr = m_pDWriteFactory->CreateTextFormat(
@@ -332,6 +347,13 @@ HRESULT MainWindow::CreateGraphicsResources() {
             DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
             10.5f, L"en-us", &m_pTextFormatDetail
         );
+        if (FAILED(hr)) {
+            hr = m_pDWriteFactory->CreateTextFormat(
+                L"Segoe UI", nullptr,
+                DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+                10.5f, L"en-us", &m_pTextFormatDetail
+            );
+        }
         if (FAILED(hr)) { LogError(ErrorCode::E205, hr); DiscardGraphicsResources(); return hr; }
     }
 

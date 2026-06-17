@@ -2,6 +2,12 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.6.3] - 2026-06-17
+
+### Bug Fixes
+* **Font Fallback for Stripped Windows Images**: Added automatic fallback from `Segoe UI Variable Display` / `Segoe UI Variable Text` to the universally-available `Segoe UI` when DirectWrite font creation fails. On test machines with missing or incomplete font installations (e.g. certification lab Surface Laptops), the previous behavior caused `CreateGraphicsResources()` to fail silently, making the app exit with no visible window — which looks like a crash at launch.
+* **Config File Locale Corruption**: Added `std::locale("")` imbue to both `wifstream` and `wofstream` in config read/write paths. The default `"C"` locale could produce garbled monitor IDs on certain Windows code pages, corrupting the config file and causing phantom monitor entries on subsequent launches.
+
 ## [1.6.2] - 2026-06-16
 
 ### Bug Fixes
