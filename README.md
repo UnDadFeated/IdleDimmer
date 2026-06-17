@@ -129,7 +129,7 @@ clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -fms-extensions -static ^
     src\main.cpp src\MainWindow.cpp src\MainWindowDraw.cpp src\MainWindowInput.cpp src\DimmerManager.cpp src\ConfigManager.cpp ^
     resources\resources.o ^
     -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp -lversion ^
-    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows:10.0
+    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
 ```
 
 ### Installer
@@ -138,8 +138,8 @@ llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
 clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -static ^
     -o IdleDimmer-Setup-v1.6.2.exe ^
     src\setup.cpp resources\setup_res.o ^
-    -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -ldwmapi ^
-    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows:10.0
+    -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion ^
+    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
 ```
 
 ### Microsoft Store MSIX

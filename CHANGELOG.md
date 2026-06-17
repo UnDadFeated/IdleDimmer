@@ -6,6 +6,7 @@ All notable changes to the IdleDimmer project are documented here.
 
 ### Bug Fixes
 * **Statically Linked MinGW Runtime**: Configured LLVM-MinGW `clang++` compilation with the `-static` flag to statically link C++ standard library (`libc++`) and unwind (`libunwind`) resources. This resolves the load-time `0xc000007b` (invalid image format/missing DLL dependencies) application error when running on environments that lack the LLVM development toolchain.
+* **Windows PE (WinPE) Compatibility**: Refactored the setup installer to dynamically load `dwmapi.dll` and resolve `DwmSetWindowAttribute` at runtime. Added safety guards around `SHGetFolderPathW` to handle cases where Start Menu folders do not exist. These changes resolve startup load-time `0xc000007b` errors and potential shell folder crashes in lightweight/Windows PE environments.
 
 ## [1.6.1] - 2026-06-16
 

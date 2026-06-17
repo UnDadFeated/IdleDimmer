@@ -16,7 +16,6 @@
 #include <winver.h>
 #include <wrl/client.h>
 #include "ErrorCodes.h"
-#pragma comment(lib, "dwmapi.lib")
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 using Microsoft::WRL::ComPtr;
@@ -144,18 +143,21 @@ static void KillRunning() {
 
 static void CreateShortcut(const wchar_t* target) {
     Log(L"  Creating Start Menu shortcut...\r\n");
-    wchar_t path[MAX_PATH];
-    SHGetFolderPathW(nullptr, CSIDL_STARTMENU, nullptr, 0, path);
-    wcscat_s(path, MAX_PATH, L"\\Programs\\IdleDimmer.lnk");
-    ComPtr<IShellLinkW> psl;
-    if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&psl)))) {
-        psl->SetPath(target);
-        psl->SetDescription(L"Monitor dimmer with per-monitor controls, hotkeys, and idle detection");
-        ComPtr<IPersistFile> ppf;
-        if (SUCCEEDED(psl.As(&ppf))) {
-            ppf->Save(path, TRUE);
-            Log(L"  Shortcut saved\r\n");
+    wchar_t path[MAX_PATH] = {0};
+    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_STARTMENU, nullptr, 0, path))) {
+        wcscat_s(path, MAX_PATH, L"\\Programs\\IdleDimmer.lnk");
+        ComPtr<IShellLinkW> psl;
+        if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&psl)))) {
+            psl->SetPath(target);
+            psl->SetDescription(L"Monitor dimmer with per-monitor controls, hotkeys, and idle detection");
+            ComPtr<IPersistFile> ppf;
+            if (SUCCEEDED(psl.As(&ppf))) {
+                ppf->Save(path, TRUE);
+                Log(L"  Shortcut saved\r\n");
+            }
         }
+    } else {
+        Log(L"  [WARNING] Could not retrieve Start Menu folder path\r\n");
     }
 }
 
@@ -197,10 +199,11 @@ static void Uninstall() {
     swprintf(iniPath, MAX_PATH, L"%s\\dimmer.ini", configDir);
     DeleteFileW(iniPath);
     RemoveDirectoryW(configDir);
-    wchar_t shortcut[MAX_PATH];
-    SHGetFolderPathW(NULL, CSIDL_STARTMENU, NULL, 0, shortcut);
-    wcscat_s(shortcut, MAX_PATH, L"\\Programs\\IdleDimmer.lnk");
-    DeleteFileW(shortcut);
+    wchar_t shortcut[MAX_PATH] = {0};
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_STARTMENU, NULL, 0, shortcut))) {
+        wcscat_s(shortcut, MAX_PATH, L"\\Programs\\IdleDimmer.lnk");
+        DeleteFileW(shortcut);
+    }
     RegDeleteKeyW(HKEY_CURRENT_USER, REG_PATH);
     Log(L"  Uninstall complete\r\n");
 }
@@ -215,9 +218,17 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             int ch = rc.bottom;
             int m = 20;
 
-            // Apply dark mode for title bar
-            BOOL dark = TRUE;
-            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
+            // Apply dark mode for title bar dynamically to allow running on environments without dwmapi.dll (e.g. WinPE)
+            HMODULE hDwm = LoadLibraryW(L"dwmapi.dll");
+            if (hDwm) {
+                typedef HRESULT (WINAPI *DwmSetWindowAttributePtr)(HWND, DWORD, LPCVOID, DWORD);
+                DwmSetWindowAttributePtr fnDwmSetWindowAttribute = (DwmSetWindowAttributePtr)GetProcAddress(hDwm, "DwmSetWindowAttribute");
+                if (fnDwmSetWindowAttribute) {
+                    BOOL dark = TRUE;
+                    fnDwmSetWindowAttribute(hwnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &dark, sizeof(dark));
+                }
+                FreeLibrary(hDwm);
+            }
 
             GetInstallPath(g_installPath, MAX_PATH);
             wchar_t exePath[MAX_PATH];
