@@ -70,6 +70,24 @@ A single "Check for Updates" button pings GitHub's public releases API to compar
 ### Clean uninstall
 Settings, Run-key entry, Start Menu shortcut — all removed. No leftover files, no leftover registry keys, no leftover services.
 
+### Time-of-day scheduling
+Set a start and end time for automatic dimming. The scheduler uses two compact sliders (15-minute increments) for quick setup — default is 22:00 to 07:00 for overnight dimming. Toggle it on and forget it.
+
+### On-screen display (OSD) feedback
+Every config change triggers a sleek, click-through notification at the bottom-right of your primary monitor — showing what changed without stealing focus or intercepting input.
+
+### Preset profiles — customize and save
+Four preset buttons on the settings panel: **[OLED]**, **[Gaming]**, **[Reading]**, **[Night]**. Click any preset to instantly apply its configuration:
+- **OLED**: True-black dimming (master 90%), no warm tint — perfect for OLED panels
+- **Gaming**: No dimming, vibrant display — ready for gaming
+- **Reading**: Low dim + warm amber tint — easy on the eyes
+- **Night**: Heavy dim + warm amber — late-night sessions
+
+**All presets are saved on exit.** Customize any preset by clicking it, tweaking the settings, and the app saves your configuration automatically — every slider change, toggle, and checkbox is written to disk immediately.
+
+### Profile import / export
+Save your entire config as a portable `.ini` file and share it across machines. Import a previously exported profile with one click — no manual file editing needed.
+
 ---
 
 ## Designed to stay out of your way
