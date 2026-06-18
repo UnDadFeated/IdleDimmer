@@ -14,11 +14,21 @@ struct UISlider {
     bool isMaster = false;
     bool isIdleMinutes = false;
     bool isIdleDimLevel = false;
+    bool isScheduleStart = false;   // v1.6.5 (Todo 8): minutes-of-day slider
+    bool isScheduleEnd   = false;   // v1.6.5 (Todo 8): minutes-of-day slider
     RECT rect;
     float value = 0.0f; // 0.0 to 1.0
     bool active = true;
     bool isDragging = false;
     bool isHovered = false;
+};
+
+// v1.6.5 (Todo 5): Monochrome preset buttons row.
+struct UIPresetButton {
+    int  id = 0;            // 0=Gaming, 1=Reading, 2=Night, 3=OLED
+    RECT rect = { 0 };
+    bool hovered = false;
+    std::wstring label;
 };
 
 struct UICheckbox {
@@ -101,9 +111,18 @@ private:
     // UI Interactive components
     std::vector<UISlider> m_sliders;
     std::vector<UICheckbox> m_checkboxes;
+    std::vector<UIPresetButton> m_presets;        // v1.6.5 (Todo 5)
     int m_windowWidth = 480;
     int m_windowHeight = 520;
     AppConfig m_config;
+
+    // v1.6.5 (Todo 6): Profile Import/Export buttons (right-side panel)
+    RECT m_importProfileRect = { 0 };
+    RECT m_exportProfileRect = { 0 };
+    bool m_importProfileHovered = false;
+    bool m_exportProfileHovered = false;
+    void ShowImportProfileDialog();
+    void ShowExportProfileDialog();
 
     // Current app version read from resource
     std::wstring m_appVersion;
@@ -142,4 +161,11 @@ private:
     int m_blockedContentHeight = 0;
     void ShowAddAppDialog();
     void Repaint() { InvalidateRect(m_hwnd, nullptr, FALSE); }
+
+    // v1.6.5 (Todo 5): Apply one of the 4 preset configurations.
+    //   0 = Gaming  : dimming off, warm tint off, master 0
+    //   1 = Reading : warm tint on, master 30
+    //   2 = Night   : warm tint on, master 80
+    //   3 = OLED    : dimming on, master 90, warm tint off (true black for OLED)
+    void ApplyPreset(int id);
 };

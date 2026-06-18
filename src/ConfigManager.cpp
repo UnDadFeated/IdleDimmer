@@ -97,6 +97,21 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     if (findValue(L"MasterEnabled", val)) config.masterEnabled = ParseBool(val);
     if (findValue(L"LightMode", val)) config.lightMode = ParseBool(val);
     if (findValue(L"DimmingEnabled", val)) config.dimmingEnabled = ParseBool(val);
+    // ── v1.6.5: Scheduling fields. Defaults are already set on AppConfig ctor,
+    // so a missing or malformed field simply retains the default (safe behavior).
+    if (findValue(L"ScheduleEnabled", val)) config.scheduleEnabled = ParseBool(val);
+    if (findValue(L"ScheduleStartMins", val)) {
+        int v = ParseInt(val);
+        if (v >= 0 && v < 1440) config.scheduleStartMins = v;
+    }
+    if (findValue(L"ScheduleEndMins", val)) {
+        int v = ParseInt(val);
+        if (v >= 0 && v < 1440) config.scheduleEndMins = v;
+    }
+    if (findValue(L"ScheduleDimLevel", val)) {
+        int v = ParseInt(val);
+        if (v >= 0 && v <= 90) config.scheduleDimLevel = v;
+    }
     // Parse BlockedApps array
     size_t blockedPos = content.find(L"\"BlockedApps\"");
     if (blockedPos != std::wstring::npos) {
@@ -180,6 +195,10 @@ void ConfigManager::SaveConfig(const std::wstring& filePath, const AppConfig& co
     file << L"  \"MasterEnabled\": " << (config.masterEnabled ? L"true" : L"false") << L",\n";
     file << L"  \"LightMode\": " << (config.lightMode ? L"true" : L"false") << L",\n";
     file << L"  \"DimmingEnabled\": " << (config.dimmingEnabled ? L"true" : L"false") << L",\n";
+    file << L"  \"ScheduleEnabled\": " << (config.scheduleEnabled ? L"true" : L"false") << L",\n";
+    file << L"  \"ScheduleStartMins\": " << config.scheduleStartMins << L",\n";
+    file << L"  \"ScheduleEndMins\": " << config.scheduleEndMins << L",\n";
+    file << L"  \"ScheduleDimLevel\": " << config.scheduleDimLevel << L",\n";
 
     file << L"  \"BlockedApps\": [";
     for (size_t i = 0; i < config.blockedApps.size(); ++i) {

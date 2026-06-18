@@ -18,7 +18,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.6.4";
+static const wchar_t* APP_VERSION = L"v1.6.5";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -383,6 +383,7 @@ void MainWindow::DiscardGraphicsResources() {
 void MainWindow::UpdateLayout() {
     m_sliders.clear();
     m_checkboxes.clear();
+    m_presets.clear();
     m_windowWidth = CONTENT_WIDTH;
 
     const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
@@ -446,6 +447,28 @@ void MainWindow::UpdateLayout() {
         yOffset = slider.rect.bottom + 10;
     }
 
+    // ── v1.6.5 (Todo 5): Preset Buttons Row ──
+    // 4 compact monochrome buttons: [Gaming] [Reading] [Night] [OLED]
+    yOffset += 6;
+    yOffset += 16; // space for section header label
+    {
+        int btnW = (CONTENT_WIDTH - 40 - 35 - 18) / 4;  // 4 buttons, 6px gaps
+        int btnH = 28;
+        int gap  = 6;
+        const wchar_t* names[4] = { L"Gaming", L"Reading", L"Night", L"OLED" };
+        for (int i = 0; i < 4; ++i) {
+            UIPresetButton btn;
+            btn.id = i;
+            btn.label = names[i];
+            btn.rect.left   = 20 + i * (btnW + gap);
+            btn.rect.top    = yOffset;
+            btn.rect.right  = btn.rect.left + btnW;
+            btn.rect.bottom = btn.rect.top + btnH;
+            m_presets.push_back(btn);
+        }
+        yOffset = m_presets.back().rect.bottom + 10;
+    }
+
     // Space before settings
     yOffset += 5;
 
@@ -485,6 +508,39 @@ void MainWindow::UpdateLayout() {
     AddCheckbox(L"CloseToTray", m_config.closeToTray, &m_config.closeToTray, L"Close to Tray", 0, yOffset);
     AddCheckbox(L"StartWithWindows", m_config.startWithWindows, &m_config.startWithWindows, L"Start with Windows", 1, yOffset);
     yOffset += 22;
+
+    // ── SCHEDULE section (v1.6.5 Todo 8) ──
+    yOffset += 8;
+    yOffset += 16; // space for section header label
+    AddCheckbox(L"ScheduleEnabled", m_config.scheduleEnabled,
+                &m_config.scheduleEnabled, L"Schedule Dimming", 0, yOffset);
+    yOffset += 22;
+
+    if (m_config.scheduleEnabled) {
+        // Two sliders: Start time and End time, snapped to 15-minute intervals.
+        // Slider value = minutesOfDay / 1439. On commit we round to nearest 15 mins.
+        UISlider startSlider;
+        startSlider.isScheduleStart = true;
+        startSlider.value = m_config.scheduleStartMins / 1439.0f;
+        startSlider.active = true;
+        startSlider.rect.left = 20;
+        startSlider.rect.top = yOffset + 4;
+        startSlider.rect.right = m_windowWidth - 35;
+        startSlider.rect.bottom = startSlider.rect.top + 58;
+        m_sliders.push_back(startSlider);
+
+        UISlider endSlider;
+        endSlider.isScheduleEnd = true;
+        endSlider.value = m_config.scheduleEndMins / 1439.0f;
+        endSlider.active = true;
+        endSlider.rect.left = 20;
+        endSlider.rect.top = startSlider.rect.bottom + 10;
+        endSlider.rect.right = m_windowWidth - 35;
+        endSlider.rect.bottom = endSlider.rect.top + 58;
+        m_sliders.push_back(endSlider);
+
+        yOffset = endSlider.rect.bottom + 4;
+    }
 
     // ── BLOCKED APPS ──
     m_blockedArrowRect = { CONTENT_WIDTH - 120, 5, CONTENT_WIDTH - 80, 25 };
@@ -533,10 +589,18 @@ void MainWindow::UpdateLayout() {
 
     m_blockedAddRect = { panelLeft + 10, panelTop + 8, panelRight - 10, panelTop + 26 };
 
+    // v1.6.5 (Todo 6): Import / Export profile buttons below the panel header.
+    int profileY = panelTop + 32;
+    int profileH = 22;
+    m_importProfileRect = { panelLeft + 10, profileY,
+                            panelLeft + 10 + (PANEL_WIDTH - 30) / 2, profileY + profileH };
+    m_exportProfileRect = { m_importProfileRect.right + 6, profileY,
+                            panelRight - 10, profileY + profileH };
+
     m_blockedItems.clear();
     m_blockedContentHeight = 0;
     if (m_blockedExpanded) {
-        int itemY = panelTop + 44;
+        int itemY = panelTop + 70; // leave room for header + import/export row
         for (const auto& app : m_config.blockedApps) {
             UIBlockedAppItem item;
             item.name = app;
@@ -682,6 +746,12 @@ bool MainWindow::IsPackaged() const {
 void MainWindow::LoadSettings() {
     m_config = ConfigManager::LoadConfig(ConfigManager::GetConfigPath());
     DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
+    // ── v1.6.5: push schedule settings into DimmerManager ──
+    DimmerManager::Instance().SetScheduleRange(
+        m_config.scheduleStartMins,
+        m_config.scheduleEndMins,
+        m_config.scheduleDimLevel);
+    DimmerManager::Instance().SetScheduleEnabled(m_config.scheduleEnabled);
 }
 
 void MainWindow::SaveSettings() {
@@ -970,4 +1040,138 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
         }
     }
     return DefWindowProcW(hwnd, msg, wp, lp);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// v1.6.5 (Todo 5): Preset Profile application
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Four curated presets. Each one mutates the live config in place and then
+// calls SyncMonitorsWithConfig() so overlay dim values track the new master,
+// plus SetWarmTint / SetDimmingEnabled on DimmerManager for immediate visual
+// feedback. The change is undoable (caller has already pushed the undo state).
+//
+//   Gaming  — dimming off, warm tint off, master 0  (vibrant, undimmed)
+//   Reading — dimming on,  warm tint on,  master 30 (soothing low dim + amber)
+//   Night   — dimming on,  warm tint on,  master 80 (heavy dim + amber)
+//   OLED    — dimming on,  warm tint off, master 90 (true-black OLED dimming)
+void MainWindow::ApplyPreset(int id) {
+    switch (id) {
+        case 0: // Gaming
+            m_config.dimmingEnabled = false;
+            m_config.warmTint       = false;
+            m_config.masterValue    = 0;
+            break;
+        case 1: // Reading
+            m_config.dimmingEnabled = true;
+            m_config.warmTint       = true;
+            m_config.masterValue    = 30;
+            break;
+        case 2: // Night
+            m_config.dimmingEnabled = true;
+            m_config.warmTint       = true;
+            m_config.masterValue    = 80;
+            break;
+        case 3: // OLED
+            m_config.dimmingEnabled = true;
+            m_config.warmTint       = false;
+            m_config.masterValue    = 90;
+            break;
+        default:
+            return;
+    }
+
+    // Propagate master value to every monitor.
+    for (auto& mon : m_config.monitors) {
+        mon.value   = m_config.masterValue;
+        mon.enabled = true;
+    }
+
+    // Refresh live DimmerManager state.
+    DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
+    DimmerManager::Instance().SetWarmTint(m_config.warmTint);
+    SyncMonitorsWithConfig();
+
+    // Reflect new checkbox states in the live checkbox vector so the next
+    // repaint doesn't show stale toggle positions.
+    for (auto& cb : m_checkboxes) {
+        if (cb.settingName == L"DimmingEnabled") cb.checked = m_config.dimmingEnabled;
+        else if (cb.settingName == L"WarmTint")  cb.checked = m_config.warmTint;
+        else if (cb.settingName == L"MasterEnabled") cb.checked = true;
+        else if (!cb.monitorId.empty()) cb.checked = true;
+    }
+
+    UpdateLayout();
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+
+    // v1.6.5 (Todo 4): OSD feedback for the preset application.
+    const wchar_t* presetNames[4] = { L"Gaming", L"Reading", L"Night", L"OLED" };
+    if (id >= 0 && id < 4) {
+        wchar_t osd[64];
+        StringCchPrintfW(osd, 64, L"Preset: %s  |  %d%%",
+                         presetNames[id], 100 - m_config.masterValue);
+        DimmerManager::Instance().ShowOSD(osd);
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// v1.6.5 (Todo 6): Profile Import / Export via Win32 GetOpenFileNameW /
+// GetSaveFileNameW. We reuse the existing ConfigManager SaveConfig/LoadConfig
+// helpers, since the file format is identical — an exported profile is just
+// a dimmer.ini file written to a user-chosen path.
+// ════════════════════════════════════════════════════════════════════════════
+
+void MainWindow::ShowExportProfileDialog() {
+    wchar_t szFile[MAX_PATH] = { 0 };
+    OPENFILENAMEW ofn = { 0 };
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner   = m_hwnd;
+    ofn.lpstrFile   = szFile;
+    ofn.nMaxFile    = MAX_PATH;
+    ofn.lpstrFilter = L"IdleDimmer Profile (*.ini)\0*.ini\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrDefExt = L"ini";
+    ofn.lpstrTitle  = L"Export IdleDimmer Profile";
+    ofn.Flags       = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
+
+    if (GetSaveFileNameW(&ofn)) {
+        ConfigManager::SaveConfig(szFile, m_config);
+        DimmerManager::Instance().ShowOSD(L"Profile exported");
+    }
+}
+
+void MainWindow::ShowImportProfileDialog() {
+    wchar_t szFile[MAX_PATH] = { 0 };
+    OPENFILENAMEW ofn = { 0 };
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner   = m_hwnd;
+    ofn.lpstrFile   = szFile;
+    ofn.nMaxFile    = MAX_PATH;
+    ofn.lpstrFilter = L"IdleDimmer Profile (*.ini)\0*.ini\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrTitle  = L"Import IdleDimmer Profile";
+    ofn.Flags       = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
+
+    if (GetOpenFileNameW(&ofn)) {
+        // Preserve monitor IDs that are currently attached — overwrite only
+        // the values/enabled flags from the imported file for known monitors,
+        // and import everything else (closeToTray, warmTint, etc.) wholesale.
+        AppConfig imported = ConfigManager::LoadConfig(szFile);
+        m_config = imported;
+
+        DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
+        DimmerManager::Instance().SetWarmTint(m_config.warmTint);
+        DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
+        DimmerManager::Instance().SetScheduleRange(
+            m_config.scheduleStartMins, m_config.scheduleEndMins, m_config.scheduleDimLevel);
+        DimmerManager::Instance().SetScheduleEnabled(m_config.scheduleEnabled);
+        DimmerManager::Instance().CheckSchedule();
+
+        SyncMonitorsWithConfig();
+        UpdateLayout();
+        SaveSettings();
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+
+        DimmerManager::Instance().ShowOSD(L"Profile imported");
+    }
 }

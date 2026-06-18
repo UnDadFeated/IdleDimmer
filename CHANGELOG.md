@@ -2,6 +2,27 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.6.5] - 2026-06-18
+
+### New Features
+* **Time-of-Day Scheduling**: Added automated dimming schedule with `ScheduleEnabled`, `ScheduleStartMins`, `ScheduleEndMins` (stored as minutes-of-day, snapped to 15-minute intervals via the UI sliders). Overnight spans (e.g. 22:00 → 07:00) are handled correctly via midnight wrap. `DimmerManager::CheckSchedule()` runs on the existing 1-second tick and triggers a fade on every overlay when entering or exiting the scheduled window. The scheduled dim level is applied as the fade target only when neither video-bypass nor idle state takes precedence.
+* **Click-Through OSD Notifications**: Added a sleek dark rounded-card OSD at the bottom-right of the primary monitor that shows brightness changes (e.g. "Brightness: 75%", "Preset: Night | 20%", "Profile imported"). The window uses `WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST` — it never steals focus, never appears in Alt+Tab, never intercepts clicks, and stays above fullscreen apps. It fades in over ~250 ms, displays for 2 seconds, then fades out over ~250 ms. A Direct2D paint path is used with a GDI fallback (`DrawTextW` + solid brush) for stripped-down Windows images where DirectWrite font creation fails.
+* **Preset Profile Buttons**: Added a row of 4 compact monochrome preset buttons under the per-monitor sliders — `[Gaming]` `[Reading]` `[Night]` `[OLED]`. Clicking applies an immediate configuration override, pushes to the undo stack, propagates master value to every monitor via `SyncMonitorsWithConfig()`, and shows an OSD confirmation. Each preset is a hand-curated combination of dimming-enabled / warm-tint / master-value: Gaming = off/off/0, Reading = on/on/30, Night = on/on/80, OLED = on/off/90.
+* **Profile Import / Export**: Added `[Import]` and `[Export]` buttons in the right-side sliding panel. Uses native Win32 `GetOpenFileNameW` / `GetSaveFileNameW` dialogs with a `.ini` filter and `.ini` default extension. The exported file is a standard `dimmer.ini` config file that can be edited by hand, shared between machines, or imported on another install. On import, all settings (including scheduling, blocked-apps list, monitor values, warm tint, etc.) are applied immediately, the layout is rebuilt, and an OSD confirmation is shown.
+* **Overlay Hiding During Video Bypass (PowerPoint / Presentation Compatibility)**: When a monitor enters video-bypass state (fullscreen video, blocked-app audio, or fullscreen D3D app), the overlay is now hidden via `ShowWindow(hwnd, SW_HIDE)` instead of just being faded to alpha=0. When bypass ends, the overlay is restored with `SW_SHOWNOACTIVATE`. This completely eliminates any chance of a stale layered window intercepting clicks or appearing in screen captures / PowerPoint presentation modes.
+
+### Modified Files
+* `src/ConfigManager.h` — added `scheduleEnabled`, `scheduleStartMins`, `scheduleEndMins`, `scheduleDimLevel` fields to `AppConfig` with safe defaults.
+* `src/ConfigManager.cpp` — hand-parses and serializes the four new schedule fields. Missing/malformed fields retain defaults.
+* `src/DimmerManager.h` — added schedule state (`m_scheduleEnabled`, `m_scheduleActive`, `m_scheduleStartMins`, `m_scheduleEndMins`, `m_scheduleDimLevel`), OSD state (HWND, Direct2D factory/target/text-format/brushes, alpha/timer state), and new public API (`SetScheduleEnabled`, `SetScheduleRange`, `IsScheduleActive`, `GetScheduleDimLevel`, `CheckSchedule`, `ShowOSD`, `DestroyOSD`). Now transitively includes `<d2d1.h>` / `<dwrite.h>`.
+* `src/DimmerManager.cpp` — implements `SetScheduleRange`, `CheckSchedule` (with same-day vs overnight span handling), `ShowOSD`, `DestroyOSD`, `EnsureOSDResources`, `DiscardOSDResources`, and `OSDWndProc`. Updated `CheckVideoPlayback` to `ShowWindow(SW_HIDE)` overlays during video bypass and `SW_SHOWNOACTIVATE` after. Updated `OverlayWndProc` WM_TIMER to apply schedule dim level when `IsScheduleActive()` is true. Calls `CheckSchedule()` at the end of every `CheckVideoPlayback`. Updated destructor to call `DestroyOSD()`.
+* `src/MainWindow.h` — added `isScheduleStart`/`isScheduleEnd` flags to `UISlider`. Added `UIPresetButton` struct, `m_presets` vector, `ApplyPreset(int)` method, `m_importProfileRect`/`m_exportProfileRect`/hover state, `ShowImportProfileDialog`/`ShowExportProfileDialog` methods.
+* `src/MainWindow.cpp` — `UpdateLayout` now places preset button row, SCHEDULE checkbox + optional Start/End sliders, and Import/Export button rectangles. `LoadSettings` now pushes schedule config into DimmerManager. Added `ApplyPreset`, `ShowImportProfileDialog`, `ShowExportProfileDialog` implementations at end of file.
+* `src/MainWindowDraw.cpp` — `OnPaint` now renders preset buttons, schedule section header, schedule sliders with time-of-day formatting (`HH:MM`), and Import/Export buttons inside the right-side panel.
+* `src/MainWindowInput.cpp` — `HandleMouseMove` now hovers preset/profile buttons, handles schedule slider drags (with 15-min snapping), and triggers OSD on master/per-monitor slider drag. `HandleLButtonDown` handles preset clicks (before slider-drag check), Import/Export button clicks, and ScheduleEnabled checkbox toggle (re-layouts). `HandleMouseWheel` and `HandleKeyDown` also handle the schedule sliders.
+* `build.bat` — added `comdlg32.lib` for the Win32 file dialogs.
+* `README.md` — added `-lcomdlg32` to the LLVM-MinGW build command.
+
 ## [1.6.4] - 2026-06-18
 
 ### Bug Fixes

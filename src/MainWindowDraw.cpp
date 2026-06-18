@@ -69,6 +69,16 @@ void MainWindow::OnPaint() {
             displayName = L"Inactivity Dim Level";
             int lvl = static_cast<int>(slider.value * 100.0f);
             StringCchPrintfW(pctStr, ARRAYSIZE(pctStr), L"%d%%", lvl);
+        } else if (slider.isScheduleStart || slider.isScheduleEnd) {
+            // v1.6.5 (Todo 8): Time-of-day slider. Round to nearest 15 minutes
+            // for display, mirroring the snapping done on commit.
+            int totalMins = static_cast<int>(slider.value * 1439.0f);
+            int snapped = ((totalMins + 7) / 15) * 15;
+            if (snapped >= 1440) snapped = 1439;
+            int hh = snapped / 60;
+            int mm = snapped % 60;
+            StringCchPrintfW(pctStr, ARRAYSIZE(pctStr), L"%02d:%02d", hh, mm);
+            displayName = slider.isScheduleStart ? L"Schedule Start" : L"Schedule End";
         } else {
             const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
             for (const auto& mon : activeMons) {
@@ -82,7 +92,9 @@ void MainWindow::OnPaint() {
         }
 
         // Draw monitor label (shift text left if checkbox is inside the card)
-        float textLeft = (slider.isIdleMinutes || slider.isIdleDimLevel) ? (slider.rect.left + 20.0f) : (slider.rect.left + 60.0f);
+        float textLeft = (slider.isIdleMinutes || slider.isIdleDimLevel ||
+                          slider.isScheduleStart || slider.isScheduleEnd)
+                         ? (slider.rect.left + 20.0f) : (slider.rect.left + 60.0f);
         m_pRenderTarget->DrawText(
             displayName.c_str(), static_cast<UINT32>(displayName.length()),
             m_pTextFormatBody,
@@ -141,6 +153,39 @@ void MainWindow::OnPaint() {
         }
     }
 
+    // ── v1.6.5 (Todo 5): Preset Buttons Row ──
+    // First draw the section header label above the first preset button.
+    if (!m_presets.empty()) {
+        m_pRenderTarget->DrawText(
+            L"PRESETS", 7, m_pTextFormatDetail,
+            D2D1::RectF(25.0f, (float)m_presets[0].rect.top - 18.0f,
+                        200.0f, (float)m_presets[0].rect.top - 2.0f),
+            m_pBrushTextMuted
+        );
+
+        for (const auto& btn : m_presets) {
+            D2D1_ROUNDED_RECT r = D2D1::RoundedRect(
+                D2D1::RectF((float)btn.rect.left, (float)btn.rect.top,
+                            (float)btn.rect.right, (float)btn.rect.bottom),
+                6.0f, 6.0f);
+            // Hovered = accent fill (light), normal = card fill (dark).
+            m_pRenderTarget->FillRoundedRectangle(r, btn.hovered ? m_pBrushAccent : m_pBrushCard);
+            m_pRenderTarget->DrawRoundedRectangle(
+                r, btn.hovered ? m_pBrushAccentHover : m_pBrushCardBorder, 1.2f);
+
+            // Label color flips with hover for clear feedback.
+            m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+            m_pRenderTarget->DrawText(
+                btn.label.c_str(), (UINT32)btn.label.length(),
+                m_pTextFormatDetail,
+                D2D1::RectF((float)btn.rect.left, (float)btn.rect.top + 6.0f,
+                            (float)btn.rect.right, (float)btn.rect.bottom),
+                btn.hovered ? m_pBrushText : m_pBrushTextMuted
+            );
+            m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+        }
+    }
+
     // Draw grouped section header labels above their first toggle
     for (const auto& cb : m_checkboxes) {
         if (cb.settingName == L"DimmingEnabled" && !cb.label.empty()) {
@@ -158,6 +203,13 @@ void MainWindow::OnPaint() {
         } else if (cb.settingName == L"CloseToTray" && !cb.label.empty()) {
             m_pRenderTarget->DrawText(
                 L"APPLICATION", 11, m_pTextFormatDetail,
+                D2D1::RectF(25.0f, cb.rect.top - 18.0f, 200.0f, cb.rect.top - 2.0f),
+                m_pBrushTextMuted
+            );
+        } else if (cb.settingName == L"ScheduleEnabled" && !cb.label.empty()) {
+            // v1.6.5 (Todo 8): schedule section header
+            m_pRenderTarget->DrawText(
+                L"SCHEDULE", 8, m_pTextFormatDetail,
                 D2D1::RectF(25.0f, cb.rect.top - 18.0f, 200.0f, cb.rect.top - 2.0f),
                 m_pBrushTextMuted
             );
@@ -236,7 +288,31 @@ void MainWindow::OnPaint() {
             m_blockedAddHovered ? m_pBrushAccent : m_pBrushText
         );
 
-        float sepY = headerY + 26;
+        // ── v1.6.5 (Todo 6): Import / Export Profile buttons ──
+        // Draw two small compact buttons between the panel header and the
+        // separator line. The right panel's content y-offset was already
+        // shifted down by 26px in UpdateLayout to make room for these.
+        auto DrawProfileBtn = [&](const RECT& r, bool hovered, const wchar_t* label, int labelLen) {
+            D2D1_ROUNDED_RECT pr = D2D1::RoundedRect(
+                D2D1::RectF((float)r.left, (float)r.top,
+                            (float)r.right, (float)r.bottom),
+                4.0f, 4.0f);
+            m_pRenderTarget->FillRoundedRectangle(pr, hovered ? m_pBrushAccent : m_pBrushTrack);
+            m_pRenderTarget->DrawRoundedRectangle(
+                pr, hovered ? m_pBrushAccentHover : m_pBrushCardBorder, 1.0f);
+            m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+            m_pRenderTarget->DrawText(
+                label, labelLen, m_pTextFormatDetail,
+                D2D1::RectF((float)r.left, (float)r.top + 4.0f,
+                            (float)r.right, (float)r.bottom),
+                hovered ? m_pBrushText : m_pBrushTextMuted
+            );
+            m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+        };
+        DrawProfileBtn(m_importProfileRect, m_importProfileHovered, L"Import",  6);
+        DrawProfileBtn(m_exportProfileRect, m_exportProfileHovered, L"Export",  6);
+
+        float sepY = headerY + 26 + 32; // shift separator down to clear profile row
         m_pRenderTarget->DrawLine(
             D2D1::Point2F(m_blockedPanelRect.left + 12, sepY),
             D2D1::Point2F(m_blockedPanelRect.right - 12, sepY),

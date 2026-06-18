@@ -3,10 +3,12 @@
 #include "DimmerManager.h"
 #include <dwmapi.h>
 #include <algorithm>
+#include <commdlg.h>
+#include <strsafe.h>
 
 void MainWindow::HandleMouseMove(int x, int y) {
     bool needsRepaint = false;
-    
+
     // Sliders check
     for (auto& slider : m_sliders) {
         float trackLeft = slider.rect.left + 20.0f;
@@ -21,7 +23,9 @@ void MainWindow::HandleMouseMove(int x, int y) {
             if (slider.value > 1.0f) slider.value = 1.0f;
 
             // Auto-enable dimming when user actively drags a monitor slider
-            if (!slider.isIdleMinutes && !slider.isIdleDimLevel && !m_config.dimmingEnabled) {
+            if (!slider.isIdleMinutes && !slider.isIdleDimLevel &&
+                !slider.isScheduleStart && !slider.isScheduleEnd &&
+                !m_config.dimmingEnabled) {
                 m_config.dimmingEnabled = true;
                 DimmerManager::Instance().SetDimmingEnabled(true);
                 for (auto& cb : m_checkboxes) {
@@ -40,18 +44,43 @@ void MainWindow::HandleMouseMove(int x, int y) {
                     monConf.value = actualDim;
                 }
                 for (auto& other : m_sliders) {
-                    if (!other.isMaster && !other.isIdleMinutes && !other.isIdleDimLevel) {
+                    if (!other.isMaster && !other.isIdleMinutes && !other.isIdleDimLevel &&
+                        !other.isScheduleStart && !other.isScheduleEnd) {
                         other.value = slider.value;
                     }
                 }
+                // v1.6.5 (Todo 4): trigger OSD on master drag.
+                wchar_t osd[64];
+                StringCchPrintfW(osd, 64, L"Brightness: %d%%", 100 - actualDim);
+                DimmerManager::Instance().ShowOSD(osd);
             } else if (slider.isIdleMinutes) {
                 m_config.idleMinutes = static_cast<int>(slider.value * 59.0f) + 1;
             } else if (slider.isIdleDimLevel) {
                 m_config.idleDimLevel = static_cast<int>(slider.value * 100.0f);
-                // If currently idle, apply the level immediately to preview it!
                 if (DimmerManager::Instance().IsIdleState()) {
                     DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
                 }
+            } else if (slider.isScheduleStart) {
+                // v1.6.5 (Todo 8): snap to nearest 15 minutes.
+                int totalMins = static_cast<int>(slider.value * 1439.0f);
+                int snapped = ((totalMins + 7) / 15) * 15;
+                if (snapped >= 1440) snapped = 1439;
+                m_config.scheduleStartMins = snapped;
+                DimmerManager::Instance().SetScheduleRange(
+                    m_config.scheduleStartMins,
+                    m_config.scheduleEndMins,
+                    m_config.scheduleDimLevel);
+                DimmerManager::Instance().CheckSchedule();
+            } else if (slider.isScheduleEnd) {
+                int totalMins = static_cast<int>(slider.value * 1439.0f);
+                int snapped = ((totalMins + 7) / 15) * 15;
+                if (snapped >= 1440) snapped = 1439;
+                m_config.scheduleEndMins = snapped;
+                DimmerManager::Instance().SetScheduleRange(
+                    m_config.scheduleStartMins,
+                    m_config.scheduleEndMins,
+                    m_config.scheduleDimLevel);
+                DimmerManager::Instance().CheckSchedule();
             } else {
                 int actualDim = static_cast<int>(slider.value * 90.0f);
                 DimmerManager::Instance().SetMonitorDim(slider.monitorId, actualDim);
@@ -61,6 +90,10 @@ void MainWindow::HandleMouseMove(int x, int y) {
                         break;
                     }
                 }
+                // v1.6.5 (Todo 4): OSD on per-monitor drag too.
+                wchar_t osd[64];
+                StringCchPrintfW(osd, 64, L"Monitor: %d%%", 100 - actualDim);
+                DimmerManager::Instance().ShowOSD(osd);
             }
             needsRepaint = true;
         }
@@ -82,6 +115,26 @@ void MainWindow::HandleMouseMove(int x, int y) {
             needsRepaint = true;
         }
     }
+
+    // v1.6.5 (Todo 5): preset button hover detection
+    for (auto& btn : m_presets) {
+        bool was = btn.hovered;
+        btn.hovered = (x >= btn.rect.left && x <= btn.rect.right &&
+                       y >= btn.rect.top && y <= btn.rect.bottom);
+        if (btn.hovered != was) needsRepaint = true;
+    }
+
+    // v1.6.5 (Todo 6): Import/Export profile button hover
+    bool wasImport = m_importProfileHovered;
+    m_importProfileHovered = m_blockedExpanded &&
+        (x >= m_importProfileRect.left && x <= m_importProfileRect.right &&
+         y >= m_importProfileRect.top && y <= m_importProfileRect.bottom);
+    if (m_importProfileHovered != wasImport) needsRepaint = true;
+    bool wasExport = m_exportProfileHovered;
+    m_exportProfileHovered = m_blockedExpanded &&
+        (x >= m_exportProfileRect.left && x <= m_exportProfileRect.right &&
+         y >= m_exportProfileRect.top && y <= m_exportProfileRect.bottom);
+    if (m_exportProfileHovered != wasExport) needsRepaint = true;
 
     // Blocked apps hover
     bool wasArrowHover = m_blockedArrowHovered;
@@ -155,6 +208,19 @@ void MainWindow::HandleLButtonDown(int x, int y) {
         ShowAddAppDialog();
         return;
     }
+    // v1.6.5 (Todo 6): Import / Export profile buttons
+    if (m_blockedExpanded &&
+        x >= m_importProfileRect.left && x <= m_importProfileRect.right &&
+        y >= m_importProfileRect.top && y <= m_importProfileRect.bottom) {
+        ShowImportProfileDialog();
+        return;
+    }
+    if (m_blockedExpanded &&
+        x >= m_exportProfileRect.left && x <= m_exportProfileRect.right &&
+        y >= m_exportProfileRect.top && y <= m_exportProfileRect.bottom) {
+        ShowExportProfileDialog();
+        return;
+    }
     if (m_blockedExpanded) {
         int adjustedY = y + m_blockedScrollOffset;
         for (size_t i = 0; i < m_blockedItems.size(); ++i) {
@@ -167,6 +233,20 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 Repaint();
                 return;
             }
+        }
+    }
+
+    // v1.6.5 (Todo 5): preset button clicks. Must be checked BEFORE the
+    // slider-drag block — preset buttons sit in the same y-band as the
+    // slider track hot zone, and we don't want a preset click to start a drag.
+    for (auto& btn : m_presets) {
+        if (x >= btn.rect.left && x <= btn.rect.right &&
+            y >= btn.rect.top  && y <= btn.rect.bottom) {
+            PushUndoState();
+            ApplyPreset(btn.id);
+            SaveSettings();
+            InvalidateRect(m_hwnd, nullptr, FALSE);
+            return;
         }
     }
 
@@ -248,6 +328,12 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 // Handled dynamically
             } else if (cb.settingName == L"DimmingEnabled") {
                 DimmerManager::Instance().SetDimmingEnabled(cb.checked);
+            } else if (cb.settingName == L"ScheduleEnabled") {
+                // v1.6.5 (Todo 8): push to DimmerManager and re-layout so
+                // the start/end sliders appear or disappear.
+                DimmerManager::Instance().SetScheduleEnabled(cb.checked);
+                DimmerManager::Instance().CheckSchedule();
+                UpdateLayout();
             } else if (cb.settingName == L"LightMode") {
                 BOOL useDark = !cb.checked;
                 DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
@@ -305,7 +391,9 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
             if (slider.value > 1.0f) slider.value = 1.0f;
 
             // Auto-enable dimming when user scrolls a monitor slider
-            if (!slider.isIdleMinutes && !slider.isIdleDimLevel && !m_config.dimmingEnabled) {
+            if (!slider.isIdleMinutes && !slider.isIdleDimLevel &&
+                !slider.isScheduleStart && !slider.isScheduleEnd &&
+                !m_config.dimmingEnabled) {
                 m_config.dimmingEnabled = true;
                 DimmerManager::Instance().SetDimmingEnabled(true);
                 for (auto& cb : m_checkboxes) {
@@ -323,7 +411,8 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
                     monConf.value = actualDim;
                 }
                 for (auto& other : m_sliders) {
-                    if (!other.isMaster && !other.isIdleMinutes && !other.isIdleDimLevel) other.value = slider.value;
+                    if (!other.isMaster && !other.isIdleMinutes && !other.isIdleDimLevel &&
+                        !other.isScheduleStart && !other.isScheduleEnd) other.value = slider.value;
                 }
             } else if (slider.isIdleMinutes) {
                 m_config.idleMinutes = static_cast<int>(slider.value * 59.0f) + 1;
@@ -332,6 +421,22 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
                 if (DimmerManager::Instance().IsIdleState()) {
                     DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
                 }
+            } else if (slider.isScheduleStart) {
+                int totalMins = static_cast<int>(slider.value * 1439.0f);
+                int snapped = ((totalMins + 7) / 15) * 15;
+                if (snapped >= 1440) snapped = 1439;
+                m_config.scheduleStartMins = snapped;
+                DimmerManager::Instance().SetScheduleRange(
+                    m_config.scheduleStartMins, m_config.scheduleEndMins, m_config.scheduleDimLevel);
+                DimmerManager::Instance().CheckSchedule();
+            } else if (slider.isScheduleEnd) {
+                int totalMins = static_cast<int>(slider.value * 1439.0f);
+                int snapped = ((totalMins + 7) / 15) * 15;
+                if (snapped >= 1440) snapped = 1439;
+                m_config.scheduleEndMins = snapped;
+                DimmerManager::Instance().SetScheduleRange(
+                    m_config.scheduleStartMins, m_config.scheduleEndMins, m_config.scheduleDimLevel);
+                DimmerManager::Instance().CheckSchedule();
             } else {
                 int actualDim = static_cast<int>(slider.value * 90.0f);
                 DimmerManager::Instance().SetMonitorDim(slider.monitorId, actualDim);
@@ -370,7 +475,9 @@ void MainWindow::HandleKeyDown(WPARAM key) {
                 if (slider.value > 1.0f) slider.value = 1.0f;
 
                 // Auto-enable dimming when user arrow-keys a monitor slider
-                if (!slider.isIdleMinutes && !slider.isIdleDimLevel && !m_config.dimmingEnabled) {
+                if (!slider.isIdleMinutes && !slider.isIdleDimLevel &&
+                    !slider.isScheduleStart && !slider.isScheduleEnd &&
+                    !m_config.dimmingEnabled) {
                     m_config.dimmingEnabled = true;
                     DimmerManager::Instance().SetDimmingEnabled(true);
                     for (auto& cb : m_checkboxes) {
@@ -388,7 +495,8 @@ void MainWindow::HandleKeyDown(WPARAM key) {
                         monConf.value = actualDim;
                     }
                     for (auto& other : m_sliders) {
-                        if (!other.isMaster && !other.isIdleMinutes && !other.isIdleDimLevel) other.value = slider.value;
+                        if (!other.isMaster && !other.isIdleMinutes && !other.isIdleDimLevel &&
+                            !other.isScheduleStart && !other.isScheduleEnd) other.value = slider.value;
                     }
                 } else if (slider.isIdleMinutes) {
                     m_config.idleMinutes = static_cast<int>(slider.value * 59.0f) + 1;
@@ -397,6 +505,22 @@ void MainWindow::HandleKeyDown(WPARAM key) {
                     if (DimmerManager::Instance().IsIdleState()) {
                         DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
                     }
+                } else if (slider.isScheduleStart) {
+                    int totalMins = static_cast<int>(slider.value * 1439.0f);
+                    int snapped = ((totalMins + 7) / 15) * 15;
+                    if (snapped >= 1440) snapped = 1439;
+                    m_config.scheduleStartMins = snapped;
+                    DimmerManager::Instance().SetScheduleRange(
+                        m_config.scheduleStartMins, m_config.scheduleEndMins, m_config.scheduleDimLevel);
+                    DimmerManager::Instance().CheckSchedule();
+                } else if (slider.isScheduleEnd) {
+                    int totalMins = static_cast<int>(slider.value * 1439.0f);
+                    int snapped = ((totalMins + 7) / 15) * 15;
+                    if (snapped >= 1440) snapped = 1439;
+                    m_config.scheduleEndMins = snapped;
+                    DimmerManager::Instance().SetScheduleRange(
+                        m_config.scheduleStartMins, m_config.scheduleEndMins, m_config.scheduleDimLevel);
+                    DimmerManager::Instance().CheckSchedule();
                 } else {
                     int actualDim = static_cast<int>(slider.value * 90.0f);
                     DimmerManager::Instance().SetMonitorDim(slider.monitorId, actualDim);

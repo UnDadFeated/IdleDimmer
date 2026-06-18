@@ -5,6 +5,8 @@
 #include <string_view>
 #include <vector>
 #include <map>
+#include <d2d1.h>
+#include <dwrite.h>
 
 struct ActiveMonitorInfo {
     std::wstring id;
@@ -47,6 +49,20 @@ public:
     void UpdateCursorDimming();
     void CheckVideoPlayback();
     void SetBlockedApps(const std::vector<std::wstring>& apps);
+
+    // ── v1.6.5: Time-of-day scheduling ──
+    void SetScheduleEnabled(bool enabled) { m_scheduleEnabled = enabled; }
+    void SetScheduleRange(int startMins, int endMins, int dimLevel);
+    bool IsScheduleActive() const { return m_scheduleActive; }
+    int  GetScheduleDimLevel() const { return m_scheduleDimLevel; }
+    void CheckSchedule();
+
+    // ── v1.6.5 (Todos 3+4): Click-through OSD ──
+    // ShowOSD(text) pops a sleek dark card at the bottom-right of the primary
+    // monitor for ~2 seconds, then fades out. The window is non-activating,
+    // click-through and topmost — it never steals focus or intercepts input.
+    void ShowOSD(const std::wstring& text);
+    void DestroyOSD();
     bool IsVideoDetected() const {
         for (const auto& mon : m_monitors) {
             if (mon.hasVideo) return true;
@@ -84,4 +100,32 @@ private:
     POINT m_lastMousePos = { -1, -1 };
     bool m_isSettingCursorPos = false;
     bool m_cursorShifted = false;
+
+    // ── v1.6.5: Scheduling state ──
+    bool m_scheduleEnabled  = false;
+    bool m_scheduleActive   = false;  // true while current wall-clock is inside the schedule
+    int  m_scheduleStartMins = 1320;  // 22:00
+    int  m_scheduleEndMins   = 420;   // 07:00
+    int  m_scheduleDimLevel  = 60;
+
+    // ── v1.6.5 (Todos 3+4): OSD window state ──
+    HWND m_hwndOSD = nullptr;
+    bool m_osdClassRegistered = false;
+    // Direct2D resources for OSD. Stored as raw pointers; lifecycle is fully
+    // owned by DimmerManager. They are created lazily on first paint and
+    // released in DestroyOSD / destructor.
+    ID2D1Factory*             m_pOSDFactory       = nullptr;
+    ID2D1HwndRenderTarget*    m_pOSDTarget        = nullptr;
+    IDWriteFactory*           m_pOSDDWrite        = nullptr;
+    IDWriteTextFormat*        m_pOSDTextFormat    = nullptr;
+    ID2D1SolidColorBrush*     m_pOSDBrushBg       = nullptr;
+    ID2D1SolidColorBrush*     m_pOSDBrushText     = nullptr;
+    ID2D1SolidColorBrush*     m_pOSDBrushAccent   = nullptr;
+    std::wstring              m_osdText;
+    int                       m_osdAlpha = 0;     // 0..255 current alpha
+    int                       m_osdTargetAlpha = 0;
+    UINT_PTR                  m_osdTimerId = 0;
+    void EnsureOSDResources();
+    void DiscardOSDResources();
+    static LRESULT CALLBACK OSDWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 };
