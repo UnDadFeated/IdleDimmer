@@ -129,6 +129,16 @@ bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
 bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
     m_hInst = hInst;
     LoadSettings();
+
+    // ── v1.6.5: OLED preset is the default (first in preset row) ──
+    // Apply only on first launch — existing user configs are preserved.
+    if (GetFileAttributesW(ConfigManager::GetConfigPath().c_str()) == INVALID_FILE_ATTRIBUTES) {
+        ApplyPreset(0);
+        m_config.dimmingEnabled = false;  // AGENTS.md: never auto-dim on launch
+        DimmerManager::Instance().SetDimmingEnabled(false);
+        SaveSettings();  // persist as new baseline
+    }
+
     m_undoStack.clear();
     m_canUndo = false;
     m_changeCount = 0;
@@ -448,14 +458,14 @@ void MainWindow::UpdateLayout() {
     }
 
     // ── v1.6.5 (Todo 5): Preset Buttons Row ──
-    // 4 compact monochrome buttons: [Gaming] [Reading] [Night] [OLED]
+    // 4 compact monochrome buttons: [OLED] [Gaming] [Reading] [Night]
     yOffset += 6;
     yOffset += 16; // space for section header label
     {
         int btnW = (CONTENT_WIDTH - 40 - 35 - 18) / 4;  // 4 buttons, 6px gaps
         int btnH = 28;
         int gap  = 6;
-        const wchar_t* names[4] = { L"Gaming", L"Reading", L"Night", L"OLED" };
+        const wchar_t* names[4] = { L"OLED", L"Gaming", L"Reading", L"Night" };
         for (int i = 0; i < 4; ++i) {
             UIPresetButton btn;
             btn.id = i;
@@ -1051,31 +1061,31 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
 // plus SetWarmTint / SetDimmingEnabled on DimmerManager for immediate visual
 // feedback. The change is undoable (caller has already pushed the undo state).
 //
+//   OLED    — dimming on,  warm tint off, master 90 (true-black OLED dimming)
 //   Gaming  — dimming off, warm tint off, master 0  (vibrant, undimmed)
 //   Reading — dimming on,  warm tint on,  master 30 (soothing low dim + amber)
 //   Night   — dimming on,  warm tint on,  master 80 (heavy dim + amber)
-//   OLED    — dimming on,  warm tint off, master 90 (true-black OLED dimming)
 void MainWindow::ApplyPreset(int id) {
     switch (id) {
-        case 0: // Gaming
+        case 0: // OLED
+            m_config.dimmingEnabled = true;
+            m_config.warmTint       = false;
+            m_config.masterValue    = 90;
+            break;
+        case 1: // Gaming
             m_config.dimmingEnabled = false;
             m_config.warmTint       = false;
             m_config.masterValue    = 0;
             break;
-        case 1: // Reading
+        case 2: // Reading
             m_config.dimmingEnabled = true;
             m_config.warmTint       = true;
             m_config.masterValue    = 30;
             break;
-        case 2: // Night
+        case 3: // Night
             m_config.dimmingEnabled = true;
             m_config.warmTint       = true;
             m_config.masterValue    = 80;
-            break;
-        case 3: // OLED
-            m_config.dimmingEnabled = true;
-            m_config.warmTint       = false;
-            m_config.masterValue    = 90;
             break;
         default:
             return;
@@ -1105,7 +1115,7 @@ void MainWindow::ApplyPreset(int id) {
     InvalidateRect(m_hwnd, nullptr, FALSE);
 
     // v1.6.5 (Todo 4): OSD feedback for the preset application.
-    const wchar_t* presetNames[4] = { L"Gaming", L"Reading", L"Night", L"OLED" };
+    const wchar_t* presetNames[4] = { L"OLED", L"Gaming", L"Reading", L"Night" };
     if (id >= 0 && id < 4) {
         wchar_t osd[64];
         StringCchPrintfW(osd, 64, L"Preset: %s  |  %d%%",

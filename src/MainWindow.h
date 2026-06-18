@@ -25,7 +25,7 @@ struct UISlider {
 
 // v1.6.5 (Todo 5): Monochrome preset buttons row.
 struct UIPresetButton {
-    int  id = 0;            // 0=Gaming, 1=Reading, 2=Night, 3=OLED
+    int  id = 0;            // 0=OLED, 1=Gaming, 2=Reading, 3=Night
     RECT rect = { 0 };
     bool hovered = false;
     std::wstring label;
