@@ -9,6 +9,10 @@
 #include <shellapi.h>
 #include <wrl/client.h>
 #include <d2d1.h>
+/* MinGW d2d1.h may not define this HRESULT */
+#ifndef D2DERR_RECREATED
+#define D2DERR_RECREATED ((HRESULT)0x88980001)
+#endif
 #include <dwrite.h>
 #include <strsafe.h>
 
