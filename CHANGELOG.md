@@ -2,6 +2,12 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.6.4] - 2026-06-18
+
+### Bug Fixes
+* **Locale Initialization Crash on Stripped Windows Images**: Wrapped the `std::locale("")` imbue call in both `LoadConfig` and `SaveConfig` (`ConfigManager.cpp`) with a `try/catch` for `std::runtime_error`. On stripped-down Windows images — Store certification VMs, sandboxed containers, Server Core without locale DLLs — `std::locale("")` can throw an uncaught `std::runtime_error` and terminate the process at launch. The fix falls back to the default `"C"` locale, which is safe for our data because the config file is pure ASCII (JSON keys + `\\.\DISPLAYn` monitor IDs). Added `<stdexcept>` include to make the catch type explicitly available.
+* **UpdateLayout Ordering in CreateImpl**: Moved `UpdateLayout()` to run *after* `ShowWindow()` / `UpdateWindow()` in `MainWindow::CreateImpl()`. `UpdateLayout()` ends with a `SetWindowPos()` call, which pumps `WM_SIZE` / `WM_PAINT`. Although `OnResize` is null-safe and `ValidateRect` runs unconditionally in `WndProc`, ordering the layout resize after the first legitimate paint cycle — when Direct2D resources are guaranteed to be initialized — eliminates a class of edge cases on certification VMs where D2D device creation may transiently fail. This is a defensive hardening fix, not a crash fix.
+
 ## [1.6.3] - 2026-06-17
 
 ### Bug Fixes

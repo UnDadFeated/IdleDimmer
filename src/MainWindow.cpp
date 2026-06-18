@@ -18,7 +18,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
 
-static const wchar_t* APP_VERSION = L"v1.6.3";
+static const wchar_t* APP_VERSION = L"v1.6.4";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -220,8 +220,6 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
         m_updateChecked = true;
     }
 
-    UpdateLayout();
-
     // If started with Windows and Close to Tray is enabled, start minimized to tray
     if (m_config.startWithWindows && m_config.closeToTray) {
         ShowWindow(m_hwnd, SW_HIDE);
@@ -229,6 +227,15 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
         ShowWindow(m_hwnd, nCmdShow);
     }
     UpdateWindow(m_hwnd);
+
+    // Defer UpdateLayout() until after ShowWindow/UpdateWindow so the first
+    // legitimate WM_PAINT cycle has already initialized Direct2D. UpdateLayout()
+    // calls SetWindowPos(), which pumps WM_SIZE/WM_PAINT — calling it before D2D
+    // is initialized is not a crash here (OnResize and ValidateRect are null-safe
+    // and unconditional), but ordering it after the first paint is the defensive
+    // pattern and removes a class of edge cases on certification VMs where D2D
+    // device creation may transiently fail.
+    UpdateLayout();
 
     return true;
 }
