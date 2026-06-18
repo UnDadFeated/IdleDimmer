@@ -183,4 +183,9 @@ To publish a release to the GitHub web interface when local authentication for t
 
 3. **Delete old tags before re-releasing**: `git tag -d vX.Y.Z; git push origin --delete vX.Y.Z` when replacing a release.
 
-4. **Release Checklist**: Always update the git repo (add, commit, push), push the new setup `.exe` to GitHub releases, update references in `README.md`, and delete old installer files and outdated git tags/releases.
+4. **Release Checklist** (run after every build):
+   1. `git add` all changed files, commit with version in message, `git push origin master`.
+   2. **Update README.md**: replace all `X.Y.Z` version strings (badge, download link, build commands).
+   3. **Create GitHub release**: `gh release create vX.Y.Z IdleDimmer-Setup-vX.Y.Z.exe --title "vX.Y.Z" --notes "Release notes"`
+   4. **Delete old releases**: `gh release delete vX.Y.Z-1 --yes` for any older versions.
+   5. Verify the release page shows the correct `.exe` and README links resolve.
