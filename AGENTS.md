@@ -2,10 +2,6 @@
 
 ## Build
 
-# IdleDimmer — Agent Guide
-
-## Build
-
 - **MSVC**: `build.bat` (auto-detects VS 2022, runs `rc.exe` + `cl.exe`)
 - **LLVM-MinGW** (always rebuild `resources.o` and `setup_res.o`):
   ```cmd
@@ -15,10 +11,10 @@
 - **Setup** (requires `IdleDimmer.exe` in project root — rebuild resources *after* app exe to embed the correct version):
    ```cmd
    llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
-    clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -static -o IdleDimmer-Setup-v1.6.4.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
+    clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -static -o IdleDimmer-Setup-v1.6.5.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
     ```
 
-- Output: `IdleDimmer.exe` (~150 KB), `IdleDimmer-Setup-v1.6.4.exe` (~280 KB with embedded exe), `dist\IdleDimmer_1.6.4.0_x64.msix` (~880 KB, for Microsoft Store)
+- Output: `IdleDimmer.exe` (~150 KB), `IdleDimmer-Setup-v1.6.5.exe` (~280 KB with embedded exe), `dist\IdleDimmer_1.6.5.0_x64.msix` (~880 KB, for Microsoft Store)
 
 ## Microsoft Store (MSIX) Build
 
@@ -29,7 +25,7 @@
   - **Submission guide**: `msix\SUBMIT-TO-STORE.md` — step-by-step walkthrough for Partner Center
   - **Listing copy**: `msix\store-listing.md` — descriptions, keywords, screenshots required
   - **Privacy policy**: `docs\privacy.html` — host on GitHub Pages (free, no setup) or any static host
-  - **Output**: `dist\IdleDimmer_1.6.4.0_x64.msix` (~880 KB)
+  - **Output**: `dist\IdleDimmer_1.6.5.0_x64.msix` (~880 KB)
   - **Cert** (sideload only): `dist\IdleDimmer_SelfSign.pfx` / `.cer` (password: `wddim64`)
 
 ## Architecture
@@ -182,7 +178,7 @@ To publish a release to the GitHub web interface when local authentication for t
 2. **Execute Headless Release**: Set the token to the `GH_TOKEN` environment variable so `gh` uses it directly, bypassing scope verification login limits:
    ```cmd
     $env:GH_TOKEN="<retrieved_token>"
-    gh release create v1.6.4 IdleDimmer-Setup-v1.6.4.exe --title "v1.6.4" --notes "Release notes go here"
+    gh release create v1.6.5 IdleDimmer-Setup-v1.6.5.exe --title "v1.6.5" --notes "Release notes go here"
    ```
 
 3. **Delete old tags before re-releasing**: `git tag -d vX.Y.Z; git push origin --delete vX.Y.Z` when replacing a release.
