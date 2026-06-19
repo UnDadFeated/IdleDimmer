@@ -11,7 +11,8 @@ Track every certification submission, the devices Microsoft tested on, OS builds
 
 ## Submission #9 — v1.7.0 (submitted 2026-06-18)
 
-**Status:** Pending
+**Status:** ❌ FAILED — Hang after launch (DWM ghost window)  
+**Tested On:** Microsoft Surface Pro 8
 
 **Fixes Applied:**
 - First-launch config init: set `m_config` fields directly instead of calling `ApplyPreset()` (triggers `DimmerManager` calls before init)
