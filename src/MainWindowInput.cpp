@@ -4,7 +4,7 @@
 #include <dwmapi.h>
 #include <algorithm>
 #include <commdlg.h>
-#include <strsafe.h>
+#include <format>
 
 void MainWindow::HandleMouseMove(int x, int y) {
     bool needsRepaint = false;
@@ -50,9 +50,7 @@ void MainWindow::HandleMouseMove(int x, int y) {
                     }
                 }
                 // v1.6.5 (Todo 4): trigger OSD on master drag.
-                wchar_t osd[64];
-                StringCchPrintfW(osd, 64, L"Brightness: %d%%", 100 - actualDim);
-                DimmerManager::Instance().ShowOSD(osd);
+                DimmerManager::Instance().ShowOSD(std::format(L"Brightness: {}%", 100 - actualDim));
             } else if (slider.isIdleMinutes) {
                 m_config.idleMinutes = static_cast<int>(slider.value * 59.0f) + 1;
             } else if (slider.isIdleDimLevel) {
@@ -91,9 +89,7 @@ void MainWindow::HandleMouseMove(int x, int y) {
                     }
                 }
                 // v1.6.5 (Todo 4): OSD on per-monitor drag too.
-                wchar_t osd[64];
-                StringCchPrintfW(osd, 64, L"Monitor: %d%%", 100 - actualDim);
-                DimmerManager::Instance().ShowOSD(osd);
+                DimmerManager::Instance().ShowOSD(std::format(L"Monitor: {}%", 100 - actualDim));
             }
             needsRepaint = true;
         }

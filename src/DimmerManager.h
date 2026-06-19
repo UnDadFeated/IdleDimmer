@@ -7,6 +7,9 @@
 #include <map>
 #include <d2d1.h>
 #include <dwrite.h>
+#include <mutex>
+#include <thread>
+#include <atomic>
 
 struct ActiveMonitorInfo {
     std::wstring id;
@@ -84,9 +87,16 @@ private:
     void CreateOverlayForMonitor(ActiveMonitorInfo& info);
     static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
+    void CheckAudioPlaybackAsync();
+
     HINSTANCE m_hInst = nullptr;
     std::vector<ActiveMonitorInfo> m_monitors;
     bool m_warmTint = false;
+
+    // Asynchronous audio checking
+    std::atomic<bool> m_audioCheckInFlight = false;
+    std::mutex m_audioMutex;
+    std::vector<HMONITOR> m_audioPlayingMonitors;
     bool m_isIdleState = false;
     int m_idleDimLevel = 90;
     bool m_dimmingEnabled = false;

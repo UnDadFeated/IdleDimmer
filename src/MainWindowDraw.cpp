@@ -1,6 +1,6 @@
 #include "MainWindow.h"
 #include "DimmerManager.h"
-#include <strsafe.h>
+#include <format>
 #include <algorithm>
 
 #ifndef D2DERR_RECREATED
@@ -60,15 +60,15 @@ void MainWindow::OnPaint() {
         if (slider.isMaster) {
             displayName = L"Master Controller (All Monitors)";
             int pct = static_cast<int>(slider.value * 90.0f);
-            StringCchPrintfW(pctStr, ARRAYSIZE(pctStr), L"%d%%", pct);
+            wcscpy_s(pctStr, ARRAYSIZE(pctStr), std::format(L"{}%", pct).c_str());
         } else if (slider.isIdleMinutes) {
             displayName = L"Inactivity Timeout";
             int mins = static_cast<int>(slider.value * 59.0f) + 1;
-            StringCchPrintfW(pctStr, ARRAYSIZE(pctStr), L"%d min", mins);
+            wcscpy_s(pctStr, ARRAYSIZE(pctStr), std::format(L"{} min", mins).c_str());
         } else if (slider.isIdleDimLevel) {
             displayName = L"Inactivity Dim Level";
             int lvl = static_cast<int>(slider.value * 100.0f);
-            StringCchPrintfW(pctStr, ARRAYSIZE(pctStr), L"%d%%", lvl);
+            wcscpy_s(pctStr, ARRAYSIZE(pctStr), std::format(L"{}%", lvl).c_str());
         } else if (slider.isScheduleStart || slider.isScheduleEnd) {
             // v1.6.5 (Todo 8): Time-of-day slider. Round to nearest 15 minutes
             // for display, mirroring the snapping done on commit.
@@ -77,7 +77,7 @@ void MainWindow::OnPaint() {
             if (snapped >= 1440) snapped = 1439;
             int hh = snapped / 60;
             int mm = snapped % 60;
-            StringCchPrintfW(pctStr, ARRAYSIZE(pctStr), L"%02d:%02d", hh, mm);
+            wcscpy_s(pctStr, ARRAYSIZE(pctStr), std::format(L"{:02d}:{:02d}", hh, mm).c_str());
             displayName = slider.isScheduleStart ? L"Schedule Start" : L"Schedule End";
         } else {
             const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
@@ -88,7 +88,7 @@ void MainWindow::OnPaint() {
                 }
             }
             int pct = static_cast<int>(slider.value * 90.0f);
-            StringCchPrintfW(pctStr, ARRAYSIZE(pctStr), L"%d%%", pct);
+            wcscpy_s(pctStr, ARRAYSIZE(pctStr), std::format(L"{}%", pct).c_str());
         }
 
         // Draw monitor label (shift text left if checkbox is inside the card)
@@ -372,9 +372,9 @@ void MainWindow::OnPaint() {
 
     wchar_t statusStr[64] = { 0 };
     if (anyDimmerActive) {
-        StringCchCopyW(statusStr, ARRAYSIZE(statusStr), L"SYSTEM: ACTIVE");
+        wcscpy_s(statusStr, ARRAYSIZE(statusStr), L"SYSTEM: ACTIVE");
     } else {
-        StringCchCopyW(statusStr, ARRAYSIZE(statusStr), L"SYSTEM: STANDBY");
+        wcscpy_s(statusStr, ARRAYSIZE(statusStr), L"SYSTEM: STANDBY");
     }
 
     m_pRenderTarget->DrawText(
@@ -387,9 +387,9 @@ void MainWindow::OnPaint() {
     // Undo Changes centered in footer
     wchar_t undoLabel[32] = { 0 };
     if (m_changeCount > 0) {
-        StringCchPrintfW(undoLabel, ARRAYSIZE(undoLabel), L"Undo (%d)", m_changeCount);
+        wcscpy_s(undoLabel, ARRAYSIZE(undoLabel), std::format(L"Undo ({})", m_changeCount).c_str());
     } else {
-        StringCchCopyW(undoLabel, ARRAYSIZE(undoLabel), L"Undo Changes");
+        wcscpy_s(undoLabel, ARRAYSIZE(undoLabel), L"Undo Changes");
     }
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
     m_pRenderTarget->DrawText(
@@ -404,12 +404,12 @@ void MainWindow::OnPaint() {
     wchar_t versionFull[64] = { 0 };
     if (m_updateChecked) {
         if (m_updateAvailable) {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Update Available | %s", m_latestVersion.c_str());
+            wcscpy_s(versionFull, ARRAYSIZE(versionFull), std::format(L"Update Available | {}", m_latestVersion).c_str());
         } else {
-            StringCchPrintfW(versionFull, ARRAYSIZE(versionFull), L"Up to Date | %s", m_appVersion.c_str());
+            wcscpy_s(versionFull, ARRAYSIZE(versionFull), std::format(L"Up to Date | {}", m_appVersion).c_str());
         }
     } else {
-        StringCchCopyW(versionFull, ARRAYSIZE(versionFull), m_appVersion.c_str());
+        wcscpy_s(versionFull, ARRAYSIZE(versionFull), m_appVersion.c_str());
     }
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
     m_pRenderTarget->DrawText(

@@ -15,6 +15,7 @@
 #include <vector>
 #include <winver.h>
 #include <wrl/client.h>
+#include <format>
 #include "ErrorCodes.h"
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
@@ -26,7 +27,7 @@ using Microsoft::WRL::ComPtr;
 static const wchar_t* APP_NAME = L"IdleDimmer";
 static const wchar_t* INSTALL_DIR = L"IdleDimmer";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\IdleDimmer";
-static const wchar_t* VER = L"1.6.6";
+static const wchar_t* VER = L"1.7.1";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
@@ -35,15 +36,10 @@ static HWND g_hStatus, g_hButton, g_hLaunchCheck, g_hLog;
 static HFONT g_hFontTitle, g_hFontBody, g_hFontLog;
 static HBRUSH g_hEditBgBrush;
 
-static void Log(const wchar_t* fmt, ...) {
-    wchar_t buf[1024];
-    va_list args;
-    va_start(args, fmt);
-    vswprintf(buf, 1024, fmt, args);
-    va_end(args);
+static void Log(const wchar_t* msg) {
     int len = GetWindowTextLengthW(g_hLog);
     SendMessageW(g_hLog, EM_SETSEL, len, len);
-    SendMessageW(g_hLog, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(buf));
+    SendMessageW(g_hLog, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(msg));
 }
 
 static void GetInstallPath(wchar_t* buf, DWORD size) {
@@ -65,28 +61,26 @@ static std::wstring GetExeVersion(const wchar_t* filepath) {
     VS_FIXEDFILEINFO* pFileInfo = nullptr;
     UINT len = 0;
     if (VerQueryValueW(data.data(), L"\\", reinterpret_cast<void**>(&pFileInfo), &len) && len > 0 && pFileInfo) {
-        wchar_t buf[64];
-        swprintf(buf, 64, L"%d.%d.%d",
+        return std::format(L"{}.{}.{}",
             static_cast<int>(HIWORD(pFileInfo->dwProductVersionMS)),
             static_cast<int>(LOWORD(pFileInfo->dwProductVersionMS)),
             static_cast<int>(HIWORD(pFileInfo->dwProductVersionLS)));
-        return buf;
     }
     return L"unknown";
 }
 
 static bool ExtractApp(const wchar_t* dest) {
-    Log(L"  Extracting %s...\r\n", dest);
+    Log(std::format(L"  Extracting {}...\r\n", dest).c_str());
     HRSRC hRes = FindResourceW(NULL, MAKEINTRESOURCEW(IDR_APP_BIN), MAKEINTRESOURCEW(10));
     if (!hRes) {
         LogError(ErrorCode::E501, HRESULT_FROM_WIN32(GetLastError()));
-        Log(L"  [FAILED] FindResourceW error %lu\r\n", GetLastError());
+        Log(std::format(L"  [FAILED] FindResourceW error {}\r\n", GetLastError()).c_str());
         return false;
     }
     HGLOBAL hData = LoadResource(NULL, hRes);
     if (!hData) {
         LogError(ErrorCode::E502, HRESULT_FROM_WIN32(GetLastError()));
-        Log(L"  [FAILED] LoadResource error %lu\r\n", GetLastError());
+        Log(std::format(L"  [FAILED] LoadResource error {}\r\n", GetLastError()).c_str());
         return false;
     }
     DWORD size = SizeofResource(NULL, hRes);
@@ -96,11 +90,11 @@ static bool ExtractApp(const wchar_t* dest) {
         Log(L"  [FAILED] LockResource\r\n");
         return false;
     }
-    Log(L"  Resource size: %lu bytes\r\n", size);
+    Log(std::format(L"  Resource size: {} bytes\r\n", size).c_str());
     HANDLE hFile = CreateFileW(dest, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         LogError(ErrorCode::E505, HRESULT_FROM_WIN32(GetLastError()));
-        Log(L"  [FAILED] CreateFileW error %lu\r\n", GetLastError());
+        Log(std::format(L"  [FAILED] CreateFileW error {}\r\n", GetLastError()).c_str());
         return false;
     }
     DWORD written;
@@ -108,11 +102,11 @@ static bool ExtractApp(const wchar_t* dest) {
     CloseHandle(hFile);
     if (!ok || written != size) {
         LogError(ErrorCode::E506, HRESULT_FROM_WIN32(GetLastError()));
-        Log(L"  [FAILED] WriteFile wrote %lu of %lu bytes\r\n", written, size);
+        Log(std::format(L"  [FAILED] WriteFile wrote {} of {} bytes\r\n", written, size).c_str());
         DeleteFileW(dest);
         return false;
     }
-    Log(L"  Extracted %lu bytes\r\n", written);
+    Log(std::format(L"  Extracted {} bytes\r\n", written).c_str());
     return true;
 }
 
@@ -124,7 +118,7 @@ static void KillRunning() {
     }
     DWORD pid;
     GetWindowThreadProcessId(hwnd, &pid);
-    Log(L"  Found running instance (PID %lu), sending WM_CLOSE...\r\n", pid);
+    Log(std::format(L"  Found running instance (PID {}), sending WM_CLOSE...\r\n", pid).c_str());
     PostMessageW(hwnd, WM_CLOSE, 0, 0);
     HANDLE hProc = OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, FALSE, pid);
     if (hProc) {
@@ -135,7 +129,7 @@ static void KillRunning() {
             Log(L"  Timeout, force-terminating...\r\n");
             TerminateProcess(hProc, 1);
         } else
-            Log(L"  Wait returned %lu\r\n", waitResult);
+            Log(std::format(L"  Wait returned {}\r\n", waitResult).c_str());
         CloseHandle(hProc);
         Sleep(200);
     }
@@ -169,9 +163,9 @@ static void RegisterUninstall() {
         return;
     }
     wchar_t displayName[64], exePath[MAX_PATH], uninstallCmd[MAX_PATH + 32];
-    swprintf(displayName, 64, L"%s", APP_NAME);
-    swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
-    swprintf(uninstallCmd, MAX_PATH + 32, L"%s\\%s.exe /uninstall", g_installPath, APP_NAME);
+    wcscpy_s(displayName, ARRAYSIZE(displayName), APP_NAME);
+    wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
+    wcscpy_s(uninstallCmd, ARRAYSIZE(uninstallCmd), std::format(L"{}\\{}.exe /uninstall", g_installPath, APP_NAME).c_str());
     RegSetValueExW(hKey, L"DisplayName", 0, REG_SZ, (BYTE*)displayName, (DWORD)((wcslen(displayName) + 1) * sizeof(wchar_t)));
     RegSetValueExW(hKey, L"DisplayIcon", 0, REG_SZ, (BYTE*)exePath, (DWORD)((wcslen(exePath) + 1) * sizeof(wchar_t)));
     RegSetValueExW(hKey, L"UninstallString", 0, REG_SZ, (BYTE*)uninstallCmd, (DWORD)((wcslen(uninstallCmd) + 1) * sizeof(wchar_t)));
@@ -185,18 +179,18 @@ static void RegisterUninstall() {
 static void Uninstall() {
     GetInstallPath(g_installPath, MAX_PATH);
     Log(L"\r\n=== IdleDimmer Uninstall ===\r\n\r\n");
-    Log(L"  Install path: %s\r\n", g_installPath);
+    Log(std::format(L"  Install path: {}\r\n", g_installPath).c_str());
     KillRunning();
     wchar_t exePath[MAX_PATH];
-    swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
+    wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
     DeleteFileW(exePath);
-    Log(L"  Removed %s\r\n", exePath);
+    Log(std::format(L"  Removed {}\r\n", exePath).c_str());
     RemoveDirectoryW(g_installPath);
     wchar_t configDir[MAX_PATH];
     GetEnvironmentVariableW(L"APPDATA", configDir, MAX_PATH);
     wcscat_s(configDir, MAX_PATH, L"\\IdleDimmer");
     wchar_t iniPath[MAX_PATH];
-    swprintf(iniPath, MAX_PATH, L"%s\\dimmer.ini", configDir);
+    wcscpy_s(iniPath, ARRAYSIZE(iniPath), std::format(L"{}\\dimmer.ini", configDir).c_str());
     DeleteFileW(iniPath);
     RemoveDirectoryW(configDir);
     wchar_t shortcut[MAX_PATH] = {0};
@@ -232,7 +226,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 
             GetInstallPath(g_installPath, MAX_PATH);
             wchar_t exePath[MAX_PATH];
-            swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
+            wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
 
             bool running = IsRunning();
             bool installed = GetFileAttributesW(exePath) != INVALID_FILE_ATTRIBUTES;
@@ -248,13 +242,13 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 
             wchar_t status[196];
             if (running && installed)
-                swprintf(status, 196, L"Running: v%s | Installed: v%s\r\nSetup will terminate and overwrite.", installedVer.c_str(), installedVer.c_str());
+                wcscpy_s(status, ARRAYSIZE(status), std::format(L"Running: v{} | Installed: v{}\r\nSetup will terminate and overwrite.", installedVer, installedVer).c_str());
             else if (running)
-                swprintf(status, 196, L"Running: v%s\r\nSetup will terminate and install.", installedVer.empty() ? L"unknown" : installedVer.c_str());
+                wcscpy_s(status, ARRAYSIZE(status), std::format(L"Running: v{}\r\nSetup will terminate and install.", installedVer.empty() ? L"unknown" : installedVer).c_str());
             else if (installed)
-                swprintf(status, 196, L"Installed: v%s\r\nSetup will overwrite.", installedVer.c_str());
+                wcscpy_s(status, ARRAYSIZE(status), std::format(L"Installed: v{}\r\nSetup will overwrite.", installedVer).c_str());
             else
-                swprintf(status, 196, L"Ready to install v%s", VER);
+                wcscpy_s(status, ARRAYSIZE(status), std::format(L"Ready to install v{}", VER).c_str());
             SetWindowTextW(g_hStatus, status);
 
             g_hLaunchCheck = CreateWindowW(L"BUTTON", L"Launch after install",
@@ -284,9 +278,9 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             SendMessageW(g_hLaunchCheck, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
             SendMessageW(g_hLog, WM_SETFONT, (WPARAM)g_hFontLog, TRUE);
 
-            Log(L">>> IdleDimmer Setup v%s\r\n", VER);
-            Log(L">>> %s\r\n\r\n", g_installPath);
-            if (installed) Log(L"  Installed: v%s\r\n", installedVer.c_str());
+            Log(std::format(L">>> IdleDimmer Setup v{}\r\n", VER).c_str());
+            Log(std::format(L">>> {}\r\n\r\n", g_installPath).c_str());
+            if (installed) Log(std::format(L"  Installed: v{}\r\n", installedVer).c_str());
             if (running)  Log(L"  App is running\r\n");
 
             g_hEditBgBrush = CreateSolidBrush(RGB(30, 30, 30));
@@ -312,10 +306,10 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                     Log(L"  Creating directory...\r\n");
                     if (!CreateDirectoryW(g_installPath, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
                         LogError(ErrorCode::E504, HRESULT_FROM_WIN32(GetLastError()));
-                        Log(L"  [FAILED] CreateDirectoryW error %lu\r\n", GetLastError());
+                        Log(std::format(L"  [FAILED] CreateDirectoryW error {}\r\n", GetLastError()).c_str());
                     }
                     wchar_t exePath[MAX_PATH];
-                    swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
+                    wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
 
                     if (ExtractApp(exePath)) {
                         CreateShortcut(exePath);
@@ -336,7 +330,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 } else if (g_state == COMPLETE) {
                     if (SendMessageW(g_hLaunchCheck, BM_GETCHECK, 0, 0) == BST_CHECKED) {
                         wchar_t exePath[MAX_PATH];
-                        swprintf(exePath, MAX_PATH, L"%s\\%s.exe", g_installPath, APP_NAME);
+                        wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
                         Sleep(300);
                         STARTUPINFOW si = { sizeof(si) };
                         PROCESS_INFORMATION pi;

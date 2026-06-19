@@ -14,8 +14,6 @@
 #define D2DERR_RECREATED ((HRESULT)0x88980001)
 #endif
 #include <dwrite.h>
-#include <strsafe.h>
-
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
 
@@ -387,86 +385,74 @@ static std::vector<HMONITOR> GetMonitorsForProcessName(const std::wstring& proce
 }
 
 
-void DimmerManager::CheckVideoPlayback() {
-    m_videoCheckTick++;
-    bool doFullCheck = (m_videoCheckTick % 5 == 0);
-
-    if (doFullCheck) {
-        m_isFullscreenAppActive = IsFullscreenAppActive();
+void DimmerManager::CheckAudioPlaybackAsync() {
+    if (m_audioCheckInFlight.exchange(true)) {
+        return; // already checking
     }
 
-    // Determine current fullscreen monitor (on every second tick)
-    HMONITOR hCurrentFullscreenMon = nullptr;
-    if (IsForegroundWindowFullscreen() || m_isFullscreenAppActive) {
-        HWND hFore = GetForegroundWindow();
-        if (hFore) {
-            hCurrentFullscreenMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
-        }
-    }
+    std::vector<std::wstring> blockedApps = m_blockedApps;
 
-    if (doFullCheck) {
-        // Reset audio video state on full check (every 5 seconds)
-        for (auto& mon : m_monitors) {
-            mon.hasAudioVideo = false;
-        }
+    try {
+        std::thread([this, blockedApps]() {
+            HRESULT hrCOM = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-        // Check audio playback for browsers and blocked apps
-        ComPtr<IMMDeviceEnumerator> pEnumerator;
-        HRESULT hr = CoCreateInstance(
-            __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-            __uuidof(IMMDeviceEnumerator), &pEnumerator
-        );
-        if (SUCCEEDED(hr) && pEnumerator) {
-            ComPtr<IMMDevice> pDevice;
-            hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
-            if (SUCCEEDED(hr) && pDevice) {
-                ComPtr<IAudioSessionManager2> pSessionManager;
-                hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, &pSessionManager);
-                if (SUCCEEDED(hr) && pSessionManager) {
-                    ComPtr<IAudioSessionEnumerator> pSessionEnumerator;
-                    hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
-                    if (SUCCEEDED(hr) && pSessionEnumerator) {
-                        int count = 0;
-                        if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
-                            for (int i = 0; i < count; ++i) {
-                                ComPtr<IAudioSessionControl> pSessionControl;
-                                hr = pSessionEnumerator->GetSession(i, &pSessionControl);
-                                if (SUCCEEDED(hr) && pSessionControl) {
-                                    ComPtr<IAudioSessionControl2> pSessionControl2;
-                                    hr = pSessionControl->QueryInterface(__uuidof(IAudioSessionControl2), &pSessionControl2);
-                                    if (SUCCEEDED(hr) && pSessionControl2) {
-                                        DWORD pid = 0;
-                                        if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
-                                            std::wstring fname = GetProcessNameFromPid(pid);
-                                            bool isTarget = false;
-                                            for (const auto& name : m_blockedApps) {
-                                                if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                                                    isTarget = true;
-                                                    break;
+            std::vector<HMONITOR> playingMonitors;
+
+            ComPtr<IMMDeviceEnumerator> pEnumerator;
+            HRESULT hr = CoCreateInstance(
+                __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                __uuidof(IMMDeviceEnumerator), &pEnumerator
+            );
+            if (SUCCEEDED(hr) && pEnumerator) {
+                ComPtr<IMMDevice> pDevice;
+                hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
+                if (SUCCEEDED(hr) && pDevice) {
+                    ComPtr<IAudioSessionManager2> pSessionManager;
+                    hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, &pSessionManager);
+                    if (SUCCEEDED(hr) && pSessionManager) {
+                        ComPtr<IAudioSessionEnumerator> pSessionEnumerator;
+                        hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
+                        if (SUCCEEDED(hr) && pSessionEnumerator) {
+                            int count = 0;
+                            if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
+                                for (int i = 0; i < count; ++i) {
+                                    ComPtr<IAudioSessionControl> pSessionControl;
+                                    hr = pSessionEnumerator->GetSession(i, &pSessionControl);
+                                    if (SUCCEEDED(hr) && pSessionControl) {
+                                        ComPtr<IAudioSessionControl2> pSessionControl2;
+                                        hr = pSessionControl->QueryInterface(__uuidof(IAudioSessionControl2), &pSessionControl2);
+                                        if (SUCCEEDED(hr) && pSessionControl2) {
+                                            DWORD pid = 0;
+                                            if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
+                                                std::wstring fname = GetProcessNameFromPidNoLog(pid);
+                                                bool isTarget = false;
+                                                for (const auto& name : blockedApps) {
+                                                    if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                                                        isTarget = true;
+                                                        break;
+                                                    }
                                                 }
-                                            }
-                                            if (!isTarget) {
-                                                // auto-check major browsers
-                                                isTarget = (lstrcmpiW(fname.c_str(), L"chrome.exe") == 0 ||
-                                                            lstrcmpiW(fname.c_str(), L"firefox.exe") == 0 ||
-                                                            lstrcmpiW(fname.c_str(), L"msedge.exe") == 0 ||
-                                                            lstrcmpiW(fname.c_str(), L"opera.exe") == 0 ||
-                                                            lstrcmpiW(fname.c_str(), L"brave.exe") == 0);
-                                            }
- 
-                                            if (isTarget) {
-                                                ComPtr<IAudioMeterInformation> pMeter;
-                                                hr = pSessionControl->QueryInterface(IID_IAudioMeterInformation, &pMeter);
-                                                if (SUCCEEDED(hr) && pMeter) {
-                                                    float peak = 0.0f;
-                                                    if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
-                                                        // This process is playing audio. Set hasAudioVideo = true for its monitors
-                                                        std::vector<HMONITOR> mons = GetMonitorsForProcessName(fname);
-                                                        for (auto hMon : mons) {
-                                                            for (auto& mon : m_monitors) {
-                                                                 if (mon.hMonitor == hMon) {
-                                                                     mon.hasAudioVideo = true;
-                                                                 }
+                                                if (!isTarget) {
+                                                    // auto-check major browsers
+                                                    isTarget = (lstrcmpiW(fname.c_str(), L"chrome.exe") == 0 ||
+                                                                lstrcmpiW(fname.c_str(), L"firefox.exe") == 0 ||
+                                                                lstrcmpiW(fname.c_str(), L"msedge.exe") == 0 ||
+                                                                lstrcmpiW(fname.c_str(), L"opera.exe") == 0 ||
+                                                                lstrcmpiW(fname.c_str(), L"brave.exe") == 0);
+                                                }
+
+                                                if (isTarget) {
+                                                    ComPtr<IAudioMeterInformation> pMeter;
+                                                    hr = pSessionControl->QueryInterface(IID_IAudioMeterInformation, &pMeter);
+                                                    if (SUCCEEDED(hr) && pMeter) {
+                                                        float peak = 0.0f;
+                                                        if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
+                                                            // This process is playing audio. Find the monitors it runs on
+                                                            std::vector<HMONITOR> mons = GetMonitorsForProcessName(fname);
+                                                            for (auto hMon : mons) {
+                                                                if (std::find(playingMonitors.begin(), playingMonitors.end(), hMon) == playingMonitors.end()) {
+                                                                    playingMonitors.push_back(hMon);
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -480,6 +466,48 @@ void DimmerManager::CheckVideoPlayback() {
                     }
                 }
             }
+
+            // Update thread-safe list of audio playing monitors
+            {
+                std::lock_guard<std::mutex> lock(m_audioMutex);
+                m_audioPlayingMonitors = std::move(playingMonitors);
+            }
+
+            if (SUCCEEDED(hrCOM)) {
+                CoUninitialize();
+            }
+
+            m_audioCheckInFlight = false;
+        }).detach();
+    } catch (...) {
+        m_audioCheckInFlight = false;
+    }
+}
+
+void DimmerManager::CheckVideoPlayback() {
+    m_videoCheckTick++;
+    bool doFullCheck = (m_videoCheckTick % 5 == 0);
+
+    if (doFullCheck) {
+        m_isFullscreenAppActive = IsFullscreenAppActive();
+        CheckAudioPlaybackAsync();
+    }
+
+    // Determine current fullscreen monitor (on every second tick)
+    HMONITOR hCurrentFullscreenMon = nullptr;
+    if (IsForegroundWindowFullscreen() || m_isFullscreenAppActive) {
+        HWND hFore = GetForegroundWindow();
+        if (hFore) {
+            hCurrentFullscreenMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
+        }
+    }
+
+    // Update hasAudioVideo based on the latest background check results
+    {
+        std::lock_guard<std::mutex> lock(m_audioMutex);
+        for (auto& mon : m_monitors) {
+            bool playing = (std::find(m_audioPlayingMonitors.begin(), m_audioPlayingMonitors.end(), mon.hMonitor) != m_audioPlayingMonitors.end());
+            mon.hasAudioVideo = playing;
         }
     }
 

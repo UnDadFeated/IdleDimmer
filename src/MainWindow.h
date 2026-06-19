@@ -64,6 +64,7 @@ private:
     ~MainWindow();
 
     bool CreateImpl(HINSTANCE hInst, int nCmdShow);
+    static bool CreateImplSafe(MainWindow* self, HINSTANCE hInst, int nCmdShow);
 
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
     

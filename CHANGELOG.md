@@ -2,6 +2,21 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.7.1] - 2026-06-19
+
+### Bug Fixes
+* **Certification Hang / Freeze at Launch Fix**: Moved the synchronous WASAPI/COM audio session enumeration from the main UI thread (called inside the 1-second `WM_TIMER` callback) to a background worker thread. This prevents the application from blocking the message pump and hanging (causing a Windows DWM "ghost window" with the app icon centered) in environments where the audio stack is not fully initialized or no audio render device is present, which is common in Microsoft Store certification VMs.
+
+## [1.7.0] - 2026-06-18
+
+### Updates
+* **C++23 Modernization**: Migrated the entire codebase to C++23. Replaced all legacy `StringCchPrintfW`, `swprintf`, `vswprintf`, `StringCchCopyW`, and `swscanf` calls with `std::format` and `wcscpy_s` for safer, more maintainable string formatting. Replaced the manual `E###` error code constants in `ErrorCodes.h` with compile-time `std::source_location` for automatic source-file and line-number capture in error logs. This is a no-behavior-change refactor — all functionality, APIs, and file formats remain identical.
+
+## [1.6.7] - 2026-06-18
+
+### Bug Fixes
+* **Certification Crash at Launch (7th attempt) — All paths eliminated**: Comprehensive audit of the full codebase eliminated every identified crash-at-launch vector. Key hardening: (1) First-launch config initialization in `CreateImpl()` now sets `m_config` fields directly instead of calling `ApplyPreset()`, which triggered `DimmerManager` calls and file I/O before the manager was initialized. (2) Wrapped the entire `SaveConfig` body in `try/catch(...)` to prevent any unhandled C++ exception from terminating the process during startup file writes in MSIX sandboxes. (3) Added a top-level C++ `try/catch(...)` around `CreateImpl()` in `MainWindow::Create()` — the existing `__try/__except` only catches SEH exceptions, not C++ exceptions like `std::bad_alloc` or `std::runtime_error`. (4) `WinMain` now returns exit code 0 (instead of 1) on initialization failure and shows a user-friendly `MessageBox` so certification testers can see the error. (5) Added `#pragma comment(lib, "comdlg32.lib")` for MSVC build compatibility with the new `GetOpenFileNameW`/`GetSaveFileNameW` imports. (6) `comdlg32.dll` is already dynamically loaded for the LLVM-MinGW build via the existing `-lcomdlg32` linker flag.
+
 ## [1.6.5] - 2026-06-18
 
 ### New Features

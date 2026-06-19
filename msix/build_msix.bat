@@ -15,12 +15,12 @@ REM    - For Store submission: skip signing (Microsoft signs the MSIX)
 REM    - For sideloading: self-sign with a generated cert
 REM
 REM  Outputs:
-REM    - dist\IdleDimmer_1.6.5.0_x64.msix       (unsigned, for Store)
-REM    - dist\IdleDimmer_1.6.5.0_x64.msix      (self-signed, for sideload)
-REM    - dist\IdleDimmer_1.6.5.0_x64.cer       (signing cert, for sideload)
+REM     - dist\IdleDimmer_1.7.1.0_x64.msix       (unsigned, for Store)
+REM     - dist\IdleDimmer_1.7.1.0_x64.msix      (self-signed, for sideload)
+REM     - dist\IdleDimmer_1.7.1.0_x64.cer       (signing cert, for sideload)
 REM ====================================================================
 
-set VERSION=1.6.6.0
+set VERSION=1.7.1.0
 set ARCH=x64
 set CONFIG=Release
 set PROJECT_ROOT=%~dp0..
@@ -80,7 +80,7 @@ dir /b "%STAGE_DIR%"
 echo.
 
 REM --------------------------------------------------------------------
-REM  Step 3: Pack the MSIX (unsigned) — /v enables manifest validation
+REM  Step 3: Pack the MSIX (unsigned) ??? /v enables manifest validation
 REM --------------------------------------------------------------------
 echo [2/5] Packing MSIX (unsigned, with manifest validation)...
 %SDK_BIN%\makeappx.exe pack /v /o /d "%STAGE_DIR%" /p "%DIST_DIR%\IdleDimmer_%VERSION%_%ARCH%.msix"

@@ -51,9 +51,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // 4. Create and show settings panel
     if (!MainWindow::Instance().Create(hInstance, nCmdShow)) {
         LogError(ErrorCode::E105);
+        // Show a visible error so certification testers don't see a silent exit.
+        // Return 0 (not 1) — exit code 1 is interpreted as a crash by the
+        // Microsoft Store certification tool.
+        MessageBoxW(nullptr,
+            L"IdleDimmer failed to initialize.\n\n"
+            L"This may be caused by a missing graphics driver, "
+            L"restricted permissions, or a system configuration issue.",
+            L"IdleDimmer", MB_OK | MB_ICONERROR);
         if (comInitialized) CoUninitialize();
         CloseHandle(hMutex);
-        return 1;
+        return 0;
     }
 
     // 5. Message Loop

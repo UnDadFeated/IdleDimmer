@@ -2,16 +2,16 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-6B7280?style=flat-square" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/Version-1.6.6-10B981?style=flat-square" alt="Version 1.6.6">
+  <img src="https://img.shields.io/badge/Version-1.7.1-10B981?style=flat-square" alt="Version 1.7.1">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 10/11">
-  <img src="https://img.shields.io/badge/C%2B%2B17-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++17">
+  <img src="https://img.shields.io/badge/C%2B%2B23-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++23">
 </p>
 
 **A tiny, native Windows screen dimmer that protects OLED screens from burn-in, respects your eyes, and values your privacy.**
 
 IdleDimmer is a per-monitor screen dimming utility for Windows 10 and 11. It overlays a transparent black layer on each display you choose to reduce eye strain and protect OLED panels from static burn-in. You can dim a second screen to 30% for late-night reading while keeping your main monitor at 80% — without flickering the OSD, fighting DDC, or installing a 50 MB Electron wrapper.
 
-Built in native C++17 with Direct2D and the raw Win32 API. **~150 KB on disk. Zero runtime dependencies. Zero telemetry. Zero ads.**
+Built in native C++23 with Direct2D and the raw Win32 API. **~150 KB on disk. Zero runtime dependencies. Zero telemetry. Zero ads.**
 
 ---
 
@@ -23,7 +23,7 @@ Built in native C++17 with Direct2D and the raw Win32 API. **~150 KB on disk. Ze
 
 ### Direct installer (GitHub Releases)
 
-[**IdleDimmer-Setup-v1.6.6.exe**](https://github.com/UnDadFeated/IdleDimmer/releases/download/v1.6.6/IdleDimmer-Setup-v1.6.6.exe) — 280 KB
+[**IdleDimmer-Setup-v1.7.1.exe**](https://github.com/UnDadFeated/IdleDimmer/releases/download/v1.7.1/IdleDimmer-Setup-v1.7.1.exe) — 280 KB
 
 Per-user install to `%LOCALAPPDATA%`. No admin elevation. Clean uninstall from Settings > Apps. Self-extracting installer with dark theme UI.
 
@@ -142,7 +142,7 @@ Auto-detects VS 2022, compiles resources, links the app.
 ### LLVM-MinGW
 ```cmd
 llvm-windres resources\resources.rc -O coff -o resources\resources.o
-clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -fms-extensions -static ^
+clang++ -O2 -std=c++23 -mwindows -Os -s -mguard=cf -fms-extensions -static ^
     -o IdleDimmer.exe ^
     src\main.cpp src\MainWindow.cpp src\MainWindowDraw.cpp src\MainWindowInput.cpp src\DimmerManager.cpp src\ConfigManager.cpp ^
     resources\resources.o ^
@@ -153,8 +153,8 @@ clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -fms-extensions -static ^
 ### Installer
 ```cmd
 llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
-clang++ -O2 -std=c++17 -mwindows -Os -s -mguard=cf -static ^
-    -o IdleDimmer-Setup-v1.6.6.exe ^
+clang++ -O2 -std=c++23 -mwindows -Os -s -mguard=cf -static ^
+    -o IdleDimmer-Setup-v1.7.1.exe ^
     src\setup.cpp resources\setup_res.o ^
     -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion ^
     -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows

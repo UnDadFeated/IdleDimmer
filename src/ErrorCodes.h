@@ -1,7 +1,8 @@
 #pragma once
 #include <windows.h>
 #include <string>
-#include <sstream>
+#include <format>
+#include <source_location>
 
 enum class ErrorCode {
     SUCCESS = 0,
@@ -74,95 +75,162 @@ enum class ErrorCode {
     E508 = 508  // Setup mutex already exists
 };
 
-struct ErrorInfo {
-    const wchar_t* code;
-    const wchar_t* description;
-};
+inline std::wstring g_lastAppErrorStr = L"SUCCESS";
 
-inline ErrorInfo GetErrorInfo(ErrorCode code) {
+inline const wchar_t* GetErrorCodeName(ErrorCode code) {
     switch (code) {
-        case ErrorCode::E101: return { L"E101", L"Single instance mutex creation failed. The operating system could not create the mutex handle." };
-        case ErrorCode::E102: return { L"E102", L"Another instance of IdleDimmer is already running." };
-        case ErrorCode::E103: return { L"E103", L"COM library initialization failed. CoInitializeEx returned a failure HRESULT." };
-        case ErrorCode::E104: return { L"E104", L"Setting the process DPI awareness context failed." };
-        case ErrorCode::E105: return { L"E105", L"MainWindow instance creation failed. The class singleton could not be initialized." };
-        case ErrorCode::E106: return { L"E106", L"Main window class registration failed (RegisterClassExW)." };
-        case ErrorCode::E107: return { L"E107", L"Main window handle creation failed (CreateWindowExW)." };
-        case ErrorCode::E108: return { L"E108", L"MainWindow initialization crash / structured exception." };
-        
-        case ErrorCode::E201: return { L"E201", L"Direct2D factory creation failed (D2D1CreateFactory)." };
-        case ErrorCode::E202: return { L"E202", L"DirectWrite factory creation failed (DWriteCreateFactory)." };
-        case ErrorCode::E203: return { L"E203", L"Title text format creation failed (CreateTextFormat)." };
-        case ErrorCode::E204: return { L"E204", L"Body text format creation failed (CreateTextFormat)." };
-        case ErrorCode::E205: return { L"E205", L"Detail text format creation failed (CreateTextFormat)." };
-        case ErrorCode::E206: return { L"E206", L"Hwnd Render Target creation failed (CreateHwndRenderTarget)." };
-        case ErrorCode::E207: return { L"E207", L"Solid color brush creation failed (CreateSolidColorBrush)." };
-        case ErrorCode::E208: return { L"E208", L"Focus Mode cursor tracking timer registration failed (SetTimer)." };
-        case ErrorCode::E209: return { L"E209", L"System idle detection timer registration failed (SetTimer)." };
-        case ErrorCode::E213: return { L"E213", L"Tray icon addition failed (Shell_NotifyIconW)." };
-        case ErrorCode::E214: return { L"E214", L"RegisterClassExW failed for Add App Dialog." };
-        case ErrorCode::E215: return { L"E215", L"CreateWindowExW failed for Add App Dialog." };
-        
-        case ErrorCode::E301: return { L"E301", L"Config file path resolution failed. Unable to query APPDATA environment variable." };
-        case ErrorCode::E302: return { L"E302", L"Failed to open config file for reading. The file may not exist or is locked." };
-        case ErrorCode::E303: return { L"E303", L"Hand-parsed JSON format invalid. The config file structure is corrupted." };
-        case ErrorCode::E304: return { L"E304", L"Failed to open config file for writing. The file could not be created or written to." };
-        case ErrorCode::E305: return { L"E305", L"Registry key opening failed for startup registry entry (RegOpenKeyExW)." };
-        case ErrorCode::E306: return { L"E306", L"Registry value setting failed for startup registry entry (RegSetValueExW)." };
-        case ErrorCode::E307: return { L"E307", L"Registry value deletion failed for startup registry entry (RegDeleteValueW)." };
-        
-        case ErrorCode::E401: return { L"E401", L"Monitor enumeration failed (EnumDisplayMonitors returned false)." };
-        case ErrorCode::E402: return { L"E402", L"Overlay window class registration failed (RegisterClassExW)." };
-        case ErrorCode::E403: return { L"E403", L"CreateWindowExW failed for monitor overlay window." };
-        case ErrorCode::E404: return { L"E404", L"SetLayeredWindowAttributes failed for monitor overlay window." };
-        case ErrorCode::E405: return { L"E405", L"OpenProcess failed for foreground process query during video check." };
-        case ErrorCode::E406: return { L"E406", L"QueryFullProcessImageNameW failed for foreground process path during video check." };
-        case ErrorCode::E407: return { L"E407", L"CoCreateInstance failed for MMDeviceEnumerator (audio check)." };
-        case ErrorCode::E408: return { L"E408", L"GetDefaultAudioEndpoint failed for default rendering device (audio check)." };
-        case ErrorCode::E409: return { L"E409", L"Device Activate failed for IAudioSessionManager2 (audio check)." };
-        case ErrorCode::E410: return { L"E410", L"GetSessionEnumerator failed from session manager (audio check)." };
-        case ErrorCode::E411: return { L"E411", L"GetSession failed from session enumerator (audio check)." };
-        case ErrorCode::E412: return { L"E412", L"QueryInterface failed for IAudioSessionControl2 (audio check)." };
-        case ErrorCode::E413: return { L"E413", L"QueryInterface failed for IAudioMeterInformation (audio check)." };
-        case ErrorCode::E414: return { L"E414", L"GetPeakValue failed from audio meter (audio check)." };
-        case ErrorCode::E415: return { L"E415", L"OpenProcess failed during audio session PID query." };
-        case ErrorCode::E416: return { L"E416", L"QueryFullProcessImageNameW failed during audio session PID query." };
-        case ErrorCode::E417: return { L"E417", L"OpenProcess failed in GetRealProcessId for UWP process resolution." };
-        case ErrorCode::E418: return { L"E418", L"OpenProcess failed in GetProcessNameFromPid during video/audio check." };
-        case ErrorCode::E419: return { L"E419", L"CreateWindowExW failed during setup window creation." };
-        case ErrorCode::E420: return { L"E420", L"SetWindowDisplayAffinity failed for overlay window." };
-        
-        case ErrorCode::E501: return { L"E501", L"Resource lookup failed during setup (FindResourceW)." };
-        case ErrorCode::E502: return { L"E502", L"Resource loading failed during setup (LoadResource)." };
-        case ErrorCode::E503: return { L"E503", L"Resource data access failed during setup (LockResource)." };
-        case ErrorCode::E504: return { L"E504", L"Destination directory creation failed during setup." };
-        case ErrorCode::E505: return { L"E505", L"Executable file creation failed during setup." };
-        case ErrorCode::E506: return { L"E506", L"Executable write failed during setup." };
-        case ErrorCode::E507: return { L"E507", L"Setup mutex creation failed." };
-        case ErrorCode::E508: return { L"E508", L"Setup mutex already exists. Another setup instance is running." };
-        
-        default: return { L"E000", L"Unknown error code." };
+        case ErrorCode::E101: return L"E101";
+        case ErrorCode::E102: return L"E102";
+        case ErrorCode::E103: return L"E103";
+        case ErrorCode::E104: return L"E104";
+        case ErrorCode::E105: return L"E105";
+        case ErrorCode::E106: return L"E106";
+        case ErrorCode::E107: return L"E107";
+        case ErrorCode::E108: return L"E108";
+        case ErrorCode::E201: return L"E201";
+        case ErrorCode::E202: return L"E202";
+        case ErrorCode::E203: return L"E203";
+        case ErrorCode::E204: return L"E204";
+        case ErrorCode::E205: return L"E205";
+        case ErrorCode::E206: return L"E206";
+        case ErrorCode::E207: return L"E207";
+        case ErrorCode::E208: return L"E208";
+        case ErrorCode::E209: return L"E209";
+        case ErrorCode::E213: return L"E213";
+        case ErrorCode::E214: return L"E214";
+        case ErrorCode::E215: return L"E215";
+        case ErrorCode::E301: return L"E301";
+        case ErrorCode::E302: return L"E302";
+        case ErrorCode::E303: return L"E303";
+        case ErrorCode::E304: return L"E304";
+        case ErrorCode::E305: return L"E305";
+        case ErrorCode::E306: return L"E306";
+        case ErrorCode::E307: return L"E307";
+        case ErrorCode::E401: return L"E401";
+        case ErrorCode::E402: return L"E402";
+        case ErrorCode::E403: return L"E403";
+        case ErrorCode::E404: return L"E404";
+        case ErrorCode::E405: return L"E405";
+        case ErrorCode::E406: return L"E406";
+        case ErrorCode::E407: return L"E407";
+        case ErrorCode::E408: return L"E408";
+        case ErrorCode::E409: return L"E409";
+        case ErrorCode::E410: return L"E410";
+        case ErrorCode::E411: return L"E411";
+        case ErrorCode::E412: return L"E412";
+        case ErrorCode::E413: return L"E413";
+        case ErrorCode::E414: return L"E414";
+        case ErrorCode::E415: return L"E415";
+        case ErrorCode::E416: return L"E416";
+        case ErrorCode::E417: return L"E417";
+        case ErrorCode::E418: return L"E418";
+        case ErrorCode::E419: return L"E419";
+        case ErrorCode::E420: return L"E420";
+        case ErrorCode::E501: return L"E501";
+        case ErrorCode::E502: return L"E502";
+        case ErrorCode::E503: return L"E503";
+        case ErrorCode::E504: return L"E504";
+        case ErrorCode::E505: return L"E505";
+        case ErrorCode::E506: return L"E506";
+        case ErrorCode::E507: return L"E507";
+        case ErrorCode::E508: return L"E508";
+        default: return L"E000";
     }
 }
 
-inline ErrorCode g_lastAppError = ErrorCode::SUCCESS;
+inline const wchar_t* GetErrorDescription(ErrorCode code) {
+    switch (code) {
+        case ErrorCode::E101: return L"Single instance mutex creation failed.";
+        case ErrorCode::E102: return L"Another instance of IdleDimmer is already running.";
+        case ErrorCode::E103: return L"COM library initialization failed.";
+        case ErrorCode::E104: return L"Setting the process DPI awareness context failed.";
+        case ErrorCode::E105: return L"MainWindow instance creation failed.";
+        case ErrorCode::E106: return L"Main window class registration failed.";
+        case ErrorCode::E107: return L"Main window handle creation failed.";
+        case ErrorCode::E108: return L"MainWindow initialization crash.";
+        case ErrorCode::E201: return L"Direct2D factory creation failed.";
+        case ErrorCode::E202: return L"DirectWrite factory creation failed.";
+        case ErrorCode::E203: return L"Title text format creation failed.";
+        case ErrorCode::E204: return L"Body text format creation failed.";
+        case ErrorCode::E205: return L"Detail text format creation failed.";
+        case ErrorCode::E206: return L"Hwnd Render Target creation failed.";
+        case ErrorCode::E207: return L"Solid color brush creation failed.";
+        case ErrorCode::E208: return L"Focus Mode cursor tracking timer registration failed.";
+        case ErrorCode::E209: return L"System idle detection timer registration failed.";
+        case ErrorCode::E213: return L"Tray icon addition failed.";
+        case ErrorCode::E214: return L"RegisterClassExW failed for Add App Dialog.";
+        case ErrorCode::E215: return L"CreateWindowExW failed for Add App Dialog.";
+        case ErrorCode::E301: return L"Config file path resolution failed.";
+        case ErrorCode::E302: return L"Failed to open config file for reading.";
+        case ErrorCode::E303: return L"Hand-parsed JSON format invalid.";
+        case ErrorCode::E304: return L"Failed to open config file for writing.";
+        case ErrorCode::E305: return L"Registry key opening failed.";
+        case ErrorCode::E306: return L"Registry value setting failed.";
+        case ErrorCode::E307: return L"Registry value deletion failed.";
+        case ErrorCode::E401: return L"Monitor enumeration failed.";
+        case ErrorCode::E402: return L"Overlay window class registration failed.";
+        case ErrorCode::E403: return L"CreateWindowExW failed for monitor overlay.";
+        case ErrorCode::E404: return L"SetLayeredWindowAttributes failed for monitor overlay.";
+        case ErrorCode::E405: return L"OpenProcess failed for foreground process query.";
+        case ErrorCode::E406: return L"QueryFullProcessImageNameW failed.";
+        case ErrorCode::E407: return L"CoCreateInstance failed for MMDeviceEnumerator.";
+        case ErrorCode::E408: return L"GetDefaultAudioEndpoint failed.";
+        case ErrorCode::E409: return L"Device Activate failed.";
+        case ErrorCode::E410: return L"GetSessionEnumerator failed.";
+        case ErrorCode::E411: return L"GetSession failed.";
+        case ErrorCode::E412: return L"QueryInterface failed for IAudioSessionControl2.";
+        case ErrorCode::E413: return L"QueryInterface failed for IAudioMeterInformation.";
+        case ErrorCode::E414: return L"GetPeakValue failed.";
+        case ErrorCode::E415: return L"OpenProcess failed during audio session PID query.";
+        case ErrorCode::E416: return L"QueryFullProcessImageNameW failed during audio session.";
+        case ErrorCode::E417: return L"OpenProcess failed in GetRealProcessId.";
+        case ErrorCode::E418: return L"OpenProcess failed in GetProcessNameFromPid.";
+        case ErrorCode::E419: return L"CreateWindowExW failed during setup.";
+        case ErrorCode::E420: return L"SetWindowDisplayAffinity failed for overlay.";
+        case ErrorCode::E501: return L"Resource lookup failed.";
+        case ErrorCode::E502: return L"Resource loading failed.";
+        case ErrorCode::E503: return L"Resource data access failed.";
+        case ErrorCode::E504: return L"Destination directory creation failed.";
+        case ErrorCode::E505: return L"Executable file creation failed.";
+        case ErrorCode::E506: return L"Executable write failed.";
+        case ErrorCode::E507: return L"Setup mutex creation failed.";
+        case ErrorCode::E508: return L"Setup mutex already exists.";
+        default: return L"Unknown error.";
+    }
+}
 
-inline ErrorCode GetLastAppError() {
+inline std::wstring g_lastAppError = L"SUCCESS";
+
+inline std::wstring GetLastAppError() {
     return g_lastAppError;
 }
 
-inline void SetLastAppError(ErrorCode code) {
-    g_lastAppError = code;
+inline void SetLastAppError(std::wstring_view err) {
+    g_lastAppError = std::wstring(err);
 }
 
-inline void LogError(ErrorCode code, HRESULT hr = S_OK) {
-    SetLastAppError(code);
-    ErrorInfo info = GetErrorInfo(code);
-    std::wstringstream wss;
-    wss << L"[IdleDimmer Error Code]: " << info.code << L" - " << info.description;
+inline std::wstring Utf8ToWide(const char* utf8) {
+    if (!utf8) return L"";
+    int len = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
+    if (len <= 0) return L"";
+    std::wstring result(len, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, &result[0], len);
+    if (!result.empty()) result.pop_back();
+    return result;
+}
+
+inline void LogError(ErrorCode code, HRESULT hr = S_OK,
+                     const std::source_location& loc = std::source_location::current()) {
+    SetLastAppError(GetErrorDescription(code));
+    std::wstring msg;
+    std::wstring fileName = Utf8ToWide(loc.file_name());
+    std::wstring codeName = GetErrorCodeName(code);
     if (hr != S_OK) {
-        wss << L" (System HRESULT/Code: 0x" << std::hex << hr << L")";
+        msg = std::format(L"[{}] {}:{} {} (0x{:#010X})",
+                           fileName, loc.line(), codeName, GetErrorDescription(code), static_cast<unsigned>(hr));
+    } else {
+        msg = std::format(L"[{}] {}:{} {}",
+                           fileName, loc.line(), codeName, GetErrorDescription(code));
     }
-    wss << L"\n";
-    OutputDebugStringW(wss.str().c_str());
+    OutputDebugStringW(msg.c_str());
 }

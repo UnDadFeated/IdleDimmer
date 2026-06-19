@@ -170,55 +170,63 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
 }
 
 void ConfigManager::SaveConfig(const std::wstring& filePath, const AppConfig& config) {
-    std::wofstream file(filePath.c_str());
-    // See LoadConfig: std::locale("") can throw on stripped Windows images.
     try {
-        file.imbue(std::locale(""));
-    } catch (const std::runtime_error&) {
-        // locale("") failed; proceed with default "C" locale
+        std::wofstream file(filePath.c_str());
+        // See LoadConfig: std::locale("") can throw on stripped Windows images.
+        try {
+            file.imbue(std::locale(""));
+        } catch (const std::runtime_error&) {
+            // locale("") failed; proceed with default "C" locale
+        }
+        if (!file.is_open()) {
+            LogError(ErrorCode::E304, HRESULT_FROM_WIN32(GetLastError()));
+            return;
+        }
+
+        file << L"{\n";
+        file << L"  \"CloseToTray\": " << (config.closeToTray ? L"true" : L"false") << L",\n";
+        file << L"  \"ShowInTaskbar\": " << (config.showInTaskbar ? L"true" : L"false") << L",\n";
+        file << L"  \"StartWithWindows\": " << (config.startWithWindows ? L"true" : L"false") << L",\n";
+        file << L"  \"WarmTint\": " << (config.warmTint ? L"true" : L"false") << L",\n";
+        file << L"  \"IdleDimEnabled\": " << (config.idleDimEnabled ? L"true" : L"false") << L",\n";
+        file << L"  \"IdleMinutes\": " << config.idleMinutes << L",\n";
+        file << L"  \"IdleDimLevel\": " << config.idleDimLevel << L",\n";
+        file << L"  \"IdleTurnOff\": " << (config.idleTurnOff ? L"true" : L"false") << L",\n";
+        file << L"  \"MasterValue\": " << config.masterValue << L",\n";
+        file << L"  \"MasterEnabled\": " << (config.masterEnabled ? L"true" : L"false") << L",\n";
+        file << L"  \"LightMode\": " << (config.lightMode ? L"true" : L"false") << L",\n";
+        file << L"  \"DimmingEnabled\": " << (config.dimmingEnabled ? L"true" : L"false") << L",\n";
+        file << L"  \"ScheduleEnabled\": " << (config.scheduleEnabled ? L"true" : L"false") << L",\n";
+        file << L"  \"ScheduleStartMins\": " << config.scheduleStartMins << L",\n";
+        file << L"  \"ScheduleEndMins\": " << config.scheduleEndMins << L",\n";
+        file << L"  \"ScheduleDimLevel\": " << config.scheduleDimLevel << L",\n";
+
+        file << L"  \"BlockedApps\": [";
+        for (size_t i = 0; i < config.blockedApps.size(); ++i) {
+            if (i > 0) file << L", ";
+            file << L"\"" << config.blockedApps[i] << L"\"";
+        }
+        file << L"],\n";
+
+        file << L"  \"Monitors\": [\n";
+
+        for (size_t i = 0; i < config.monitors.size(); ++i) {
+            const auto& mon = config.monitors[i];
+            file << L"    {\n";
+            file << L"      \"Id\": \"" << mon.id << L"\",\n";
+            file << L"      \"Value\": " << mon.value << L",\n";
+            file << L"      \"Enabled\": " << (mon.enabled ? L"true" : L"false") << L"\n";
+            file << L"    }" << (i + 1 < config.monitors.size() ? L"," : L"") << L"\n";
+        }
+
+        file << L"  ]\n";
+        file << L"}\n";
+        file.close();
+    } catch (...) {
+        // Prevent any C++ exception from propagating out of SaveConfig.
+        // SaveConfig is called during startup (via SyncMonitorsWithConfig),
+        // so an unhandled exception here would terminate the process and
+        // appear as a "crash at launch" to certification testing.
+        LogError(ErrorCode::E304);
     }
-    if (!file.is_open()) {
-        LogError(ErrorCode::E304, HRESULT_FROM_WIN32(GetLastError()));
-        return;
-    }
-
-    file << L"{\n";
-    file << L"  \"CloseToTray\": " << (config.closeToTray ? L"true" : L"false") << L",\n";
-    file << L"  \"ShowInTaskbar\": " << (config.showInTaskbar ? L"true" : L"false") << L",\n";
-    file << L"  \"StartWithWindows\": " << (config.startWithWindows ? L"true" : L"false") << L",\n";
-    file << L"  \"WarmTint\": " << (config.warmTint ? L"true" : L"false") << L",\n";
-    file << L"  \"IdleDimEnabled\": " << (config.idleDimEnabled ? L"true" : L"false") << L",\n";
-    file << L"  \"IdleMinutes\": " << config.idleMinutes << L",\n";
-    file << L"  \"IdleDimLevel\": " << config.idleDimLevel << L",\n";
-    file << L"  \"IdleTurnOff\": " << (config.idleTurnOff ? L"true" : L"false") << L",\n";
-    file << L"  \"MasterValue\": " << config.masterValue << L",\n";
-    file << L"  \"MasterEnabled\": " << (config.masterEnabled ? L"true" : L"false") << L",\n";
-    file << L"  \"LightMode\": " << (config.lightMode ? L"true" : L"false") << L",\n";
-    file << L"  \"DimmingEnabled\": " << (config.dimmingEnabled ? L"true" : L"false") << L",\n";
-    file << L"  \"ScheduleEnabled\": " << (config.scheduleEnabled ? L"true" : L"false") << L",\n";
-    file << L"  \"ScheduleStartMins\": " << config.scheduleStartMins << L",\n";
-    file << L"  \"ScheduleEndMins\": " << config.scheduleEndMins << L",\n";
-    file << L"  \"ScheduleDimLevel\": " << config.scheduleDimLevel << L",\n";
-
-    file << L"  \"BlockedApps\": [";
-    for (size_t i = 0; i < config.blockedApps.size(); ++i) {
-        if (i > 0) file << L", ";
-        file << L"\"" << config.blockedApps[i] << L"\"";
-    }
-    file << L"],\n";
-
-    file << L"  \"Monitors\": [\n";
-
-    for (size_t i = 0; i < config.monitors.size(); ++i) {
-        const auto& mon = config.monitors[i];
-        file << L"    {\n";
-        file << L"      \"Id\": \"" << mon.id << L"\",\n";
-        file << L"      \"Value\": " << mon.value << L",\n";
-        file << L"      \"Enabled\": " << (mon.enabled ? L"true" : L"false") << L"\n";
-        file << L"    }" << (i + 1 < config.monitors.size() ? L"," : L"") << L"\n";
-    }
-
-    file << L"  ]\n";
-    file << L"}\n";
-    file.close();
 }

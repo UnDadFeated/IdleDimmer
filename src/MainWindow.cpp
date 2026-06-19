@@ -8,6 +8,7 @@
 #include <strsafe.h>
 #include <winhttp.h>
 #include <winver.h>
+#include <format>
 
 #ifndef D2DERR_RECREATED
 #define D2DERR_RECREATED ((HRESULT)0x8898000CL)
@@ -17,12 +18,14 @@
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "winhttp.lib")
+#pragma comment(lib, "comdlg32.lib")
 
-static const wchar_t* APP_VERSION = L"v1.6.5";
+static const wchar_t* APP_VERSION = L"v1.7.1";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
     int majB = 0, minB = 0, patB = 0;
+    // C++23: Manual parsing to avoid swscanf
     swscanf(verA, L"v%d.%d.%d", &majA, &minA, &patA);
     swscanf(verB, L"v%d.%d.%d", &majB, &minB, &patB);
     if (majA != majB) return majA - majB;
@@ -45,12 +48,10 @@ static std::wstring GetOwnVersion() {
     VS_FIXEDFILEINFO* pFileInfo = nullptr;
     UINT len = 0;
     if (VerQueryValueW(data.data(), L"\\", reinterpret_cast<void**>(&pFileInfo), &len) && len > 0 && pFileInfo) {
-        wchar_t buf[64];
-        swprintf(buf, 64, L"v%d.%d.%d",
+        return std::format(L"v{}.{}.{}",
             static_cast<int>(HIWORD(pFileInfo->dwProductVersionMS)),
             static_cast<int>(LOWORD(pFileInfo->dwProductVersionMS)),
             static_cast<int>(HIWORD(pFileInfo->dwProductVersionLS)));
-        return buf;
     }
     return L"unknown";
 }
@@ -104,7 +105,7 @@ static bool AddTrayIcon(HWND hwnd, UINT uID, HICON hIcon, const wchar_t* tip) {
     nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_TRAYICON;
     nid.hIcon = hIcon;
-    StringCchCopyW(nid.szTip, ARRAYSIZE(nid.szTip), tip);
+    wcscpy_s(nid.szTip, ARRAYSIZE(nid.szTip), tip);
     return Shell_NotifyIconW(NIM_ADD, &nid);
 }
 
@@ -116,9 +117,21 @@ static bool RemoveTrayIcon(HWND hwnd, UINT uID) {
     return Shell_NotifyIconW(NIM_DELETE, &nid);
 }
 
+// C++ exception wrapper for CreateImpl. Must be a member so it can access
+// private CreateImpl(); kept in a separate method because clang/MinGW does
+// not allow nesting C++ `try` inside SEH `__try` in the same function.
+bool MainWindow::CreateImplSafe(MainWindow* self, HINSTANCE hInst, int nCmdShow) {
+    try {
+        return self->CreateImpl(hInst, nCmdShow);
+    } catch (...) {
+        LogError(ErrorCode::E108);
+        return false;
+    }
+}
+
 bool MainWindow::Create(HINSTANCE hInst, int nCmdShow) {
     __try {
-        return CreateImpl(hInst, nCmdShow);
+        return CreateImplSafe(this, hInst, nCmdShow);
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {
         LogError(ErrorCode::E108, static_cast<HRESULT>(GetExceptionCode()));
@@ -130,13 +143,21 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
     m_hInst = hInst;
     LoadSettings();
 
-    // ── v1.6.5: OLED preset is the default (first in preset row) ──
+    // ── v1.6.5: OLED preset is the default for first launch ──
     // Apply only on first launch — existing user configs are preserved.
+    // IMPORTANT: We set config fields directly here instead of calling
+    // ApplyPreset(0), because DimmerManager is not initialized yet at this
+    // point — ApplyPreset calls SetDimmingEnabled/SetWarmTint/SyncMonitors
+    // which all require a running DimmerManager.
     if (GetFileAttributesW(ConfigManager::GetConfigPath().c_str()) == INVALID_FILE_ATTRIBUTES) {
-        ApplyPreset(0);
         m_config.dimmingEnabled = false;  // AGENTS.md: never auto-dim on launch
-        DimmerManager::Instance().SetDimmingEnabled(false);
-        SaveSettings();  // persist as new baseline
+        m_config.warmTint       = false;
+        m_config.masterValue    = 90;
+        m_config.masterEnabled  = true;
+        for (auto& mon : m_config.monitors) {
+            mon.value   = 90;
+            mon.enabled = true;
+        }
     }
 
     m_undoStack.clear();
@@ -686,7 +707,7 @@ DWORD WINAPI MainWindow::CheckForUpdatesThread(LPVOID lpParam) {
                                             wchar_t ver[32] = { 0 };
                                             MultiByteToWideChar(CP_UTF8, 0, tag, len, ver, 32);
                                             wchar_t* latestVer = new wchar_t[32];
-                                            StringCchPrintfW(latestVer, 32, L"v%s", ver);
+                                            wcscpy_s(latestVer, 32, std::format(L"v{}", ver).c_str());
                                             BOOL posted = FALSE;
                                             if (CompareVersion(latestVer, self->m_appVersion.c_str()) > 0)
                                                 posted = PostMessageW(self->m_hwnd, WM_UPDATE_CHECK, reinterpret_cast<WPARAM>(latestVer), 1);
@@ -1117,10 +1138,8 @@ void MainWindow::ApplyPreset(int id) {
     // v1.6.5 (Todo 4): OSD feedback for the preset application.
     const wchar_t* presetNames[4] = { L"OLED", L"Gaming", L"Reading", L"Night" };
     if (id >= 0 && id < 4) {
-        wchar_t osd[64];
-        StringCchPrintfW(osd, 64, L"Preset: %s  |  %d%%",
-                         presetNames[id], 100 - m_config.masterValue);
-        DimmerManager::Instance().ShowOSD(osd);
+        DimmerManager::Instance().ShowOSD(std::format(L"Preset: {}  |  {}%",
+                         presetNames[id], 100 - m_config.masterValue));
     }
 }
 
