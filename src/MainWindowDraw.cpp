@@ -4,7 +4,7 @@
 #include <algorithm>
 
 #ifndef D2DERR_RECREATED
-#define D2DERR_RECREATED ((HRESULT)0x8898000CL)
+#define D2DERR_RECREATED ((HRESULT)0x88980001L)
 #endif
 
 void MainWindow::OnPaint() {

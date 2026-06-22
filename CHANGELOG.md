@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.7.2] - 2026-06-22
+
+### Bug Fixes
+* **Second Certification Freeze Fix — All Remaining Vectors Eliminated**: Fixed four root causes contributing to the freeze-at-launch on OS build 22631.6199 (Event ID 1002 Application Hang). (1) Added the Windows 11 `supportedOS` GUID `{1f676c76-80e1-4239-95bb-83d0f6d0da78}` to the application manifest so the correct DWM compatibility shims are applied. (2) Corrected the `D2DERR_RECREATED` fallback value from `0x8898000C` to `0x88980001` — the old value was a typo that caused D2D device-loss recovery to silently fail. (3) Wrapped the `CheckAudioPlaybackAsync` thread body in an RAII guard so `m_audioCheckInFlight` always resets, even if an exception escapes the COM enumeration. (4) Replaced synchronous `UpdateWindow()` with deferred `InvalidateRect()` in the overlay creation path to avoid running `WM_PAINT` before D2D infrastructure is fully initialized.
+
 ## [1.7.1] - 2026-06-19
 
 ### Bug Fixes

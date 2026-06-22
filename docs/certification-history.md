@@ -2,7 +2,7 @@
 
 Track every certification submission, the devices Microsoft tested on, OS builds, and what was fixed.
 
-## Submission #10 — v1.7.1 (submitted 2026-06-19)
+## Submission #11 — v1.7.2 (submitted 2026-06-22)
 
 **Status:** Pending
 

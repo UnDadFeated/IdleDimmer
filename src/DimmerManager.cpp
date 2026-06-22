@@ -127,9 +127,11 @@ void DimmerManager::CreateOverlayForMonitor(ActiveMonitorInfo& info) {
         }
 
         ShowWindow(info.hwndOverlay, SW_SHOWNOACTIVATE);
-        UpdateWindow(info.hwndOverlay);
 
-        // Defer fade start so WM_NCCREATE/GWLP_USERDATA is fully processed first
+        // Defer paint and fade start so WM_NCCREATE/GWLP_USERDATA is fully
+        // processed first, and so overlay WM_PAINT does not run synchronously
+        // during CreateImpl() before D2D / message-loop infrastructure is ready.
+        InvalidateRect(info.hwndOverlay, nullptr, FALSE);
         PostMessageW(info.hwndOverlay, WM_APP + 1, 0, 0);
     } else {
         LogError(ErrorCode::E403, HRESULT_FROM_WIN32(GetLastError()));
@@ -394,6 +396,13 @@ void DimmerManager::CheckAudioPlaybackAsync() {
 
     try {
         std::thread([this, blockedApps]() {
+            // Ensure m_audioCheckInFlight is reset even if the thread body throws
+            struct AudioCheckGuard {
+                std::atomic<bool>& flag;
+                ~AudioCheckGuard() { flag = false; }
+            };
+            AudioCheckGuard guard{ m_audioCheckInFlight };
+
             HRESULT hrCOM = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
             std::vector<HMONITOR> playingMonitors;
@@ -476,8 +485,6 @@ void DimmerManager::CheckAudioPlaybackAsync() {
             if (SUCCEEDED(hrCOM)) {
                 CoUninitialize();
             }
-
-            m_audioCheckInFlight = false;
         }).detach();
     } catch (...) {
         m_audioCheckInFlight = false;
