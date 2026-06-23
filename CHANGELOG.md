@@ -2,14 +2,15 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.7.4] - 2026-06-23
+
+### Bug Fixes
+* **Fourth Certification Freeze Fix — Safety Nets for Certification VMs**: Added three layers of resilience after research into Win11 24H2 / WDDM 3.2 hang patterns found in the wild. (1) **GDI-first paint fallback**: The first `WM_PAINT` always renders with GDI instead of Direct2D. If D2D init has never succeeded, `OnPaint` paints with GDI and posts `WM_APP+4` to try D2D asynchronously. This prevents the DWM ghost-window hang that occurs when the first `EndDraw`/`Present` stalls on iGPUs under WDDM 3.2 (JUCE framework had the identical issue). (2) **Shell_NotifyIcon retry timer (ID 204)**: If `AddTrayIcon` fails (common during early startup), a 4-second retry timer is set instead of blocking — preventing `Shell_NotifyIcon`'s internal `SendMessageTimeout` from contributing to the 5-second hang window. (3) **Async D2D init via `WM_APP+4`**: D2D creation is decoupled from `WM_PAINT`, so the window draws immediately via GDI and upgrades to D2D later without time pressure.
+
 ## [1.7.3] - 2026-06-23
 
 ### Bug Fixes
 * **Third Certification Freeze Fix — Deferred Startup Initialization**: Fixed a freeze-at-launch (Event ID 1002 Application Hang) on OS build 26200.8246 (Dell Inspiron 12-5280, Win11 24H2+/WDDM 3.2) with the same symptom as v1.7.1/v1.7.2 but triggered by *different* blocking operations. Split `CreateImpl()` into a minimal synchronous phase (window creation + class registration only) and a deferred phase (`WM_APP+2` handler) that runs on the first message-loop iteration. All potentially-blocking operations — `RefreshMonitors()` (DWM overlay-window creation), `AddTrayIcon()` (Shell_NotifyIcon IPC), `SetWarmTint()`/`SetDimmingEnabled()` (D2D overlay init), `SetTimer()` calls, and `UpdateLayout()` (`SetWindowPos` → nested `WM_SIZE`/`WM_PAINT`) — now run after the message pump is live, preventing certification VMs from hanging when the GPU driver or DWM takes too long synchronously.
-
-### Safety Nets (extra resilience for certification VMs)
-* **GDI-first paint fallback**: The first `WM_PAINT` now always renders with GDI (`FillRect`) instead of Direct2D. If D2D initialization has never succeeded, `OnPaint` paints a solid background using GDI and posts a `WM_APP+4` message to attempt D2D creation asynchronously. This prevents the DWM ghost-window hang condition that occurs when the first `EndDraw`/`Present` stalls on certain iGPUs under WDDM 3.2 (JUCE framework had the identical issue on Win11 24H2). If D2D init eventually succeeds, the window seamlessly upgrades to D2D rendering. If it fails, GDI is used permanently — the app remains fully functional with a slightly simpler appearance.
-* **Shell_NotifyIcon retry timer**: `AddTrayIcon` is now non-blocking in the startup path. If the tray icon creation fails (common during early startup when Explorer hasn't finished loading shell extensions), a 4-second retry timer (ID 204) is set. Subsequent ticks retry the icon creation and remove the timer on success. This prevents `Shell_NotifyIcon`'s internal `SendMessageTimeout` (4-second timeout to Explorer's `Shell_TrayWnd`) from contributing to the 5-second hang window.
 
 ## [1.7.2] - 2026-06-22
 
