@@ -8,7 +8,19 @@
 #endif
 
 void MainWindow::OnPaint() {
-    if (FAILED(CreateGraphicsResources())) return;
+    // Safety net: if D2D has never been successfully initialized, use GDI so the
+    // window always paints something and the message pump never stalls on first
+    // paint. WM_APP+4 will be posted to attempt async D2D init after this paint.
+    if (!m_d2dReady) {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(m_hwnd, &ps);
+        HBRUSH bgBrush = CreateSolidBrush(m_config.lightMode ? RGB(0xF0,0xF0,0xF2) : RGB(0x12,0x12,0x12));
+        FillRect(hdc, &ps.rcPaint, bgBrush);
+        DeleteObject(bgBrush);
+        EndPaint(m_hwnd, &ps);
+        PostMessageW(m_hwnd, WM_APP + 4, 0, 0);
+        return;
+    }
 
     m_pRenderTarget->BeginDraw();
     m_pRenderTarget->SetTransform(D2D1::IdentityMatrix());

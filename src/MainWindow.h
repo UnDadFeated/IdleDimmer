@@ -148,6 +148,10 @@ private:
     void OnUpdateCheckComplete(WPARAM wp, LPARAM lp);
     bool IsPackaged() const;
 
+    // Safety-net state for certification startup resilience
+    bool m_d2dReady = false;    // D2D successfully initialized at least once
+    bool m_trayAdded = false;   // Shell_NotifyIcon succeeded
+
     // Blocked apps UI
     static const int CONTENT_WIDTH = 480;
     static const int PANEL_WIDTH = 200;

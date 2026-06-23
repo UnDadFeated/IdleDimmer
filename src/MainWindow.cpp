@@ -974,6 +974,18 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                     if (!self->m_hUpdateThread) {
                         self->m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, self, 0, nullptr);
                     }
+                } else if (wp == 204) {
+                    // Retry tray icon (may have failed during early startup
+                    // when Explorer was not yet ready to process it).
+                    if (!self->m_trayAdded) {
+                        HICON hAppIcon = LoadIconW(self->m_hInst, MAKEINTRESOURCEW(101));
+                        self->m_trayAdded = AddTrayIcon(hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness");
+                        if (self->m_trayAdded) {
+                            KillTimer(hwnd, 204);
+                        }
+                    } else {
+                        KillTimer(hwnd, 204);
+                    }
                 }
                 return 0;
             }
@@ -990,15 +1002,18 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                     LogError(ErrorCode::E209, HRESULT_FROM_WIN32(GetLastError()));
                 }
 
-                HICON hAppIcon = LoadIconW(self->m_hInst, MAKEINTRESOURCEW(101));
-                if (!AddTrayIcon(hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness")) {
-                    LogError(ErrorCode::E213, HRESULT_FROM_WIN32(GetLastError()));
-                }
-
                 if (!self->IsPackaged()) {
                     SetTimer(hwnd, 203, 15000, nullptr);
                 } else {
                     self->m_updateChecked = true;
+                }
+
+                // Try tray icon once. If it fails (common during early startup
+                // when Explorer is still loading), retry via timer 204.
+                HICON hAppIcon = LoadIconW(self->m_hInst, MAKEINTRESOURCEW(101));
+                self->m_trayAdded = AddTrayIcon(hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness");
+                if (!self->m_trayAdded) {
+                    SetTimer(hwnd, 204, 4000, nullptr);
                 }
 
                 int nCmdShow = static_cast<int>(wp);
@@ -1010,6 +1025,20 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
 
                 self->UpdateLayout();
                 InvalidateRect(hwnd, nullptr, TRUE);
+                return 0;
+            }
+            case WM_APP + 4: {
+                // Async D2D initialization. Triggered by GDI-first OnPaint.
+                // If this succeeds we switch from GDI to D2D rendering.
+                if (!self->m_d2dReady) {
+                    HRESULT hr = self->CreateGraphicsResources();
+                    if (SUCCEEDED(hr)) {
+                        self->m_d2dReady = true;
+                        InvalidateRect(hwnd, nullptr, TRUE);
+                    }
+                    // If it fails we stay on GDI permanently — better to have a
+                    // functional GDI window than risk hanging on D2D retries.
+                }
                 return 0;
             }
             case WM_DISPLAYCHANGE: {
