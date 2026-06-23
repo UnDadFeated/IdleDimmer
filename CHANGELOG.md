@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.7.3] - 2026-06-23
+
+### Bug Fixes
+* **Third Certification Freeze Fix — Deferred Startup Initialization**: Fixed a freeze-at-launch (Event ID 1002 Application Hang) on OS build 26200.8246 (Dell Inspiron 12-5280, Win11 24H2+/WDDM 3.2) with the same symptom as v1.7.1/v1.7.2 but triggered by *different* blocking operations. Split `CreateImpl()` into a minimal synchronous phase (window creation + class registration only) and a deferred phase (`WM_APP+2` handler) that runs on the first message-loop iteration. All potentially-blocking operations — `RefreshMonitors()` (DWM overlay-window creation), `AddTrayIcon()` (Shell_NotifyIcon IPC), `SetWarmTint()`/`SetDimmingEnabled()` (D2D overlay init), `SetTimer()` calls, and `UpdateLayout()` (`SetWindowPos` → nested `WM_SIZE`/`WM_PAINT`) — now run after the message pump is live, preventing certification VMs from hanging when the GPU driver or DWM takes too long synchronously.
+
 ## [1.7.2] - 2026-06-22
 
 ### Bug Fixes

@@ -20,7 +20,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-static const wchar_t* APP_VERSION = L"v1.7.2";
+static const wchar_t* APP_VERSION = L"v1.7.3";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -224,49 +224,17 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
 
     m_appVersion = GetOwnVersion();
 
+    // Defer all remotely-blocking operations to WM_APP+2 so the message loop
+    // starts BEFORE any D2D/COM/tray/DWM interactions. Certification VMs on
+    // Win11 24H2+ (build 26200+) have different DWM timing and WDDM 3.2 GPU
+    // driver behavior that can cause synchronous D2D init / Shell_NotifyIcon /
+    // overlay-window creation to hang when called before the message loop.
+    //
+    // Only Initialize() (window-class registration) stays synchronous — it is
+    // a single RegisterClassExW call with zero IPC or DWM involvement.
     DimmerManager::Instance().Initialize(hInst);
-    DimmerManager::Instance().RefreshMonitors();
 
-    // Synchronize monitor settings from loaded configuration
-    SyncMonitorsWithConfig();
-
-    // Apply warm tint and active dimming settings
-    DimmerManager::Instance().SetWarmTint(m_config.warmTint);
-    DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
-
-    // Start Inactivity/Idle checking timer (1000ms interval)
-    if (!SetTimer(m_hwnd, 202, 1000, nullptr)) {
-        LogError(ErrorCode::E209, HRESULT_FROM_WIN32(GetLastError()));
-    }
-
-    // Add to system tray
-    HICON hAppIcon = LoadIconW(m_hInst, MAKEINTRESOURCEW(101));
-    if (!AddTrayIcon(m_hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness")) {
-        LogError(ErrorCode::E213, HRESULT_FROM_WIN32(GetLastError()));
-    }
-
-    if (!IsPackaged()) {
-        SetTimer(m_hwnd, 203, 15000, nullptr);
-    } else {
-        m_updateChecked = true;
-    }
-
-    // If started with Windows and Close to Tray is enabled, start minimized to tray
-    if (m_config.startWithWindows && m_config.closeToTray) {
-        ShowWindow(m_hwnd, SW_HIDE);
-    } else {
-        ShowWindow(m_hwnd, nCmdShow);
-    }
-    UpdateWindow(m_hwnd);
-
-    // Defer UpdateLayout() until after ShowWindow/UpdateWindow so the first
-    // legitimate WM_PAINT cycle has already initialized Direct2D. UpdateLayout()
-    // calls SetWindowPos(), which pumps WM_SIZE/WM_PAINT — calling it before D2D
-    // is initialized is not a crash here (OnResize and ValidateRect are null-safe
-    // and unconditional), but ordering it after the first paint is the defensive
-    // pattern and removes a class of edge cases on certification VMs where D2D
-    // device creation may transiently fail.
-    UpdateLayout();
+    PostMessageW(m_hwnd, WM_APP + 2, static_cast<WPARAM>(nCmdShow), 0);
 
     return true;
 }
@@ -1007,6 +975,41 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
                         self->m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, self, 0, nullptr);
                     }
                 }
+                return 0;
+            }
+            case WM_APP + 2: {
+                // Deferred startup initialization. Runs on the first message
+                // loop iteration so the message pump is alive before any
+                // potentially-blocking COM/D2D/tray/DWM calls.
+                DimmerManager::Instance().RefreshMonitors();
+                self->SyncMonitorsWithConfig();
+                DimmerManager::Instance().SetWarmTint(self->m_config.warmTint);
+                DimmerManager::Instance().SetDimmingEnabled(self->m_config.dimmingEnabled);
+
+                if (!SetTimer(hwnd, 202, 1000, nullptr)) {
+                    LogError(ErrorCode::E209, HRESULT_FROM_WIN32(GetLastError()));
+                }
+
+                HICON hAppIcon = LoadIconW(self->m_hInst, MAKEINTRESOURCEW(101));
+                if (!AddTrayIcon(hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness")) {
+                    LogError(ErrorCode::E213, HRESULT_FROM_WIN32(GetLastError()));
+                }
+
+                if (!self->IsPackaged()) {
+                    SetTimer(hwnd, 203, 15000, nullptr);
+                } else {
+                    self->m_updateChecked = true;
+                }
+
+                int nCmdShow = static_cast<int>(wp);
+                if (self->m_config.startWithWindows && self->m_config.closeToTray) {
+                    ShowWindow(hwnd, SW_HIDE);
+                } else {
+                    ShowWindow(hwnd, nCmdShow);
+                }
+
+                self->UpdateLayout();
+                InvalidateRect(hwnd, nullptr, TRUE);
                 return 0;
             }
             case WM_DISPLAYCHANGE: {

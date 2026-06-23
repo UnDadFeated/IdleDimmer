@@ -2,9 +2,18 @@
 
 Track every certification submission, the devices Microsoft tested on, OS builds, and what was fixed.
 
-## Submission #11 — v1.7.2 (submitted 2026-06-22)
+## Submission #12 — v1.7.3 (submitted 2026-06-23)
 
 **Status:** Pending
+
+**Tested On:** Dell Inspiron 12-5280 (OS build 26200.8246)
+
+**Fixes Applied:**
+- Deferred all blocking startup operations (`RefreshMonitors`, `AddTrayIcon`, `SetWarmTint`/`SetDimmingEnabled`, `SetTimer`, `ShowWindow`, `UpdateLayout`) to a `WM_APP+2` handler that runs on the first message-loop iteration. This prevents the GPU driver / DWM / Shell_NotifyIcon from hanging when called synchronously before the message pump on Win11 24H2+ (WDDM 3.2) certification VMs.
+
+## Submission #11 — v1.7.2 (submitted 2026-06-22)
+
+**Status:** ❌ FAILED — Freeze at launch on Dell Inspiron 12-5280 (build 26200.8246)
 
 **Fixes Applied:**
 - Moved synchronous WASAPI/COM audio session checks from the UI thread to a background worker thread to resolve startup hangs/DWM ghosting in VM environments with no default audio devices.
