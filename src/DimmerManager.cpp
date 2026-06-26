@@ -387,6 +387,102 @@ static std::vector<HMONITOR> GetMonitorsForProcessName(const std::wstring& proce
 }
 
 
+// Helper function containing C++ objects with destructors.
+// This function MUST NOT use structured exception handling (__try/__except) directly.
+static void DoAudioCheckWork(
+    const std::vector<std::wstring>* blockedApps,
+    std::vector<std::wstring>* outPlayingProcesses)
+{
+    HRESULT hrCOM = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+    ComPtr<IMMDeviceEnumerator> pEnumerator;
+    HRESULT hr = CoCreateInstance(
+        __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+        __uuidof(IMMDeviceEnumerator), &pEnumerator
+    );
+    if (SUCCEEDED(hr) && pEnumerator) {
+        ComPtr<IMMDevice> pDevice;
+        hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
+        if (SUCCEEDED(hr) && pDevice) {
+            ComPtr<IAudioSessionManager2> pSessionManager;
+            hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, &pSessionManager);
+            if (SUCCEEDED(hr) && pSessionManager) {
+                ComPtr<IAudioSessionEnumerator> pSessionEnumerator;
+                hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
+                if (SUCCEEDED(hr) && pSessionEnumerator) {
+                    int count = 0;
+                    if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
+                        for (int i = 0; i < count; ++i) {
+                            ComPtr<IAudioSessionControl> pSessionControl;
+                            hr = pSessionEnumerator->GetSession(i, &pSessionControl);
+                            if (SUCCEEDED(hr) && pSessionControl) {
+                                ComPtr<IAudioSessionControl2> pSessionControl2;
+                                hr = pSessionControl->QueryInterface(__uuidof(IAudioSessionControl2), &pSessionControl2);
+                                if (SUCCEEDED(hr) && pSessionControl2) {
+                                    DWORD pid = 0;
+                                    if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
+                                        std::wstring fname = GetProcessNameFromPidNoLog(pid);
+                                        bool isTarget = false;
+                                        for (const auto& name : *blockedApps) {
+                                            if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
+                                                isTarget = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!isTarget) {
+                                            // auto-check major browsers
+                                            isTarget = (lstrcmpiW(fname.c_str(), L"chrome.exe") == 0 ||
+                                                        lstrcmpiW(fname.c_str(), L"firefox.exe") == 0 ||
+                                                        lstrcmpiW(fname.c_str(), L"msedge.exe") == 0 ||
+                                                        lstrcmpiW(fname.c_str(), L"opera.exe") == 0 ||
+                                                        lstrcmpiW(fname.c_str(), L"brave.exe") == 0);
+                                        }
+
+                                        if (isTarget) {
+                                            ComPtr<IAudioMeterInformation> pMeter;
+                                            hr = pSessionControl->QueryInterface(IID_IAudioMeterInformation, &pMeter);
+                                            if (SUCCEEDED(hr) && pMeter) {
+                                                float peak = 0.0f;
+                                                if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
+                                                    // Store the process name — monitor resolution
+                                                    // happens on the main thread (v1.7.8)
+                                                    if (std::find(outPlayingProcesses->begin(), outPlayingProcesses->end(), fname) == outPlayingProcesses->end()) {
+                                                        outPlayingProcesses->push_back(fname);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (SUCCEEDED(hrCOM)) {
+        CoUninitialize();
+    }
+}
+
+// ── v1.7.8: SEH-safe audio COM work ──
+// __try/__except cannot coexist with C++ objects that have destructors in
+// the same function body. This static helper isolates the SEH wrapper so
+// the caller's lambda can use std::vector, ComPtr, etc. freely.
+static void DoAudioCheckSEH(
+    const std::vector<std::wstring>& blockedApps,
+    std::vector<std::wstring>& outPlayingProcesses)
+{
+    __try {
+        DoAudioCheckWork(&blockedApps, &outPlayingProcesses);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // Audio check hit an SEH (access violation, etc.). Abandon this tick.
+        // The guard in the caller will reset m_audioCheckInFlight.
+    }
+}
+
 void DimmerManager::CheckAudioPlaybackAsync() {
     if (m_audioCheckInFlight.exchange(true)) {
         return; // already checking
@@ -403,87 +499,22 @@ void DimmerManager::CheckAudioPlaybackAsync() {
             };
             AudioCheckGuard guard{ m_audioCheckInFlight };
 
-            HRESULT hrCOM = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+            std::vector<std::wstring> playingProcesses;
 
-            std::vector<HMONITOR> playingMonitors;
-
-            ComPtr<IMMDeviceEnumerator> pEnumerator;
-            HRESULT hr = CoCreateInstance(
-                __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-                __uuidof(IMMDeviceEnumerator), &pEnumerator
-            );
-            if (SUCCEEDED(hr) && pEnumerator) {
-                ComPtr<IMMDevice> pDevice;
-                hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
-                if (SUCCEEDED(hr) && pDevice) {
-                    ComPtr<IAudioSessionManager2> pSessionManager;
-                    hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, &pSessionManager);
-                    if (SUCCEEDED(hr) && pSessionManager) {
-                        ComPtr<IAudioSessionEnumerator> pSessionEnumerator;
-                        hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
-                        if (SUCCEEDED(hr) && pSessionEnumerator) {
-                            int count = 0;
-                            if (SUCCEEDED(pSessionEnumerator->GetCount(&count))) {
-                                for (int i = 0; i < count; ++i) {
-                                    ComPtr<IAudioSessionControl> pSessionControl;
-                                    hr = pSessionEnumerator->GetSession(i, &pSessionControl);
-                                    if (SUCCEEDED(hr) && pSessionControl) {
-                                        ComPtr<IAudioSessionControl2> pSessionControl2;
-                                        hr = pSessionControl->QueryInterface(__uuidof(IAudioSessionControl2), &pSessionControl2);
-                                        if (SUCCEEDED(hr) && pSessionControl2) {
-                                            DWORD pid = 0;
-                                            if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
-                                                std::wstring fname = GetProcessNameFromPidNoLog(pid);
-                                                bool isTarget = false;
-                                                for (const auto& name : blockedApps) {
-                                                    if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                                                        isTarget = true;
-                                                        break;
-                                                    }
-                                                }
-                                                if (!isTarget) {
-                                                    // auto-check major browsers
-                                                    isTarget = (lstrcmpiW(fname.c_str(), L"chrome.exe") == 0 ||
-                                                                lstrcmpiW(fname.c_str(), L"firefox.exe") == 0 ||
-                                                                lstrcmpiW(fname.c_str(), L"msedge.exe") == 0 ||
-                                                                lstrcmpiW(fname.c_str(), L"opera.exe") == 0 ||
-                                                                lstrcmpiW(fname.c_str(), L"brave.exe") == 0);
-                                                }
-
-                                                if (isTarget) {
-                                                    ComPtr<IAudioMeterInformation> pMeter;
-                                                    hr = pSessionControl->QueryInterface(IID_IAudioMeterInformation, &pMeter);
-                                                    if (SUCCEEDED(hr) && pMeter) {
-                                                        float peak = 0.0f;
-                                                        if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
-                                                            // This process is playing audio. Find the monitors it runs on
-                                                            std::vector<HMONITOR> mons = GetMonitorsForProcessName(fname);
-                                                            for (auto hMon : mons) {
-                                                                if (std::find(playingMonitors.begin(), playingMonitors.end(), hMon) == playingMonitors.end()) {
-                                                                    playingMonitors.push_back(hMon);
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            // v1.7.8: SEH-wrapped COM work via static helper. EnumWindows
+            // is no longer called here — monitor resolution happens on the
+            // main thread in CheckVideoPlayback() to avoid calling
+            // EnumWindows from a thread without a message pump.
+            try {
+                DoAudioCheckSEH(blockedApps, playingProcesses);
+            } catch (...) {
+                // C++ exception (bad_alloc, etc.) — abandon this tick
             }
 
-            // Update thread-safe list of audio playing monitors
+            // Update thread-safe list of playing process names
             {
                 std::lock_guard<std::mutex> lock(m_audioMutex);
-                m_audioPlayingMonitors = std::move(playingMonitors);
-            }
-
-            if (SUCCEEDED(hrCOM)) {
-                CoUninitialize();
+                m_audioPlayingProcesses = std::move(playingProcesses);
             }
         }).detach();
     } catch (...) {
@@ -509,13 +540,27 @@ void DimmerManager::CheckVideoPlayback() {
         }
     }
 
-    // Update hasAudioVideo based on the latest background check results
+    // v1.7.8: Resolve playing process names → monitors on the MAIN thread.
+    // Previously GetMonitorsForProcessName (which calls EnumWindows) ran on
+    // the detached audio thread. EnumWindows from a thread without a message
+    // pump can deadlock or crash if any enumerated window has a hung handler.
+    std::vector<HMONITOR> audioMonitors;
     {
         std::lock_guard<std::mutex> lock(m_audioMutex);
-        for (auto& mon : m_monitors) {
-            bool playing = (std::find(m_audioPlayingMonitors.begin(), m_audioPlayingMonitors.end(), mon.hMonitor) != m_audioPlayingMonitors.end());
-            mon.hasAudioVideo = playing;
+        for (const auto& procName : m_audioPlayingProcesses) {
+            std::vector<HMONITOR> mons = GetMonitorsForProcessName(procName);
+            for (auto hMon : mons) {
+                if (std::find(audioMonitors.begin(), audioMonitors.end(), hMon) == audioMonitors.end()) {
+                    audioMonitors.push_back(hMon);
+                }
+            }
         }
+    }
+
+    // Update hasAudioVideo based on the resolved monitor list
+    for (auto& mon : m_monitors) {
+        bool playing = (std::find(audioMonitors.begin(), audioMonitors.end(), mon.hMonitor) != audioMonitors.end());
+        mon.hasAudioVideo = playing;
     }
 
     // Update hasFullscreenVideo on every tick and combine with hasAudioVideo.
@@ -548,6 +593,7 @@ void DimmerManager::CheckVideoPlayback() {
     // ── v1.6.5 (Todo 2): Drive time-of-day scheduling on the same 1s tick ──
     CheckSchedule();
 }
+
 
 bool DimmerManager::IsAnyBlockedAppPlayingAudio() {
     return false;
@@ -656,6 +702,11 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
         info = reinterpret_cast<ActiveMonitorInfo*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
     }
 
+    // ── v1.7.7: SEH around the entire overlay handler ──
+    // D2D drivers on Intel Iris Xe / WDDM 3.2 can throw SEH access violations
+    // on overlay paint/timer/positioning calls. Previously these killed the
+    // process since only the MainWindow WndProc had SEH protection.
+    __try {
     switch (msg) {
         case WM_APP + 1: {
             // Deferred fade start after overlay creation
@@ -779,6 +830,14 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
         }
         default:
             return DefWindowProcW(hwnd, msg, wp, lp);
+    }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // Overlay handler crashed. Log and keep the process alive.
+        LogError(ErrorCode::E211, static_cast<HRESULT>(GetExceptionCode()));
+        if (msg == WM_PAINT) {
+            ValidateRect(hwnd, nullptr);
+        }
+        return 0;
     }
 }
 
@@ -943,6 +1002,11 @@ void DimmerManager::DestroyOSD() {
 }
 
 LRESULT CALLBACK DimmerManager::OSDWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    // ── v1.7.8: SEH around OSD WndProc ──
+    // D2D paint calls can throw SEH on some GPU drivers. Without this wrapper,
+    // a crash here propagates through the message-loop SEH which wouldn't call
+    // ValidateRect for the OSD's HWND, risking an infinite repaint loop.
+    __try {
     switch (msg) {
         case WM_PAINT: {
             PAINTSTRUCT ps;
@@ -1050,4 +1114,12 @@ LRESULT CALLBACK DimmerManager::OSDWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARA
         default:
             return DefWindowProcW(hwnd, msg, wp, lp);
     }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        LogError(ErrorCode::E211, static_cast<HRESULT>(GetExceptionCode()));
+        if (msg == WM_PAINT) {
+            ValidateRect(hwnd, nullptr);
+        }
+        return 0;
+    }
 }
+

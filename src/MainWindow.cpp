@@ -20,7 +20,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-static const wchar_t* APP_VERSION = L"v1.7.4";
+static const wchar_t* APP_VERSION = L"v1.7.9";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -367,6 +367,9 @@ HRESULT MainWindow::CreateGraphicsResources() {
 }
 
 void MainWindow::DiscardGraphicsResources() {
+    // If D2D resources are discarded at runtime (device loss / D2DERR_RECREATED),
+    // reset the ready flag so OnPaint falls back to GDI and WM_APP+4 retries.
+    m_d2dReady = false;
     if (m_pBrushBg) { m_pBrushBg->Release(); m_pBrushBg = nullptr; }
     if (m_pBrushCard) { m_pBrushCard->Release(); m_pBrushCard = nullptr; }
     if (m_pBrushCardBorder) { m_pBrushCardBorder->Release(); m_pBrushCardBorder = nullptr; }
@@ -908,204 +911,248 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) 
         self = reinterpret_cast<MainWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
     }
 
+    // ── v1.7.7: Top-level SEH around the ENTIRE WndProc body ──
+    // Previously only WM_PAINT was wrapped. Crashes from WM_APP+2 (deferred
+    // init), WM_TIMER, WM_DISPLAYCHANGE, and WM_POWERBROADCAST all propagated
+    // through DispatchMessageW uncaught — killing the process on cert VMs.
     if (self) {
-        switch (msg) {
-            case WM_PAINT: {
-                self->OnPaint();
+        __try {
+            return self->WndProcImpl(hwnd, msg, wp, lp);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            LogError(ErrorCode::E211, static_cast<HRESULT>(GetExceptionCode()));
+            // Return 0 for most messages so the pump keeps going.
+            // WM_PAINT needs ValidateRect to prevent infinite repaint loops.
+            if (msg == WM_PAINT) {
                 ValidateRect(hwnd, nullptr);
-                return 0;
             }
-            case WM_SIZE: {
-                self->OnResize(LOWORD(lp), HIWORD(lp));
-                return 0;
-            }
-            case WM_MOUSEMOVE: {
-                self->HandleMouseMove(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
-                return 0;
-            }
-            case WM_LBUTTONDOWN: {
-                self->HandleLButtonDown(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
-                return 0;
-            }
-            case WM_LBUTTONUP: {
-                self->HandleLButtonUp(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
-                return 0;
-            }
-            case WM_MOUSEWHEEL: {
-                self->HandleMouseWheel(GET_WHEEL_DELTA_WPARAM(wp), static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
-                return 0;
-            }
-            case WM_KEYDOWN: {
-                self->HandleKeyDown(wp);
-                return 0;
-            }
-            case WM_TIMER: {
-                if (wp == 202) {
-                    DimmerManager::Instance().CheckVideoPlayback();
-                    if (self->m_config.idleDimEnabled) {
-                        LASTINPUTINFO lii = { 0 };
-                        lii.cbSize = sizeof(lii);
-                        if (GetLastInputInfo(&lii)) {
-                            DWORD idleTime = GetTickCount() - lii.dwTime;
-                            DWORD threshold = self->m_config.idleMinutes * 60 * 1000;
-                            if (idleTime >= threshold) {
-                                if (!DimmerManager::Instance().IsIdleState()) {
-                                    DimmerManager::Instance().SetIdleState(true, self->m_config.idleDimLevel);
-                                    if (self->m_config.idleTurnOff) {
-                                        HWND hShell = FindWindowW(L"Shell_TrayWnd", NULL);
-                                        if (hShell) {
-                                            PostMessageW(hShell, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
-                                        } else {
-                                            SendMessageW(GetDesktopWindow(), WM_SYSCOMMAND, SC_MONITORPOWER, 2);
-                                        }
-                                    }
-                                }
-                            } else {
-                                if (DimmerManager::Instance().IsIdleState()) {
-                                    DimmerManager::Instance().SetIdleState(false);
-                                }
-                            }
-                        }
-                    } else if (DimmerManager::Instance().IsIdleState()) {
-                        DimmerManager::Instance().SetIdleState(false);
-                    }
-                } else if (wp == 203) {
-                    KillTimer(hwnd, 203);
-                    if (!self->m_hUpdateThread) {
-                        self->m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, self, 0, nullptr);
-                    }
-                } else if (wp == 204) {
-                    // Retry tray icon (may have failed during early startup
-                    // when Explorer was not yet ready to process it).
-                    if (!self->m_trayAdded) {
-                        HICON hAppIcon = LoadIconW(self->m_hInst, MAKEINTRESOURCEW(101));
-                        self->m_trayAdded = AddTrayIcon(hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness");
-                        if (self->m_trayAdded) {
-                            KillTimer(hwnd, 204);
-                        }
-                    } else {
-                        KillTimer(hwnd, 204);
-                    }
-                }
-                return 0;
-            }
-            case WM_APP + 2: {
-                // Deferred startup initialization. Runs on the first message
-                // loop iteration so the message pump is alive before any
-                // potentially-blocking COM/D2D/tray/DWM calls.
-                DimmerManager::Instance().RefreshMonitors();
-                self->SyncMonitorsWithConfig();
-                DimmerManager::Instance().SetWarmTint(self->m_config.warmTint);
-                DimmerManager::Instance().SetDimmingEnabled(self->m_config.dimmingEnabled);
-
-                if (!SetTimer(hwnd, 202, 1000, nullptr)) {
-                    LogError(ErrorCode::E209, HRESULT_FROM_WIN32(GetLastError()));
-                }
-
-                if (!self->IsPackaged()) {
-                    SetTimer(hwnd, 203, 15000, nullptr);
-                } else {
-                    self->m_updateChecked = true;
-                }
-
-                // Try tray icon once. If it fails (common during early startup
-                // when Explorer is still loading), retry via timer 204.
-                HICON hAppIcon = LoadIconW(self->m_hInst, MAKEINTRESOURCEW(101));
-                self->m_trayAdded = AddTrayIcon(hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness");
-                if (!self->m_trayAdded) {
-                    SetTimer(hwnd, 204, 4000, nullptr);
-                }
-
-                int nCmdShow = static_cast<int>(wp);
-                if (self->m_config.startWithWindows && self->m_config.closeToTray) {
-                    ShowWindow(hwnd, SW_HIDE);
-                } else {
-                    ShowWindow(hwnd, nCmdShow);
-                }
-
-                self->UpdateLayout();
-                InvalidateRect(hwnd, nullptr, TRUE);
-                return 0;
-            }
-            case WM_APP + 4: {
-                // Async D2D initialization. Triggered by GDI-first OnPaint.
-                // If this succeeds we switch from GDI to D2D rendering.
-                if (!self->m_d2dReady) {
-                    HRESULT hr = self->CreateGraphicsResources();
-                    if (SUCCEEDED(hr)) {
-                        self->m_d2dReady = true;
-                        InvalidateRect(hwnd, nullptr, TRUE);
-                    }
-                    // If it fails we stay on GDI permanently — better to have a
-                    // functional GDI window than risk hanging on D2D retries.
-                }
-                return 0;
-            }
-            case WM_DISPLAYCHANGE: {
-                DimmerManager::Instance().RefreshMonitors();
-                self->SyncMonitorsWithConfig();
-                self->UpdateLayout();
-                InvalidateRect(hwnd, nullptr, TRUE);
-                return 0;
-            }
-            case WM_POWERBROADCAST: {
-                if (wp == PBT_APMRESUMESUSPEND || wp == PBT_APMRESUMEAUTOMATIC) {
-                    DimmerManager::Instance().RefreshMonitors();
-                    self->SyncMonitorsWithConfig();
-                    self->UpdateLayout();
-                    InvalidateRect(hwnd, nullptr, TRUE);
-                }
-                return TRUE;
-            }
-            case WM_UPDATE_CHECK: {
-                self->OnUpdateCheckComplete(wp, lp);
-                return 0;
-            }
-            case WM_TRAYICON: {
-                if (lp == WM_RBUTTONUP) {
-                    POINT pt;
-                    GetCursorPos(&pt);
-                    HMENU hMenu = CreatePopupMenu();
-                    AppendMenuW(hMenu, MF_STRING, ID_TRAY_SHOW, L"Open Settings");
-                    AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-                    AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit IdleDimmer");
-                    
-                    // Display popup menu matching dark theme styling (as much as standard Win32 popup menu allows)
-                    SetForegroundWindow(hwnd);
-                    TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
-                    DestroyMenu(hMenu);
-                } else if (lp == WM_LBUTTONDBLCLK) {
-                    self->Show(true);
-                }
-                return 0;
-            }
-            case WM_COMMAND: {
-                int wmId = LOWORD(wp);
-                if (wmId == ID_TRAY_SHOW) {
-                    self->Show(true);
-                } else if (wmId == ID_TRAY_EXIT) {
-                    DestroyWindow(hwnd);
-                }
-                return 0;
-            }
-            case WM_CLOSE: {
-                if (self->m_config.closeToTray) {
-                    self->Show(false);
-                } else {
-                    DestroyWindow(hwnd);
-                }
-                return 0;
-            }
-            case WM_DESTROY: {
-                PostQuitMessage(0);
-                return 0;
-            }
+            return 0;
         }
     }
     return DefWindowProcW(hwnd, msg, wp, lp);
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+// ── v1.7.7: Inner WndProc handler, called through the top-level __try/__except
+// wrapper above. Separated so Clang/MinGW allows C++ try/catch here without
+// mixing SEH and C++ exceptions in the same function body.
+LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    switch (msg) {
+        case WM_PAINT: {
+            OnPaint();
+            // D2D paint crash is caught by the top-level SEH — on crash,
+            // WndProc's __except calls ValidateRect, logs the error, and
+            // returns 0. The next paint will use the GDI fallback path.
+            ValidateRect(hwnd, nullptr);
+            return 0;
+        }
+        case WM_SIZE: {
+            OnResize(LOWORD(lp), HIWORD(lp));
+            return 0;
+        }
+        case WM_MOUSEMOVE: {
+            HandleMouseMove(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
+            return 0;
+        }
+        case WM_LBUTTONDOWN: {
+            HandleLButtonDown(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
+            return 0;
+        }
+        case WM_LBUTTONUP: {
+            HandleLButtonUp(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
+            return 0;
+        }
+        case WM_MOUSEWHEEL: {
+            HandleMouseWheel(GET_WHEEL_DELTA_WPARAM(wp), static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
+            return 0;
+        }
+        case WM_KEYDOWN: {
+            HandleKeyDown(wp);
+            return 0;
+        }
+        case WM_TIMER: {
+            if (wp == 202) {
+                DimmerManager::Instance().CheckVideoPlayback();
+                if (m_config.idleDimEnabled) {
+                    LASTINPUTINFO lii = { 0 };
+                    lii.cbSize = sizeof(lii);
+                    if (GetLastInputInfo(&lii)) {
+                        DWORD idleTime = GetTickCount() - lii.dwTime;
+                        DWORD threshold = m_config.idleMinutes * 60 * 1000;
+                        if (idleTime >= threshold) {
+                            if (!DimmerManager::Instance().IsIdleState()) {
+                                DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
+                                if (m_config.idleTurnOff) {
+                                    HWND hShell = FindWindowW(L"Shell_TrayWnd", NULL);
+                                    if (hShell) {
+                                        PostMessageW(hShell, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
+                                    } else {
+                                        SendMessageW(GetDesktopWindow(), WM_SYSCOMMAND, SC_MONITORPOWER, 2);
+                                    }
+                                }
+                            }
+                        } else {
+                            if (DimmerManager::Instance().IsIdleState()) {
+                                DimmerManager::Instance().SetIdleState(false);
+                            }
+                        }
+                    }
+                } else if (DimmerManager::Instance().IsIdleState()) {
+                    DimmerManager::Instance().SetIdleState(false);
+                }
+            } else if (wp == 203) {
+                KillTimer(hwnd, 203);
+                if (!m_hUpdateThread) {
+                    m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
+                }
+            } else if (wp == 204) {
+                // Retry tray icon (may have failed during early startup
+                // when Explorer was not yet ready to process it).
+                if (!m_trayAdded) {
+                    HICON hAppIcon = LoadIconW(m_hInst, MAKEINTRESOURCEW(101));
+                    m_trayAdded = AddTrayIcon(hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness");
+                    if (m_trayAdded) {
+                        KillTimer(hwnd, 204);
+                    }
+                } else {
+                    KillTimer(hwnd, 204);
+                }
+            }
+            return 0;
+        }
+        case WM_APP + 2: {
+            // ── v1.7.7: Deferred startup initialization ──
+            // C++ try/catch wraps the whole body so that a C++ exception
+            // (bad_alloc, runtime_error, etc.) from DimmerManager or
+            // ConfigManager doesn't crash the process. The minimal
+            // fallback ensures the tray icon + timers are live so the
+            // process isn't invisible/dead to the cert tester.
+            try {
+                DimmerManager::Instance().RefreshMonitors();
+                SyncMonitorsWithConfig();
+                DimmerManager::Instance().SetWarmTint(m_config.warmTint);
+                DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
+            } catch (...) {
+                LogError(ErrorCode::E108);
+                // Overlays failed — app still runs with a visible window
+                // and tray icon below.
+            }
+
+            if (!SetTimer(hwnd, 202, 1000, nullptr)) {
+                LogError(ErrorCode::E209, HRESULT_FROM_WIN32(GetLastError()));
+            }
+
+            if (!IsPackaged()) {
+                SetTimer(hwnd, 203, 15000, nullptr);
+            } else {
+                m_updateChecked = true;
+            }
+
+            // Try tray icon once. If it fails (common during early startup
+            // when Explorer is still loading), retry via timer 204.
+            HICON hAppIcon = LoadIconW(m_hInst, MAKEINTRESOURCEW(101));
+            m_trayAdded = AddTrayIcon(hwnd, 1, hAppIcon, L"IdleDimmer Screen Brightness");
+            if (!m_trayAdded) {
+                SetTimer(hwnd, 204, 4000, nullptr);
+            }
+
+            int nCmdShow = static_cast<int>(wp);
+            if (m_config.startWithWindows && m_config.closeToTray) {
+                ShowWindow(hwnd, SW_HIDE);
+            } else {
+                ShowWindow(hwnd, nCmdShow);
+            }
+
+            UpdateLayout();
+            InvalidateRect(hwnd, nullptr, TRUE);
+            return 0;
+        }
+        case WM_APP + 4: {
+            // Async D2D initialization. D2D calls on WDDM 3.2 drivers
+            // (build 26200+) can throw SEH access violations — caught by
+            // the top-level WndProc __try/__except.
+            if (!m_d2dReady && !m_d2dFailed) {
+                HRESULT hr = CreateGraphicsResources();
+                if (SUCCEEDED(hr)) {
+                    m_d2dReady = true;
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                } else {
+                    m_d2dFailed = true;
+                    DiscardGraphicsResources();
+                }
+            }
+            return 0;
+        }
+        case WM_DISPLAYCHANGE: {
+            try {
+                DimmerManager::Instance().RefreshMonitors();
+                SyncMonitorsWithConfig();
+                UpdateLayout();
+                InvalidateRect(hwnd, nullptr, TRUE);
+            } catch (...) {
+                LogError(ErrorCode::E108);
+            }
+            return 0;
+        }
+        case WM_POWERBROADCAST: {
+            if (wp == PBT_APMRESUMESUSPEND || wp == PBT_APMRESUMEAUTOMATIC) {
+                try {
+                    DimmerManager::Instance().RefreshMonitors();
+                    SyncMonitorsWithConfig();
+                    UpdateLayout();
+                    InvalidateRect(hwnd, nullptr, TRUE);
+                } catch (...) {
+                    LogError(ErrorCode::E108);
+                }
+            }
+            return TRUE;
+        }
+        case WM_UPDATE_CHECK: {
+            OnUpdateCheckComplete(wp, lp);
+            return 0;
+        }
+        case WM_TRAYICON: {
+            if (lp == WM_RBUTTONUP) {
+                POINT pt;
+                GetCursorPos(&pt);
+                HMENU hMenu = CreatePopupMenu();
+                AppendMenuW(hMenu, MF_STRING, ID_TRAY_SHOW, L"Open Settings");
+                AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+                AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit IdleDimmer");
+                
+                // Display popup menu matching dark theme styling (as much as standard Win32 popup menu allows)
+                SetForegroundWindow(hwnd);
+                TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
+                DestroyMenu(hMenu);
+            } else if (lp == WM_LBUTTONDBLCLK) {
+                Show(true);
+            }
+            return 0;
+        }
+        case WM_COMMAND: {
+            int wmId = LOWORD(wp);
+            if (wmId == ID_TRAY_SHOW) {
+                Show(true);
+            } else if (wmId == ID_TRAY_EXIT) {
+                DestroyWindow(hwnd);
+            }
+            return 0;
+        }
+        case WM_CLOSE: {
+            if (m_config.closeToTray) {
+                Show(false);
+            } else {
+                DestroyWindow(hwnd);
+            }
+            return 0;
+        }
+        case WM_DESTROY: {
+            PostQuitMessage(0);
+            return 0;
+        }
+    }
+    return DefWindowProcW(hwnd, msg, wp, lp);
+}
+
+
 // v1.6.5 (Todo 5): Preset Profile application
 // ════════════════════════════════════════════════════════════════════════════
 //

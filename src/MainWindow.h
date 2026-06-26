@@ -67,6 +67,7 @@ private:
     static bool CreateImplSafe(MainWindow* self, HINSTANCE hInst, int nCmdShow);
 
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
     
     // Direct2D Graphics
     HRESULT CreateGraphicsResources();
@@ -150,6 +151,7 @@ private:
 
     // Safety-net state for certification startup resilience
     bool m_d2dReady = false;    // D2D successfully initialized at least once
+    bool m_d2dFailed = false;   // D2D permanently failed (SEH crash recovery)
     bool m_trayAdded = false;   // Shell_NotifyIcon succeeded
 
     // Blocked apps UI

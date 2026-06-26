@@ -27,6 +27,8 @@ enum class ErrorCode {
     E207 = 207, // Solid color brush creation failed
     E208 = 208, // Focus Mode cursor tracking timer registration failed
     E209 = 209, // System idle detection timer registration failed
+    E210 = 210, // Direct2D initialization crashed (structured exception)
+    E211 = 211, // Message handler crashed (structured exception)
     E213 = 213, // Tray icon addition failed
     E214 = 214, // RegisterClassExW failed for Add App Dialog
     E215 = 215, // CreateWindowExW failed for Add App Dialog
@@ -96,6 +98,8 @@ inline const wchar_t* GetErrorCodeName(ErrorCode code) {
         case ErrorCode::E207: return L"E207";
         case ErrorCode::E208: return L"E208";
         case ErrorCode::E209: return L"E209";
+        case ErrorCode::E210: return L"E210";
+        case ErrorCode::E211: return L"E211";
         case ErrorCode::E213: return L"E213";
         case ErrorCode::E214: return L"E214";
         case ErrorCode::E215: return L"E215";
@@ -157,6 +161,8 @@ inline const wchar_t* GetErrorDescription(ErrorCode code) {
         case ErrorCode::E207: return L"Solid color brush creation failed.";
         case ErrorCode::E208: return L"Focus Mode cursor tracking timer registration failed.";
         case ErrorCode::E209: return L"System idle detection timer registration failed.";
+        case ErrorCode::E210: return L"Direct2D initialization crashed.";
+        case ErrorCode::E211: return L"Message handler crashed.";
         case ErrorCode::E213: return L"Tray icon addition failed.";
         case ErrorCode::E214: return L"RegisterClassExW failed for Add App Dialog.";
         case ErrorCode::E215: return L"CreateWindowExW failed for Add App Dialog.";

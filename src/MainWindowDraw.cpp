@@ -18,7 +18,9 @@ void MainWindow::OnPaint() {
         FillRect(hdc, &ps.rcPaint, bgBrush);
         DeleteObject(bgBrush);
         EndPaint(m_hwnd, &ps);
-        PostMessageW(m_hwnd, WM_APP + 4, 0, 0);
+        if (!m_d2dFailed) {
+            PostMessageW(m_hwnd, WM_APP + 4, 0, 0);
+        }
         return;
     }
 

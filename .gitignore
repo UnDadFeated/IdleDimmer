@@ -28,3 +28,6 @@ msix/
 
 # Fallow tools
 .fallow/
+
+# OpenCode agent skills (local only, not uploaded)
+.opencode/

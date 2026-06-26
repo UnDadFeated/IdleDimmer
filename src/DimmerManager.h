@@ -96,7 +96,7 @@ private:
     // Asynchronous audio checking
     std::atomic<bool> m_audioCheckInFlight = false;
     std::mutex m_audioMutex;
-    std::vector<HMONITOR> m_audioPlayingMonitors;
+    std::vector<std::wstring> m_audioPlayingProcesses;  // process names with active audio
     bool m_isIdleState = false;
     int m_idleDimLevel = 90;
     bool m_dimmingEnabled = false;

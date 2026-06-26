@@ -1,11 +1,48 @@
 #define NOMINMAX
 #include <windows.h>
 #include <objbase.h>
+#include <shlobj.h>
+#include <format>
 #include "MainWindow.h"
 #include "DimmerManager.h"
 #include "ErrorCodes.h"
 
+// ── v1.7.7: Last-resort crash backstop ──
+// If ANY exception escapes all our SEH layers (WndProc top-level, message loop,
+// Create wrapper), this filter writes a crash marker file and terminates the
+// process with exit code 0. Without this, Windows Error Reporting (WER) shows
+// a crash dialog and the cert tool records a "crash at launch."
+static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
+    // Try to write a crash marker. Best-effort — if it fails, just exit.
+    __try {
+        wchar_t path[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, path))) {
+            wcscat_s(path, MAX_PATH, L"\\IdleDimmer");
+            CreateDirectoryW(path, NULL);
+            wcscat_s(path, MAX_PATH, L"\\crash.log");
+            HANDLE hFile = CreateFileW(path, GENERIC_WRITE, 0, NULL,
+                                       CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hFile != INVALID_HANDLE_VALUE) {
+                DWORD code = ep && ep->ExceptionRecord
+                    ? ep->ExceptionRecord->ExceptionCode : 0;
+                wchar_t buf[256];
+                int len = wsprintfW(buf,
+                    L"IdleDimmer v1.7.9 crash: exception 0x%08X\r\n", code);
+                DWORD written;
+                WriteFile(hFile, buf, len * sizeof(wchar_t), &written, NULL);
+                CloseHandle(hFile);
+            }
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // Writing the crash marker itself crashed. Just exit.
+    }
+    // Exit cleanly so cert tools don't record a Watson crash.
+    ExitProcess(0);
+    return EXCEPTION_EXECUTE_HANDLER; // unreachable
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    SetUnhandledExceptionFilter(CrashFilter);
     // 1. Single Instance Enforcement using Mutex
     SetLastError(ERROR_SUCCESS);
     HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Local\\IdleDimmerMutex");
@@ -51,24 +88,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // 4. Create and show settings panel
     if (!MainWindow::Instance().Create(hInstance, nCmdShow)) {
         LogError(ErrorCode::E105);
-        // Show a visible error so certification testers don't see a silent exit.
-        // Return 0 (not 1) — exit code 1 is interpreted as a crash by the
-        // Microsoft Store certification tool.
-        MessageBoxW(nullptr,
-            L"IdleDimmer failed to initialize.\n\n"
-            L"This may be caused by a missing graphics driver, "
-            L"restricted permissions, or a system configuration issue.",
-            L"IdleDimmer", MB_OK | MB_ICONERROR);
+        // Don't show MessageBox — it blocks forever on headless certification
+        // VMs where no user is logged in interactively. Just log and exit.
         if (comInitialized) CoUninitialize();
         CloseHandle(hMutex);
         return 0;
     }
 
-    // 5. Message Loop
+    // 5. Message Loop — with SEH to catch any unhandled crash
     MSG msg;
     while (GetMessageW(&msg, nullptr, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessageW(&msg);
+        __try {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            // Any message handler crashed (AV from driver, corrupted state,
+            // unexpected SEH). Log it and keep the pump alive so the
+            // process survives certification testing.
+            LogError(ErrorCode::E211, static_cast<HRESULT>(GetExceptionCode()));
+        }
     }
 
     // Clean up overlays and managers

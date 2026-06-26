@@ -2,6 +2,44 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.7.9] - 2026-06-26
+
+### Bug Fixes
+* **Fixed MSVC Compiler Error C2712 / MinGW Runtime Crash on Audio Thread**: Separated the structured exception handling wrapper (`__try`/`__except`) from the actual C++ logic containing standard library structures (`ComPtr`, `std::vector`, `std::wstring`) inside `DoAudioCheckSEH`. This resolves a compilation error under MSVC and fixes runtime instability and crashes at launch on Windows 11 under LLVM-MinGW.
+
+## [1.7.8] - 2026-06-25
+
+### Bug Fixes
+* **Eighth Certification Fix — Moved EnumWindows Off Audio Background Thread & WndProc Hardening**: Fixed a critical crash/deadlock bug ("crashes a while after launch") observed during Microsoft Store certification on Windows 11 devices:
+  1. **EnumWindows execution isolation**: Relocated `EnumWindows`/`GetMonitorsForProcessName` calls from the background detached audio thread to the main UI thread during `CheckVideoPlayback`. Since `EnumWindows` synchronously pumps window messages, invoking it on a background thread without a message pump can deadlock or crash if any enumerated top-level window belongs to a hung thread.
+  2. **COM exception isolation (`DoAudioCheckSEH`)**: Wrapped the background WASAPI/COM device and audio session enumeration loop inside structured exception handling (`__try`/`__except`) and C++ `try`/`catch(...)` blocks to prevent driver or allocation-level crashes from taking down the process.
+  3. **OSD message handler SEH**: Wrapped the Direct2D paint/draw messages in the click-through OSD window procedure (`OSDWndProc`) within `__try`/`__except` guards to capture driver access violations and avoid infinite invalidation repaint loops.
+
+## [1.7.7] - 2026-06-25
+
+### Bug Fixes
+* **Seventh Certification Fix — Stale PE Binary Version + Full WndProc SEH**: Two root causes found for the persistent "crash at launch" on Surface Laptop 5 (build 26200.8328):
+  1. **Stale binary `FILEVERSION`**: The `FILEVERSION`/`PRODUCTVERSION` fields in `resources.rc` and `setup.rc` were stuck at `1,7,4,0` since v1.7.4 — only the string block was updated each bump. `GetOwnVersion()` reads the binary version via `VerQueryValue`, so the MSIX manifest said `1.7.6.0` while the actual PE reported `1.7.4.0`. This version mismatch can cause Windows MSIX validation to reject or crash the app at launch.
+  2. **Unprotected `WM_APP+2` deferred init**: The entire deferred startup handler (overlay creation, tray icon, timers, layout) had zero crash protection. Any SEH from D2D/DWM or C++ exception from `std::vector`/`std::format` killed the process. Added top-level `__try/__except` around the **entire `WndProc`** body (not just `WM_PAINT`) plus `try/catch(...)` specifically around the deferred init with a minimal fallback path.
+* **OverlayWndProc SEH protection**: Overlay window message handlers (fade timer, paint, positioning) were also unprotected — a driver-level SEH from Intel Iris Xe during overlay operations would kill the process. Now wrapped in `__try/__except`.
+* **`SetUnhandledExceptionFilter` backstop**: Added an absolute last-resort crash handler in `WinMain` that writes a crash marker to `%APPDATA%\IdleDimmer\crash.log` and exits cleanly (code 0) instead of triggering Watson/WER — cert tools won't record it as a crash.
+
+## [1.7.6] - 2026-06-24
+
+### Bug Fixes
+* **Sixth Certification Fix — SEH Message Loop + Silent Startup Exit**: v1.7.5's targeted SEH around D2D init/paint still left crashes from unprotected message handlers uncaught on Surface Laptop Go (OS build 26200.7922). Two changes:
+  1. **Message loop wrapped in `__try/__except`**: The `while (GetMessageW)` loop in `WinMain` now catches any SEH exception from any message handler (WM_APP+2, WM_TIMER, WM_DISPLAYCHANGE, etc.) and keeps the pump alive. No unhandled crash can kill the process.
+  2. **Removed blocking MessageBox on startup failure**: `WinMain`'s `MessageBoxW` when `Create()` fails blocked indefinitely on headless cert VMs with no interactive user. Replaced with silent `LogError` + clean exit.
+
+## [1.7.5] - 2026-06-23
+
+### Bug Fixes
+* **Fifth Certification Fix — SEH Protection for D2D Driver Crashes on Intel Iris Xe / WDDM 3.2**: v1.7.4's async D2D init path (`WM_APP+4`) fixed the first-paint hang but introduced a new failure mode: D2D driver calls (`D2D1CreateFactory`, `CreateHwndRenderTarget`) on Intel Iris Xe / WDDM 3.2 / build 26200+ can throw **SEH access violations** instead of returning HRESULT. Without `__try/__except`, these AVs propagate through `DispatchMessageW` and terminate the process. Added three layers of protection:
+  1. **`WM_APP+4` wrapped in `__try/__except`**: Catches SEH crashes from `CreateGraphicsResources()`. On catch, sets `m_d2dFailed = true` and permanently falls back to GDI rendering.
+  2. **`WM_PAINT` wrapped in `__try/__except`**: Catches any D2D paint-path crash (device loss, TDR). On catch, discards D2D resources, sets `m_d2dFailed`, and forces a GDI repaint.
+  3. **`DiscardGraphicsResources()` resets `m_d2dReady`**: Fixes a latent bug where `D2DERR_RECREATED` from `EndDraw()` would release D2D resources but leave `m_d2dReady=true`, causing a null-pointer crash on the next paint.
+* The GDI fallback now checks `m_d2dFailed` to avoid posting `WM_APP+4` when D2D is permanently dead.
+
 ## [1.7.4] - 2026-06-23
 
 ### Bug Fixes
