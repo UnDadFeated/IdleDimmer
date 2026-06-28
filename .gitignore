@@ -31,3 +31,10 @@ msix/
 
 # OpenCode agent skills (local only, not uploaded)
 .opencode/
+
+# Node package lock
+package-lock.json
+
+# Agent internal directories
+.omo/
+
