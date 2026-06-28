@@ -2,6 +2,16 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.8.0] - 2026-06-26
+
+### Bug Fixes
+* **Fifteenth Certification Fix — Delay-Loaded DLLs + Pre-WinMain Crash Handlers**: After 14 versions of SEH wrapping and try/catch that only work after `WinMain`, the crash at launch on Surface Laptop 4 (build 26200.8457) persisted because the crash happens *before* `WinMain` runs — during DLL loading or CRT initialization. Three changes:
+  1. **Delay-loaded 6 non-essential DLLs**: `d2d1.dll`, `DWrite.dll`, `dwmapi.dll`, `WINHTTP.dll`, `comdlg32.dll`, and `VERSION.dll` are now delay-loaded via `/DELAYLOAD` (MSVC) / `--delayload` (clang). They're only loaded on first call, not at process start. The import table dropped from 24 entries to 6 (USER32, GDI32, SHELL32, ole32, ADVAPI32, KERNEL32). A missing or broken DLL no longer kills the process before any crash handler is installed.
+  2. **Pre-WinMain crash handlers**: Added `_set_abort_behavior(0)`, `std::set_terminate()`, `_set_invalid_parameter_handler()`, and `signal(SIGABRT)` at the very top of `WinMain` — these catch `abort()`, `terminate()`, CRT invalid parameter errors, and SIGABRT, all of which bypass `SetUnhandledExceptionFilter` and silently kill the process.
+  3. **Eliminated global heap allocations**: Replaced two `inline std::wstring` globals in `ErrorCodes.h` with `const wchar_t*` pointers and a function-local static. Global `std::wstring` constructors allocate heap memory before `WinMain` runs — if the CRT heap isn't fully initialized (MSIX sandbox edge case), this crashes with no handler to catch it.
+* **Startup diagnostic marker**: `WinMain` now writes `startup.log` to `%APPDATA%\IdleDimmer\` as its first action (before COM, mutex, or DPI init). If the cert tester retrieves this file, it confirms whether `WinMain` was reached at all.
+* **LogError hardened**: `LogError()` in `ErrorCodes.h` now wraps `std::format` calls in try/catch. If the heap or locale is broken during early startup, it falls back to raw `OutputDebugStringW` with the error code name instead of crashing.
+
 ## [1.7.9] - 2026-06-26
 
 ### Bug Fixes

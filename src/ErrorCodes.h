@@ -77,7 +77,10 @@ enum class ErrorCode {
     E508 = 508  // Setup mutex already exists
 };
 
-inline std::wstring g_lastAppErrorStr = L"SUCCESS";
+// v1.8.0: Use const wchar_t* instead of std::wstring to avoid heap allocation
+// during static initialization (before WinMain). On cert VMs the CRT heap may
+// not be fully initialized when global constructors run.
+inline const wchar_t* g_lastAppErrorStr = L"SUCCESS";
 
 inline const wchar_t* GetErrorCodeName(ErrorCode code) {
     switch (code) {
@@ -205,14 +208,18 @@ inline const wchar_t* GetErrorDescription(ErrorCode code) {
     }
 }
 
-inline std::wstring g_lastAppError = L"SUCCESS";
-
-inline std::wstring GetLastAppError() {
-    return g_lastAppError;
+// v1.8.0: Lazy-initialized via function-local static. No global heap allocation.
+inline const wchar_t*& GetLastAppErrorRef() {
+    static const wchar_t* s_lastAppError = L"SUCCESS";
+    return s_lastAppError;
 }
 
-inline void SetLastAppError(std::wstring_view err) {
-    g_lastAppError = std::wstring(err);
+inline const wchar_t* GetLastAppError() {
+    return GetLastAppErrorRef();
+}
+
+inline void SetLastAppError(const wchar_t* err) {
+    GetLastAppErrorRef() = err;
 }
 
 inline std::wstring Utf8ToWide(const char* utf8) {
@@ -228,15 +235,25 @@ inline std::wstring Utf8ToWide(const char* utf8) {
 inline void LogError(ErrorCode code, HRESULT hr = S_OK,
                      const std::source_location& loc = std::source_location::current()) {
     SetLastAppError(GetErrorDescription(code));
-    std::wstring msg;
-    std::wstring fileName = Utf8ToWide(loc.file_name());
-    std::wstring codeName = GetErrorCodeName(code);
-    if (hr != S_OK) {
-        msg = std::format(L"[{}] {}:{} {} (0x{:#010X})",
-                           fileName, loc.line(), codeName, GetErrorDescription(code), static_cast<unsigned>(hr));
-    } else {
-        msg = std::format(L"[{}] {}:{} {}",
-                           fileName, loc.line(), codeName, GetErrorDescription(code));
+    // v1.8.0: Wrap in try/catch — std::format can throw if locale or
+    // heap state is broken during early startup on cert VMs.
+    try {
+        std::wstring fileName = Utf8ToWide(loc.file_name());
+        std::wstring codeName = GetErrorCodeName(code);
+        std::wstring msg;
+        if (hr != S_OK) {
+            msg = std::format(L"[{}] {}:{} {} (0x{:#010X})",
+                               fileName, loc.line(), codeName, GetErrorDescription(code), static_cast<unsigned>(hr));
+        } else {
+            msg = std::format(L"[{}] {}:{} {}",
+                               fileName, loc.line(), codeName, GetErrorDescription(code));
+        }
+        OutputDebugStringW(msg.c_str());
+    } catch (...) {
+        // If std::format or heap allocation fails, at least output the code name.
+        OutputDebugStringW(GetErrorCodeName(code));
+        OutputDebugStringW(L" ");
+        OutputDebugStringW(GetErrorDescription(code));
+        OutputDebugStringW(L"\n");
     }
-    OutputDebugStringW(msg.c_str());
 }

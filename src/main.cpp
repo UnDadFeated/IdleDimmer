@@ -3,6 +3,8 @@
 #include <objbase.h>
 #include <shlobj.h>
 #include <format>
+#include <signal.h>
+#include <cstdlib>
 #include "MainWindow.h"
 #include "DimmerManager.h"
 #include "ErrorCodes.h"
@@ -27,7 +29,7 @@ static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
                     ? ep->ExceptionRecord->ExceptionCode : 0;
                 wchar_t buf[256];
                 int len = wsprintfW(buf,
-                    L"IdleDimmer v1.7.9 crash: exception 0x%08X\r\n", code);
+                    L"IdleDimmer v1.8.0 crash: exception 0x%08X\r\n", code);
                 DWORD written;
                 WriteFile(hFile, buf, len * sizeof(wchar_t), &written, NULL);
                 CloseHandle(hFile);
@@ -41,8 +43,44 @@ static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
     return EXCEPTION_EXECUTE_HANDLER; // unreachable
 }
 
+// ── v1.8.0: Write a one-line startup marker so we can tell whether WinMain
+// was reached at all on cert VMs. Uses only Win32 APIs (no CRT heap). ──
+static void WriteStartupMarker() {
+    __try {
+        wchar_t path[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, path))) {
+            wcscat_s(path, MAX_PATH, L"\\IdleDimmer");
+            CreateDirectoryW(path, NULL);
+            wcscat_s(path, MAX_PATH, L"\\startup.log");
+            HANDLE hFile = CreateFileW(path, GENERIC_WRITE, 0, NULL,
+                                       CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hFile != INVALID_HANDLE_VALUE) {
+                const wchar_t msg[] = L"IdleDimmer v1.8.0 WinMain reached\r\n";
+                DWORD written;
+                WriteFile(hFile, msg, sizeof(msg) - sizeof(wchar_t), &written, NULL);
+                CloseHandle(hFile);
+            }
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // Best-effort — don't crash writing the marker.
+    }
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    // ── v1.8.0: Install crash handlers BEFORE anything else ──
+    // These catch abort(), terminate(), CRT invalid-parameter, and SIGABRT —
+    // all of which bypass SetUnhandledExceptionFilter and kill the process
+    // silently on cert VMs. Must be first, before any std:: call or heap use.
+    _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    std::set_terminate([]() { ExitProcess(0); });
+    _set_invalid_parameter_handler(
+        [](const wchar_t*, const wchar_t*, const wchar_t*, unsigned int, uintptr_t) {
+            ExitProcess(0);
+        });
+    signal(SIGABRT, [](int) { ExitProcess(0); });
+
     SetUnhandledExceptionFilter(CrashFilter);
+    WriteStartupMarker();
     // 1. Single Instance Enforcement using Mutex
     SetLastError(ERROR_SUCCESS);
     HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Local\\IdleDimmerMutex");
