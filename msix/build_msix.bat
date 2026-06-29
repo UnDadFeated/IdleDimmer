@@ -15,9 +15,9 @@ REM    - For Store submission: skip signing (Microsoft signs the MSIX)
 REM    - For sideloading: self-sign with a generated cert
 REM
 REM  Outputs:
-REM     - dist\IdleDimmer_1.7.9.0_x64.msix       (unsigned, for Store)
-REM     - dist\IdleDimmer_1.7.9.0_x64.msix      (self-signed, for sideload)
-REM     - dist\IdleDimmer_1.7.9.0_x64.cer       (signing cert, for sideload)
+REM     - dist\IdleDimmer_1.8.1.0_x64.msix       (unsigned, for Store)
+REM     - dist\IdleDimmer_1.8.1.0_x64.msix      (self-signed, for sideload)
+REM     - dist\IdleDimmer_1.8.1.0_x64.cer       (signing cert, for sideload)
 REM ====================================================================
 
 set VERSION=1.8.1.0
