@@ -188,4 +188,10 @@ To publish a release to the GitHub web interface when local authentication for t
    2. **Update README.md**: replace all `X.Y.Z` version strings (badge, download link, build commands).
    3. **Create GitHub release**: `gh release create vX.Y.Z IdleDimmer-Setup-vX.Y.Z.exe --title "vX.Y.Z" --notes "Release notes"`
    4. **Delete old releases**: `gh release delete vX.Y.Z-1 --yes` for any older versions.
-   5. Verify the release page shows the correct `.exe` and README links resolve.
+    5. Verify the release page shows the correct `.exe` and README links resolve.
+
+## Git Configuration & Troubleshooting
+- **Git username:** `UnDadFeated`
+- **Git email:** `UnDadFeated@piTrove`
+- **Configure local user:** `git config user.name "UnDadFeated"; git config user.email "UnDadFeated@piTrove"`
+- **GitHub Token Env Conflict:** If pushing changes from the PC fails due to local `GITHUB_TOKEN` environment variable conflicts (e.g., in VS Code/IDE shell sessions), clear the env var via `Remove-Item Env:\GITHUB_TOKEN` to allow the keyring credentials to succeed.
