@@ -20,7 +20,7 @@ REM     - dist\IdleDimmer_1.7.9.0_x64.msix      (self-signed, for sideload)
 REM     - dist\IdleDimmer_1.7.9.0_x64.cer       (signing cert, for sideload)
 REM ====================================================================
 
-set VERSION=1.8.0.0
+set VERSION=1.8.1.0
 set ARCH=x64
 set CONFIG=Release
 set PROJECT_ROOT=%~dp0..

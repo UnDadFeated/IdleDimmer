@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.8.1] - 2026-06-29
+
+### Bug Fixes
+* **Sixteenth Certification Fix — AppxManifest EntryPoint Typo**: Fixed a critical packaging typo where the application `EntryPoint` in `Package.appxmanifest` was defined as `WindowsFullTrustApplication` instead of `Windows.FullTrustApplication`. The missing dot prevented the packaged desktop bridge application from launching inside the MSIX container, causing the reported "crashes at launch" error on Windows 11 build 26200. Bumped the version to 1.8.1 across all project configurations.
+
 ## [1.8.0] - 2026-06-26
 
 ### Bug Fixes
