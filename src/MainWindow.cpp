@@ -20,7 +20,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-static const wchar_t* APP_VERSION = L"v1.8.3";
+static const wchar_t* APP_VERSION = L"v1.8.4";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -250,10 +250,20 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
     return true;
 }
 
+UINT MainWindow::GetWindowDpi() const {
+    if (!m_hwnd) return 96;
+    UINT dpi = 0;
+    if (IsWindowVisible(m_hwnd)) {
+        dpi = GetDpiForWindow(m_hwnd);
+    }
+    if (dpi == 0) {
+        dpi = GetDpiForSystem();
+    }
+    return (dpi > 0) ? dpi : 96;
+}
+
 float MainWindow::GetDpiScale() const {
-    if (!m_hwnd) return 1.0f;
-    UINT dpi = GetDpiForWindow(m_hwnd);
-    return (dpi > 0) ? (dpi / 96.0f) : 1.0f;
+    return GetWindowDpi() / 96.0f;
 }
 
 void MainWindow::Show(bool show) {
@@ -275,8 +285,7 @@ HRESULT MainWindow::CreateGraphicsResources() {
         }
     }
     if (!m_pRenderTarget) {
-        UINT dpi = GetDpiForWindow(m_hwnd);
-        if (dpi == 0) dpi = 96;
+        UINT dpi = GetWindowDpi();
         float scale = dpi / 96.0f;
 
         int scaledW = static_cast<int>(m_windowWidth * scale);
@@ -317,7 +326,7 @@ HRESULT MainWindow::CreateGraphicsResources() {
             return hr;
         }
 
-        dpi = GetDpiForWindow(m_hwnd);
+        dpi = GetWindowDpi();
         if (dpi > 0) {
             m_pRenderTarget->SetDpi(static_cast<float>(dpi), static_cast<float>(dpi));
         }
@@ -663,8 +672,7 @@ void MainWindow::UpdateLayout() {
 
     m_windowWidth = m_blockedExpanded ? (CONTENT_WIDTH + 10 + PANEL_WIDTH + 10) : CONTENT_WIDTH;
 
-    UINT dpi = GetDpiForWindow(m_hwnd);
-    if (dpi == 0) dpi = 96;
+    UINT dpi = GetWindowDpi();
     float scale = dpi / 96.0f;
     int scaledW = static_cast<int>(m_windowWidth * scale);
     int scaledH = static_cast<int>(m_windowHeight * scale);

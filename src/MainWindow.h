@@ -58,6 +58,7 @@ public:
     bool Create(HINSTANCE hInst, int nCmdShow);
     void Show(bool show);
     HWND GetHWND() const { return m_hwnd; }
+    UINT GetWindowDpi() const;
     float GetDpiScale() const;
 
 private:

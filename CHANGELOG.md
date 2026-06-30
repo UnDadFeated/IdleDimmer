@@ -2,6 +2,13 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.8.4] - 2026-06-30
+
+### Bug Fixes
+* **Nineteenth Certification Fix — Startup Sizing Jitter Prevention (Policy 10.1.2.10)**: Fixed a latent window-resizing pop issue during early-stage window mapping:
+  1. **Lifecycle-Aware DPI Helper**: Created a unified `GetWindowDpi()` helper that queries `GetDpiForWindow` only if the window is currently visible, falling back dynamically to `GetDpiForSystem()` during early hidden-stage layout updates.
+  2. **Jitter Prevention in UpdateLayout**: Replaced independent queries in the `UpdateLayout` tail and `CreateGraphicsResources` with the new helper, preventing the window from shrinking back down to 1.0x size inside `WM_APP+2` before being corrected on `WM_APP+4`.
+
 ## [1.8.3] - 2026-06-30
 
 ### Bug Fixes
