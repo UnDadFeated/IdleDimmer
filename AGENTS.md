@@ -97,7 +97,7 @@ Timer 201 (Focus Mode cursor tracking, 150ms) was removed in v1.4.3. All hotkeys
 - **Per-monitor**: Each monitor has its own toggle and slider — no group mode
 - **Auto-enable**: Dragging/arrowing/scrolling a monitor slider auto-enables `dimmingEnabled` if it was off
 - **Undo**: Session-start config snapshot (`m_backupConfig`); "Undo Changes" button in top-right header restores it
-- **Device loss**: `D2DERR_RECREATED` → discard + recreate graphics resources (`MainWindow.cpp:626-629`)
+- **Device loss**: `D2DERR_RECREATED` → discard + recreate graphics resources (`MainWindowDraw.cpp:438`)
 - **Hot-plug**: `WM_DISPLAYCHANGE` triggers `RefreshMonitors()` → rebuild overlays, preserve saved per-monitor values
 - **Cursor**: Only hides during idle dimming (`m_isIdleState`), never during active dimming (`DimmerManager.cpp:186`)
 - **Version**: Read from PE version resource at runtime via `GetOwnVersion()` helper — no hardcoded version strings in code

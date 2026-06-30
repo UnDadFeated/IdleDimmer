@@ -2,6 +2,14 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.8.3] - 2026-06-30
+
+### Bug Fixes
+* **Eighteenth Certification Fix — Hidden Window DPI Initialization (Policy 10.1.2.10)**: Fixed a startup bug where the window was created unscaled and `GetDpiForWindow` returned stale readings (96 DPI) when queried on the hidden window during early initialization, causing layout truncation on high-DPI monitors:
+  1. **Primary Screen Startup Scaling**: Scaled the initial creation dimensions in `CreateImpl` using `GetDpiForSystem()`, ensuring the window starts at the correct physical size for the primary display.
+  2. **Render Target Creation Safety Net**: Added a runtime window-sizing synchronization block in `CreateGraphicsResources()` directly before `GetClientRect()` and render target creation. This guarantees the client size and Direct2D DPI configuration are always derived in sync from a single, active DPI query after the window has been mapped and monitor-associated.
+  3. **Documentation Update**: Fixed a stale line reference in `AGENTS.md` regarding device-loss handling.
+
 ## [1.8.2] - 2026-06-30
 
 ### Bug Fixes

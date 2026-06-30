@@ -20,7 +20,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-static const wchar_t* APP_VERSION = L"v1.8.2";
+static const wchar_t* APP_VERSION = L"v1.8.3";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -181,11 +181,12 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
         return false;
     }
 
-    // Initial position in center of screen
-    int screenW = GetSystemMetrics(SM_CXSCREEN);
-    int screenH = GetSystemMetrics(SM_CYSCREEN);
-    int x = (screenW - m_windowWidth) / 2;
-    int y = (screenH - m_windowHeight) / 2;
+    UINT systemDpi = GetDpiForSystem();
+    if (systemDpi == 0) systemDpi = 96;
+    float systemScale = systemDpi / 96.0f;
+
+    int scaledW = static_cast<int>(m_windowWidth * systemScale);
+    int scaledH = static_cast<int>(m_windowHeight * systemScale);
 
     DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
     if (m_config.showInTaskbar) {
@@ -194,12 +195,22 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
         style = WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
     }
 
+    RECT rc = { 0, 0, scaledW, scaledH };
+    AdjustWindowRectExForDpi(&rc, style, FALSE, WS_EX_APPWINDOW, systemDpi);
+    int windowW = rc.right - rc.left;
+    int windowH = rc.bottom - rc.top;
+
+    int screenW = GetSystemMetrics(SM_CXSCREEN);
+    int screenH = GetSystemMetrics(SM_CYSCREEN);
+    int x = (screenW - windowW) / 2;
+    int y = (screenH - windowH) / 2;
+
     m_hwnd = CreateWindowExW(
         WS_EX_APPWINDOW,
         L"IdleDimmerMainClass",
         L"IdleDimmer - Control Panel",
         style,
-        x, y, m_windowWidth, m_windowHeight,
+        x, y, windowW, windowH,
         nullptr, nullptr, hInst, this
     );
 
@@ -264,6 +275,30 @@ HRESULT MainWindow::CreateGraphicsResources() {
         }
     }
     if (!m_pRenderTarget) {
+        UINT dpi = GetDpiForWindow(m_hwnd);
+        if (dpi == 0) dpi = 96;
+        float scale = dpi / 96.0f;
+
+        int scaledW = static_cast<int>(m_windowWidth * scale);
+        int scaledH = static_cast<int>(m_windowHeight * scale);
+        RECT rcAdjust = { 0, 0, scaledW, scaledH };
+        AdjustWindowRectExForDpi(&rcAdjust, GetWindowLongW(m_hwnd, GWL_STYLE), FALSE, GetWindowLongW(m_hwnd, GWL_EXSTYLE), dpi);
+        int newW = rcAdjust.right - rcAdjust.left;
+        int newH = rcAdjust.bottom - rcAdjust.top;
+
+        RECT oldRc;
+        GetWindowRect(m_hwnd, &oldRc);
+        int newX = oldRc.left;
+        int newY = oldRc.top;
+        int screenW = GetSystemMetrics(SM_CXSCREEN);
+        int screenH = GetSystemMetrics(SM_CYSCREEN);
+        if (newX + newW > screenW) newX = screenW - newW;
+        if (newX < 0) newX = 0;
+        if (newY + newH > screenH) newY = screenH - newH;
+        if (newY < 0) newY = 0;
+
+        SetWindowPos(m_hwnd, nullptr, newX, newY, newW, newH, SWP_NOZORDER | SWP_NOACTIVATE);
+
         RECT rc;
         GetClientRect(m_hwnd, &rc);
         D2D1_SIZE_U size = D2D1::SizeU(
@@ -282,7 +317,7 @@ HRESULT MainWindow::CreateGraphicsResources() {
             return hr;
         }
 
-        UINT dpi = GetDpiForWindow(m_hwnd);
+        dpi = GetDpiForWindow(m_hwnd);
         if (dpi > 0) {
             m_pRenderTarget->SetDpi(static_cast<float>(dpi), static_cast<float>(dpi));
         }
