@@ -20,7 +20,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-static const wchar_t* APP_VERSION = L"v1.8.1";
+static const wchar_t* APP_VERSION = L"v1.8.2";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -239,6 +239,12 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
     return true;
 }
 
+float MainWindow::GetDpiScale() const {
+    if (!m_hwnd) return 1.0f;
+    UINT dpi = GetDpiForWindow(m_hwnd);
+    return (dpi > 0) ? (dpi / 96.0f) : 1.0f;
+}
+
 void MainWindow::Show(bool show) {
     if (show) {
         ShowWindow(m_hwnd, SW_SHOW);
@@ -274,6 +280,11 @@ HRESULT MainWindow::CreateGraphicsResources() {
         if (FAILED(hr)) {
             LogError(ErrorCode::E206, hr);
             return hr;
+        }
+
+        UINT dpi = GetDpiForWindow(m_hwnd);
+        if (dpi > 0) {
+            m_pRenderTarget->SetDpi(static_cast<float>(dpi), static_cast<float>(dpi));
         }
 
         // Create brushes
@@ -617,8 +628,14 @@ void MainWindow::UpdateLayout() {
 
     m_windowWidth = m_blockedExpanded ? (CONTENT_WIDTH + 10 + PANEL_WIDTH + 10) : CONTENT_WIDTH;
 
-    RECT rc = { 0, 0, m_windowWidth, m_windowHeight };
-    AdjustWindowRectEx(&rc, GetWindowLongW(m_hwnd, GWL_STYLE), FALSE, GetWindowLongW(m_hwnd, GWL_EXSTYLE));
+    UINT dpi = GetDpiForWindow(m_hwnd);
+    if (dpi == 0) dpi = 96;
+    float scale = dpi / 96.0f;
+    int scaledW = static_cast<int>(m_windowWidth * scale);
+    int scaledH = static_cast<int>(m_windowHeight * scale);
+
+    RECT rc = { 0, 0, scaledW, scaledH };
+    AdjustWindowRectExForDpi(&rc, GetWindowLongW(m_hwnd, GWL_STYLE), FALSE, GetWindowLongW(m_hwnd, GWL_EXSTYLE), dpi);
     int newW = rc.right - rc.left;
     int newH = rc.bottom - rc.top;
     RECT oldRc;
@@ -948,16 +965,44 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             OnResize(LOWORD(lp), HIWORD(lp));
             return 0;
         }
+        case WM_DPICHANGED: {
+            LPRECT lprcSuggested = (LPRECT)lp;
+            SetWindowPos(hwnd,
+                         nullptr,
+                         lprcSuggested->left,
+                         lprcSuggested->top,
+                         lprcSuggested->right - lprcSuggested->left,
+                         lprcSuggested->bottom - lprcSuggested->top,
+                         SWP_NOZORDER | SWP_NOACTIVATE);
+            
+            if (m_pRenderTarget) {
+                UINT dpi = LOWORD(wp);
+                m_pRenderTarget->SetDpi(static_cast<float>(dpi), static_cast<float>(dpi));
+            }
+            
+            UpdateLayout();
+            InvalidateRect(hwnd, nullptr, TRUE);
+            return 0;
+        }
         case WM_MOUSEMOVE: {
-            HandleMouseMove(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
+            float scale = GetDpiScale();
+            int lx = static_cast<int>(static_cast<short>(LOWORD(lp)) / scale);
+            int ly = static_cast<int>(static_cast<short>(HIWORD(lp)) / scale);
+            HandleMouseMove(lx, ly);
             return 0;
         }
         case WM_LBUTTONDOWN: {
-            HandleLButtonDown(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
+            float scale = GetDpiScale();
+            int lx = static_cast<int>(static_cast<short>(LOWORD(lp)) / scale);
+            int ly = static_cast<int>(static_cast<short>(HIWORD(lp)) / scale);
+            HandleLButtonDown(lx, ly);
             return 0;
         }
         case WM_LBUTTONUP: {
-            HandleLButtonUp(static_cast<short>(LOWORD(lp)), static_cast<short>(HIWORD(lp)));
+            float scale = GetDpiScale();
+            int lx = static_cast<int>(static_cast<short>(LOWORD(lp)) / scale);
+            int ly = static_cast<int>(static_cast<short>(HIWORD(lp)) / scale);
+            HandleLButtonUp(lx, ly);
             return 0;
         }
         case WM_MOUSEWHEEL: {
@@ -1054,6 +1099,8 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 SetTimer(hwnd, 204, 4000, nullptr);
             }
 
+            UpdateLayout();
+
             int nCmdShow = static_cast<int>(wp);
             if (m_config.startWithWindows && m_config.closeToTray) {
                 ShowWindow(hwnd, SW_HIDE);
@@ -1061,7 +1108,6 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 ShowWindow(hwnd, nCmdShow);
             }
 
-            UpdateLayout();
             InvalidateRect(hwnd, nullptr, TRUE);
             return 0;
         }

@@ -361,6 +361,10 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
     POINT pt = { x, y };
     ScreenToClient(m_hwnd, &pt);
 
+    float scale = GetDpiScale();
+    pt.x = static_cast<LONG>(pt.x / scale);
+    pt.y = static_cast<LONG>(pt.y / scale);
+
     // Panel scroll: if mouse is over the right-side panel
     if (m_blockedExpanded) {
         if (pt.x >= m_blockedPanelRect.left && pt.x <= m_blockedPanelRect.right &&

@@ -2,6 +2,15 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.8.2] - 2026-06-30
+
+### Bug Fixes
+* **Seventeenth Certification Fix — DPI Scaling & Resolution Compatibility (Policy 10.1.2.10)**: Fixed a layout truncation and hit-test misalignment bug on high-DPI scaling screens (observed at 150%+ scaling on devices like Surface Laptop and Dell Inspiron):
+  1. **Dynamic DPI Scaling**: Applied custom DPI scaling to the main window's layout size and switched client-to-window calculation from `AdjustWindowRectEx` to `AdjustWindowRectExForDpi`.
+  2. **Direct2D DPI Synchronization**: Added `SetDpi` calls on Direct2D HWND render targets at creation and display events, ensuring DirectWrite and shapes scale precisely with the window's current DPI.
+  3. **Logical Coordinate Mapping**: Mapped physical mouse input coordinates back to logical DIP units in the message loop (`WM_MOUSEMOVE`/`WM_LBUTTONDOWN`/`WM_LBUTTONUP`/`WM_MOUSEWHEEL`), matching the scaled hit-test zones and restoring correct slider drag and click alignment at any scaling factor.
+  4. **WM_DPICHANGED support**: Added full message-handling logic for DPI changes at runtime, enabling on-the-fly resizing and layout adjustment when dragged across monitors with different scale configurations.
+
 ## [1.8.1] - 2026-06-29
 
 ### Bug Fixes
