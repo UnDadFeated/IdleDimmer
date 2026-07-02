@@ -1,0 +1,7 @@
+-std=c++23
+-D_WIN32_WINNT=0x0A00
+-DUNICODE
+-D_UNICODE
+-Isrc
+-Iresources
+-fms-extensions
