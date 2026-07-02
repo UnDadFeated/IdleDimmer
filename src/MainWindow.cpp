@@ -20,7 +20,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-static const wchar_t* APP_VERSION = L"v1.8.4";
+[[maybe_unused]] static const wchar_t* APP_VERSION = L"v1.8.6";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -98,7 +98,7 @@ static LRESULT CALLBACK AddAppDlgProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 }
 
 static bool AddTrayIcon(HWND hwnd, UINT uID, HICON hIcon, const wchar_t* tip) {
-    NOTIFYICONDATAW nid = { 0 };
+    NOTIFYICONDATAW nid = {};
     nid.cbSize = sizeof(nid);
     nid.hWnd = hwnd;
     nid.uID = uID;
@@ -110,7 +110,7 @@ static bool AddTrayIcon(HWND hwnd, UINT uID, HICON hIcon, const wchar_t* tip) {
 }
 
 static bool RemoveTrayIcon(HWND hwnd, UINT uID) {
-    NOTIFYICONDATAW nid = { 0 };
+    NOTIFYICONDATAW nid = {};
     nid.cbSize = sizeof(nid);
     nid.hWnd = hwnd;
     nid.uID = uID;
@@ -167,7 +167,7 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
     // Thread will be created after m_hwnd exists to prevent race condition
 
     // Register MainWindow Class
-    WNDCLASSEXW wc = { 0 };
+    WNDCLASSEXW wc = {};
     wc.cbSize = sizeof(WNDCLASSEXW);
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WndProc;
@@ -822,7 +822,8 @@ void MainWindow::SaveSettings() {
 
 void MainWindow::ShowAddAppDialog() {
     if (!g_addDlgRegistered) {
-        WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(WNDCLASSEXW);
         wc.lpfnWndProc = AddAppDlgProc;
         wc.hInstance = m_hInst;
         wc.hCursor = LoadCursor(NULL, IDC_ARROW);
@@ -1060,7 +1061,7 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             if (wp == 202) {
                 DimmerManager::Instance().CheckVideoPlayback();
                 if (m_config.idleDimEnabled) {
-                    LASTINPUTINFO lii = { 0 };
+                    LASTINPUTINFO lii = {};
                     lii.cbSize = sizeof(lii);
                     if (GetLastInputInfo(&lii)) {
                         DWORD idleTime = GetTickCount() - lii.dwTime;
@@ -1320,7 +1321,7 @@ void MainWindow::ApplyPreset(int id) {
 
 void MainWindow::ShowExportProfileDialog() {
     wchar_t szFile[MAX_PATH] = { 0 };
-    OPENFILENAMEW ofn = { 0 };
+    OPENFILENAMEW ofn = {};
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner   = m_hwnd;
     ofn.lpstrFile   = szFile;
@@ -1339,7 +1340,7 @@ void MainWindow::ShowExportProfileDialog() {
 
 void MainWindow::ShowImportProfileDialog() {
     wchar_t szFile[MAX_PATH] = { 0 };
-    OPENFILENAMEW ofn = { 0 };
+    OPENFILENAMEW ofn = {};
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner   = m_hwnd;
     ofn.lpstrFile   = szFile;

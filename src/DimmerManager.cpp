@@ -49,6 +49,8 @@ static std::wstring GetMonitorFriendlyName(HMONITOR hMonitor, int index) {
 }
 
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+    (void)hdcMonitor;
+    (void)lprcMonitor;
     auto* list = reinterpret_cast<std::vector<ActiveMonitorInfo>*>(dwData);
     MONITORINFOEXW mi;
     mi.cbSize = sizeof(mi);
@@ -68,7 +70,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 void DimmerManager::Initialize(HINSTANCE hInst) {
     m_hInst = hInst;
     if (!m_classRegistered) {
-        WNDCLASSEXW wc = {0};
+        WNDCLASSEXW wc = {};
         wc.cbSize = sizeof(WNDCLASSEXW);
         wc.style = CS_HREDRAW | CS_VREDRAW;
         wc.lpfnWndProc = OverlayWndProc;
@@ -165,6 +167,7 @@ void DimmerManager::SetMonitorEnabled(std::wstring_view id, bool enabled) {
 }
 
 void DimmerManager::SetShowBoundaries(bool show) {
+    (void)show;
 }
 
 void DimmerManager::SetWarmTint(bool warm) {
@@ -177,6 +180,7 @@ void DimmerManager::SetWarmTint(bool warm) {
 }
 
 void DimmerManager::SetFocusMode(bool focus) {
+    (void)focus;
 }
 
 void DimmerManager::SetIdleState(bool idle, int idleLevel) {
@@ -279,25 +283,6 @@ static bool IsFullscreenAppActive() {
     return active;
 }
 
-static std::wstring GetProcessNameFromPid(DWORD pid) {
-    wchar_t exe[MAX_PATH] = { 0 };
-    HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-    if (hProc) {
-        DWORD size = MAX_PATH;
-        if (!QueryFullProcessImageNameW(hProc, 0, exe, &size)) {
-            LogError(ErrorCode::E406, HRESULT_FROM_WIN32(GetLastError()));
-        }
-        CloseHandle(hProc);
-    } else {
-        LogError(ErrorCode::E418, HRESULT_FROM_WIN32(GetLastError()));
-    }
-    if (exe[0]) {
-        const wchar_t* fname = wcsrchr(exe, L'\\');
-        return fname ? fname + 1 : exe;
-    }
-    return L"";
-}
-
 static bool IsForegroundWindowFullscreen() {
     HWND hwnd = GetForegroundWindow();
     if (!hwnd) return false;
@@ -321,7 +306,8 @@ static bool IsForegroundWindowFullscreen() {
     RECT rcWindow;
     if (GetWindowRect(hwnd, &rcWindow)) {
         HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        MONITORINFO mi = { sizeof(mi) };
+        MONITORINFO mi = {};
+        mi.cbSize = sizeof(mi);
         if (GetMonitorInfoW(hMonitor, &mi)) {
             // Check if window bounds cover the monitor bounds
             if (rcWindow.left <= mi.rcMonitor.left &&
@@ -940,7 +926,8 @@ void DimmerManager::ShowOSD(const std::wstring& text) {
     if (!m_hInst) return; // not initialized yet
 
     if (!m_osdClassRegistered) {
-        WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(WNDCLASSEXW);
         wc.style = CS_HREDRAW | CS_VREDRAW;
         wc.lpfnWndProc = OSDWndProc;
         wc.hInstance = m_hInst;

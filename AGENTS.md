@@ -6,12 +6,12 @@
 - **LLVM-MinGW** (always rebuild `resources.o` and `setup_res.o`):
   ```cmd
   llvm-windres resources\resources.rc -O coff -o resources\resources.o
-  clang++ -O2 -std=c++23 -mwindows -Os -s -mguard=cf -fms-extensions -static -o IdleDimmer.exe src\main.cpp src\MainWindow.cpp src\MainWindowDraw.cpp src\MainWindowInput.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.o -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp -lversion -lcomdlg32 -Wl,--delayload,d2d1.dll -Wl,--delayload,dwrite.dll -Wl,--delayload,dwmapi.dll -Wl,--delayload,winhttp.dll -Wl,--delayload,comdlg32.dll -Wl,--delayload,version.dll -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
+  clang++ -O2 -std=c++23 -D_WIN32_WINNT=0x0A00 -mwindows -Os -s -mguard=cf -fms-extensions -static -o IdleDimmer.exe src\main.cpp src\MainWindow.cpp src\MainWindowDraw.cpp src\MainWindowInput.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.o -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp -lversion -lcomdlg32 -Wl,--delayload,d2d1.dll -Wl,--delayload,dwrite.dll -Wl,--delayload,dwmapi.dll -Wl,--delayload,winhttp.dll -Wl,--delayload,comdlg32.dll -Wl,--delayload,version.dll -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
   ```
 - **Setup** (requires `IdleDimmer.exe` in project root — rebuild resources *after* app exe to embed the correct version):
    ```cmd
    llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
-    clang++ -O2 -std=c++23 -mwindows -Os -s -mguard=cf -static -o IdleDimmer-Setup-vX.Y.Z.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
+    clang++ -O2 -std=c++23 -D_WIN32_WINNT=0x0A00 -mwindows -Os -s -mguard=cf -static -o IdleDimmer-Setup-vX.Y.Z.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
     ```
 
 - Output: `IdleDimmer.exe` (~150 KB), `IdleDimmer-Setup-v1.8.0.exe` (~280 KB with embedded exe), `dist\IdleDimmer_1.8.0.0_x64.msix` (~880 KB, for Microsoft Store)

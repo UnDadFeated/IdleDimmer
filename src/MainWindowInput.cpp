@@ -249,10 +249,7 @@ void MainWindow::HandleLButtonDown(int x, int y) {
     for (auto& slider : m_sliders) {
         float trackLeft = slider.rect.left + 20.0f;
         float trackRight = slider.rect.right - 20.0f;
-        float trackWidth = trackRight - trackLeft;
         float trackY = slider.rect.bottom - 22.0f;
-
-        float thumbX = trackLeft + (slider.value * trackWidth);
         // If clicked anywhere near the track or the thumb
         if (slider.active && x >= trackLeft - 5 && x <= trackRight + 5 && abs(y - trackY) < 10) {
             PushUndoState();
@@ -344,6 +341,8 @@ void MainWindow::HandleLButtonDown(int x, int y) {
 }
 
 void MainWindow::HandleLButtonUp(int x, int y) {
+    (void)x;
+    (void)y;
     if (m_isDraggingAny) {
         for (auto& slider : m_sliders) {
             if (slider.isDragging) {

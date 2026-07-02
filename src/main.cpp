@@ -67,6 +67,8 @@ static void WriteStartupMarker() {
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    (void)hPrevInstance;
+    (void)lpCmdLine;
     // ── v1.8.0: Install crash handlers BEFORE anything else ──
     // These catch abort(), terminate(), CRT invalid-parameter, and SIGABRT —
     // all of which bypass SetUnhandledExceptionFilter and kill the process

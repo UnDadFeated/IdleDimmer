@@ -2,6 +2,19 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.8.6] - 2026-07-02
+
+### Updates
+* **Compiler Warnings Clean-up**: Resolved all compiler and static analysis warnings across the entire codebase under strict syntax checking flags.
+* **Initialization Hardening**: Upgraded structure initialization syntax (including `WNDCLASSEXW`, `NOTIFYICONDATAW`, `RECT`, and `MONITORINFO`) to warning-free, standard C++ value-initialization.
+* **Store Listing Alignment**: Updated the Microsoft Store listing and documentation to align with current features, removing obsolete references to hotkeys that were deprecated in v1.5.9.
+
+## [1.8.5] - 2026-07-02
+
+### Bug Fixes
+* **Settings > Apps Uninstall Failure**: Fixed an issue where clicking uninstall from Windows Settings launched the main program instead of uninstalling. The installer now copies itself to `%LOCALAPPDATA%\IdleDimmer\uninstall.exe` on install, and the registry uninstall command runs it. Upon exit, `uninstall.exe` runs a detached background process to delete itself and remove the installation directory.
+* **Hardened Uninstall Directory Cleanup**: Deletes `startup.log` and `crash.log` in `%APPDATA%\IdleDimmer` prior to folder removal, ensuring `RemoveDirectoryW` does not fail due to a non-empty directory.
+
 ## [1.8.4] - 2026-06-30
 
 ### Bug Fixes

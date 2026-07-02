@@ -70,7 +70,6 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     }
 
     // Simple robust JSON scanner
-    size_t pos = 0;
     auto findValue = [&](const std::wstring& key, std::wstring& outVal) -> bool {
         size_t keyPos = content.find(L"\"" + key + L"\"");
         if (keyPos == std::wstring::npos) return false;

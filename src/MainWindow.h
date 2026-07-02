@@ -26,7 +26,7 @@ struct UISlider {
 // v1.6.5 (Todo 5): Monochrome preset buttons row.
 struct UIPresetButton {
     int  id = 0;            // 0=OLED, 1=Gaming, 2=Reading, 3=Night
-    RECT rect = { 0 };
+    RECT rect = {};
     bool hovered = false;
     std::wstring label;
 };
@@ -121,8 +121,8 @@ private:
     AppConfig m_config;
 
     // v1.6.5 (Todo 6): Profile Import/Export buttons (right-side panel)
-    RECT m_importProfileRect = { 0 };
-    RECT m_exportProfileRect = { 0 };
+    RECT m_importProfileRect = {};
+    RECT m_exportProfileRect = {};
     bool m_importProfileHovered = false;
     bool m_exportProfileHovered = false;
     void ShowImportProfileDialog();
@@ -135,7 +135,7 @@ private:
     bool m_isDraggingAny = false;
 
     //     // Undo features
-    RECT m_undoRect = { 0 };
+    RECT m_undoRect = {};
     std::vector<AppConfig> m_undoStack;
     bool m_canUndo = false;
     int m_changeCount = 0;
@@ -161,9 +161,9 @@ private:
     static const int PANEL_WIDTH = 200;
     bool m_blockedExpanded = false;
     int m_blockedScrollOffset = 0;
-    RECT m_blockedPanelRect = { 0 };
-    RECT m_blockedArrowRect = { 0 };
-    RECT m_blockedAddRect = { 0 };
+    RECT m_blockedPanelRect = {};
+    RECT m_blockedArrowRect = {};
+    RECT m_blockedAddRect = {};
     std::vector<UIBlockedAppItem> m_blockedItems;
     bool m_blockedArrowHovered = false;
     bool m_blockedAddHovered = false;

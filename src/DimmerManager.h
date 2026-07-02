@@ -84,6 +84,9 @@ private:
     DimmerManager() = default;
     ~DimmerManager();
 
+    DimmerManager(const DimmerManager&) = delete;
+    DimmerManager& operator=(const DimmerManager&) = delete;
+
     void CreateOverlayForMonitor(ActiveMonitorInfo& info);
     static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
@@ -103,7 +106,6 @@ private:
     bool m_classRegistered = false;
 
     bool m_cursorHidden = false;
-    bool m_videoDetected = false;
     int m_videoCheckTick = 0;
     bool m_isFullscreenAppActive = false;
     std::vector<std::wstring> m_blockedApps;
@@ -134,7 +136,6 @@ private:
     std::wstring              m_osdText;
     int                       m_osdAlpha = 0;     // 0..255 current alpha
     int                       m_osdTargetAlpha = 0;
-    UINT_PTR                  m_osdTimerId = 0;
     void EnsureOSDResources();
     void DiscardOSDResources();
     static LRESULT CALLBACK OSDWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);

@@ -27,7 +27,7 @@ using Microsoft::WRL::ComPtr;
 static const wchar_t* APP_NAME = L"IdleDimmer";
 static const wchar_t* INSTALL_DIR = L"IdleDimmer";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\IdleDimmer";
-static const wchar_t* VER = L"1.8.4";
+static const wchar_t* VER = L"1.8.6";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
@@ -162,18 +162,41 @@ static void RegisterUninstall() {
         Log(L"  [FAILED] RegCreateKeyExW\r\n");
         return;
     }
-    wchar_t displayName[64], exePath[MAX_PATH], uninstallCmd[MAX_PATH + 32];
+    wchar_t displayName[64], exePath[MAX_PATH];
     wcscpy_s(displayName, ARRAYSIZE(displayName), APP_NAME);
     wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
-    wcscpy_s(uninstallCmd, ARRAYSIZE(uninstallCmd), std::format(L"{}\\{}.exe /uninstall", g_installPath, APP_NAME).c_str());
+    std::wstring uninstallCmd = std::format(L"\"{}\\uninstall.exe\" /uninstall", g_installPath);
     RegSetValueExW(hKey, L"DisplayName", 0, REG_SZ, (BYTE*)displayName, (DWORD)((wcslen(displayName) + 1) * sizeof(wchar_t)));
     RegSetValueExW(hKey, L"DisplayIcon", 0, REG_SZ, (BYTE*)exePath, (DWORD)((wcslen(exePath) + 1) * sizeof(wchar_t)));
-    RegSetValueExW(hKey, L"UninstallString", 0, REG_SZ, (BYTE*)uninstallCmd, (DWORD)((wcslen(uninstallCmd) + 1) * sizeof(wchar_t)));
+    RegSetValueExW(hKey, L"UninstallString", 0, REG_SZ, (BYTE*)uninstallCmd.c_str(), (DWORD)((uninstallCmd.length() + 1) * sizeof(wchar_t)));
     DWORD dummy = 1;
     RegSetValueExW(hKey, L"NoModify", 0, REG_DWORD, (BYTE*)&dummy, sizeof(dummy));
     RegSetValueExW(hKey, L"NoRepair", 0, REG_DWORD, (BYTE*)&dummy, sizeof(dummy));
     RegCloseKey(hKey);
     Log(L"  Uninstall registered\r\n");
+}
+
+static void SelfDelete() {
+    wchar_t installPath[MAX_PATH];
+    GetInstallPath(installPath, MAX_PATH);
+    wchar_t uninstallExePath[MAX_PATH];
+    swprintf_s(uninstallExePath, ARRAYSIZE(uninstallExePath), L"%s\\uninstall.exe", installPath);
+
+    wchar_t cmdLine[MAX_PATH * 3];
+    swprintf_s(cmdLine, ARRAYSIZE(cmdLine),
+        L"cmd.exe /c ping 127.0.0.1 -n 2 > nul & del /f /q \"%s\" & rd /s /q \"%s\"",
+        uninstallExePath, installPath);
+
+    STARTUPINFOW si = {};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi = {};
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+
+    if (CreateProcessW(NULL, cmdLine, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
 }
 
 static void Uninstall() {
@@ -186,19 +209,34 @@ static void Uninstall() {
     DeleteFileW(exePath);
     Log(std::format(L"  Removed {}\r\n", exePath).c_str());
     RemoveDirectoryW(g_installPath);
+    
     wchar_t configDir[MAX_PATH];
     GetEnvironmentVariableW(L"APPDATA", configDir, MAX_PATH);
     wcscat_s(configDir, MAX_PATH, L"\\IdleDimmer");
+    
     wchar_t iniPath[MAX_PATH];
     wcscpy_s(iniPath, ARRAYSIZE(iniPath), std::format(L"{}\\dimmer.ini", configDir).c_str());
     DeleteFileW(iniPath);
+
+    wchar_t startupLogPath[MAX_PATH];
+    wcscpy_s(startupLogPath, ARRAYSIZE(startupLogPath), std::format(L"{}\\startup.log", configDir).c_str());
+    DeleteFileW(startupLogPath);
+
+    wchar_t crashLogPath[MAX_PATH];
+    wcscpy_s(crashLogPath, ARRAYSIZE(crashLogPath), std::format(L"{}\\crash.log", configDir).c_str());
+    DeleteFileW(crashLogPath);
+
     RemoveDirectoryW(configDir);
+    Log(L"  Removed config and logs\r\n");
+
     wchar_t shortcut[MAX_PATH] = {0};
     if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_STARTMENU, NULL, 0, shortcut))) {
         wcscat_s(shortcut, MAX_PATH, L"\\Programs\\IdleDimmer.lnk");
         DeleteFileW(shortcut);
+        Log(L"  Removed Start Menu shortcut\r\n");
     }
     RegDeleteKeyW(HKEY_CURRENT_USER, REG_PATH);
+    Log(L"  Removed registry settings\r\n");
     Log(L"  Uninstall complete\r\n");
 }
 
@@ -312,6 +350,17 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                     wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
 
                     if (ExtractApp(exePath)) {
+                        // Copy setup.exe to uninstall.exe
+                        wchar_t setupPath[MAX_PATH];
+                        GetModuleFileNameW(NULL, setupPath, MAX_PATH);
+                        wchar_t uninstallExePath[MAX_PATH];
+                        swprintf_s(uninstallExePath, ARRAYSIZE(uninstallExePath), L"%s\\uninstall.exe", g_installPath);
+                        Log(L"  Creating uninstaller...\r\n");
+                        if (CopyFileW(setupPath, uninstallExePath, FALSE)) {
+                            Log(L"  Uninstaller created\r\n");
+                        } else {
+                            Log(std::format(L"  [WARNING] Failed to copy uninstaller, error {}\r\n", GetLastError()).c_str());
+                        }
                         CreateShortcut(exePath);
                         RegisterUninstall();
                         Log(L"\r\n=== Installation complete! ===\r\n");
@@ -332,8 +381,9 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                         wchar_t exePath[MAX_PATH];
                         wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
                         Sleep(300);
-                        STARTUPINFOW si = { sizeof(si) };
-                        PROCESS_INFORMATION pi;
+                        STARTUPINFOW si = {};
+                        si.cb = sizeof(si);
+                        PROCESS_INFORMATION pi = {};
                         CreateProcessW(exePath, NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
                         CloseHandle(pi.hProcess);
                         CloseHandle(pi.hThread);
@@ -357,6 +407,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
+    (void)lpCmdLine;
     HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"Local\\IdleDimmerSetupMutex");
     if (hMutex == nullptr) {
         LogError(ErrorCode::E507, HRESULT_FROM_WIN32(GetLastError()));
@@ -376,11 +427,13 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
         Uninstall();
         CoUninitialize();
         MessageBoxW(NULL, L"IdleDimmer has been uninstalled.", APP_NAME, MB_OK | MB_ICONINFORMATION);
+        SelfDelete();
         CloseHandle(hMutex);
         return 0;
     }
 
-    WNDCLASSEXW wc = { sizeof(WNDCLASSEXW) };
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(WNDCLASSEXW);
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = SetupWndProc;
     wc.hInstance = hInst;
