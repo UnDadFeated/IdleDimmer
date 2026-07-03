@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.9.3] - 2026-07-03
+
+### Updates
+* **Diagnostic State Logger**: Added a detailed diagnostic log writer to `%APPDATA%\IdleDimmer\dimmer.log`. The log captures active/idle dimming flags, foreground window details, and per-monitor bypass properties once per second to assist in diagnosing layout/overlay behavior.
+
 ## [1.9.2] - 2026-07-03
 
 ### Bug Fixes

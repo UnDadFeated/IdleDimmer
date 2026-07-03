@@ -7,6 +7,7 @@
 #include <audiopolicy.h>
 #include <endpointvolume.h>
 #include <shellapi.h>
+#include <shlobj.h>
 #include <wrl/client.h>
 #include <d2d1.h>
 /* MinGW d2d1.h may not define this HRESULT */
@@ -652,6 +653,7 @@ void DimmerManager::CheckVideoPlayback() {
 
     // ── v1.6.5 (Todo 2): Drive time-of-day scheduling on the same 1s tick ──
     CheckSchedule();
+    LogState();
 }
 
 
@@ -1182,6 +1184,81 @@ LRESULT CALLBACK DimmerManager::OSDWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARA
             ValidateRect(hwnd, nullptr);
         }
         return 0;
+    }
+}
+
+#include <fstream>
+#include <sstream>
+
+void DimmerManager::LogState() {
+    wchar_t appDataPath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appDataPath))) {
+        std::wstring logDir = std::wstring(appDataPath) + L"\\IdleDimmer";
+        CreateDirectoryW(logDir.c_str(), NULL);
+        std::wstring logPath = logDir + L"\\dimmer.log";
+        
+        // If log file size > 2MB, truncate it to avoid filling disk space
+        std::wofstream logFile;
+        WIN32_FILE_ATTRIBUTE_DATA fad;
+        if (GetFileAttributesExW(logPath.c_str(), GetFileExInfoStandard, &fad)) {
+            LARGE_INTEGER size;
+            size.LowPart = fad.nFileSizeLow;
+            size.HighPart = fad.nFileSizeHigh;
+            if (size.QuadPart > 2 * 1024 * 1024) {
+                logFile.open(logPath.c_str(), std::ios_base::out | std::ios_base::trunc);
+            }
+        }
+        if (!logFile.is_open()) {
+            logFile.open(logPath.c_str(), std::ios_base::app);
+        }
+        
+        if (logFile.is_open()) {
+            SYSTEMTIME st;
+            GetLocalTime(&st);
+            logFile << std::format(L"[{:02d}:{:02d}:{:02d}] == RUNTIME STATE ==\n", st.wHour, st.wMinute, st.wSecond);
+            logFile << std::format(L"  m_dimmingEnabled: {}\n", m_dimmingEnabled);
+            logFile << std::format(L"  m_isIdleState: {}\n", m_isIdleState);
+            logFile << std::format(L"  m_scheduleActive: {}\n", m_scheduleActive);
+            
+            HWND hFore = GetForegroundWindow();
+            if (hFore) {
+                wchar_t title[256] = {0};
+                wchar_t className[256] = {0};
+                GetWindowTextW(hFore, title, 256);
+                GetClassNameW(hFore, className, 256);
+                DWORD pid = 0;
+                GetWindowThreadProcessId(hFore, &pid);
+                std::wstring procName = GetProcessNameFromPidNoLog(pid);
+                
+                logFile << std::format(L"  Foreground Window: Title=\"{}\" Class=\"{}\" Proc=\"{}\" PID={}\n", title, className, procName, pid);
+                
+                RECT rcWindow;
+                if (GetWindowRect(hFore, &rcWindow)) {
+                    logFile << std::format(L"    Rect: [{}, {}, {}, {}]\n", rcWindow.left, rcWindow.top, rcWindow.right, rcWindow.bottom);
+                }
+            } else {
+                logFile << L"  Foreground Window: None\n";
+            }
+            
+            logFile << std::format(L"  Monitors Count: {}\n", m_monitors.size());
+            for (size_t i = 0; i < m_monitors.size(); ++i) {
+                const auto& mon = m_monitors[i];
+                logFile << std::format(L"    Monitor [{}] ID=\"{}\" Name=\"{}\"\n", i, mon.id, mon.friendlyName);
+                logFile << std::format(L"      enabled: {}\n", mon.enabled);
+                logFile << std::format(L"      dimValue: {}\n", mon.dimValue);
+                logFile << std::format(L"      currentDimValue: {}\n", mon.currentDimValue);
+                logFile << std::format(L"      hasAudioVideo: {}\n", mon.hasAudioVideo);
+                logFile << std::format(L"      hasFullscreenVideo: {}\n", mon.hasFullscreenVideo);
+                logFile << std::format(L"      hasVideo (bypass active): {}\n", mon.hasVideo);
+                logFile << std::format(L"      hwndOverlay: {}\n", mon.hwndOverlay != nullptr ? L"Valid" : L"NULL");
+                if (mon.hwndOverlay) {
+                    logFile << std::format(L"        IsWindowVisible: {}\n", IsWindowVisible(mon.hwndOverlay) != 0);
+                    LONG_PTR exStyle = GetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE);
+                    logFile << std::format(L"        WS_EX_TRANSPARENT: {}\n", (exStyle & WS_EX_TRANSPARENT) != 0);
+                }
+            }
+            logFile << L"==========================\n\n";
+        }
     }
 }
 

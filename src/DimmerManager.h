@@ -89,6 +89,7 @@ private:
     DimmerManager& operator=(const DimmerManager&) = delete;
 
     void CreateOverlayForMonitor(ActiveMonitorInfo& info);
+    void LogState();
     static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
     void CheckAudioPlaybackAsync();
