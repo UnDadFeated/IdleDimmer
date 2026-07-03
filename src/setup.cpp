@@ -27,7 +27,7 @@ using Microsoft::WRL::ComPtr;
 static const wchar_t* APP_NAME = L"IdleDimmer";
 static const wchar_t* INSTALL_DIR = L"IdleDimmer";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\IdleDimmer";
-static const wchar_t* VER = L"1.9.3";
+static const wchar_t* VER = L"1.9.4";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
@@ -226,6 +226,16 @@ static void Uninstall() {
     wcscpy_s(crashLogPath, ARRAYSIZE(crashLogPath), std::format(L"{}\\crash.log", configDir).c_str());
     DeleteFileW(crashLogPath);
 
+    wchar_t dimmerLogPath[MAX_PATH];
+    wcscpy_s(dimmerLogPath, ARRAYSIZE(dimmerLogPath), std::format(L"{}\\dimmer.log", configDir).c_str());
+    DeleteFileW(dimmerLogPath);
+    wcscpy_s(dimmerLogPath, ARRAYSIZE(dimmerLogPath), std::format(L"{}\\dimmer_0.log", configDir).c_str());
+    DeleteFileW(dimmerLogPath);
+    wcscpy_s(dimmerLogPath, ARRAYSIZE(dimmerLogPath), std::format(L"{}\\dimmer_1.log", configDir).c_str());
+    DeleteFileW(dimmerLogPath);
+    wcscpy_s(dimmerLogPath, ARRAYSIZE(dimmerLogPath), std::format(L"{}\\dimmer_2.log", configDir).c_str());
+    DeleteFileW(dimmerLogPath);
+
     RemoveDirectoryW(configDir);
     Log(L"  Removed config and logs\r\n");
 
@@ -290,7 +300,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             SetWindowTextW(g_hStatus, status);
 
             g_hLaunchCheck = CreateWindowW(L"BUTTON", L"Launch after install",
-                WS_CHILD | BS_AUTOCHECKBOX | BS_LEFT, m, 106, leftW, 18, hwnd, NULL, hInst, NULL);
+                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX | BS_LEFT, m, 106, leftW, 18, hwnd, NULL, hInst, NULL);
             SendMessageW(g_hLaunchCheck, BM_SETCHECK, BST_CHECKED, 0);
 
             g_hButton = CreateWindowW(L"BUTTON", L"Install",

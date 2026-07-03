@@ -106,6 +106,46 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 
 void DimmerManager::Initialize(HINSTANCE hInst) {
     m_hInst = hInst;
+
+    // Generate date-time stamped log filename and keep only the last 3 runs
+    wchar_t appDataPath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appDataPath))) {
+        std::wstring logDir = std::wstring(appDataPath) + L"\\IdleDimmer";
+        CreateDirectoryW(logDir.c_str(), NULL);
+        
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        wchar_t nameBuf[64];
+        swprintf_s(nameBuf, ARRAYSIZE(nameBuf), L"dimmer_%04d%02d%02d_%02d%02d%02d.log",
+                   st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+        m_logFileName = nameBuf;
+
+        // Scan folder for existing dimmer_*.log files
+        std::vector<std::wstring> logFiles;
+        std::wstring searchPath = logDir + L"\\dimmer_*.log";
+        WIN32_FIND_DATAW ffd;
+        HANDLE hFind = FindFirstFileW(searchPath.c_str(), &ffd);
+        if (hFind != INVALID_HANDLE_VALUE) {
+            do {
+                if (!(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                    logFiles.push_back(logDir + L"\\" + ffd.cFileName);
+                }
+            } while (FindNextFileW(hFind, &ffd) != 0);
+            FindClose(hFind);
+        }
+
+        // Sort alphabetically (chronologically, since format is YYYYMMDD_HHMMSS)
+        std::sort(logFiles.begin(), logFiles.end());
+
+        // Keep only the 2 newest files (so this new instance creates the 3rd)
+        if (logFiles.size() >= 3) {
+            size_t toDelete = logFiles.size() - 2;
+            for (size_t i = 0; i < toDelete; ++i) {
+                DeleteFileW(logFiles[i].c_str());
+            }
+        }
+    }
+
     if (!m_classRegistered) {
         WNDCLASSEXW wc = {};
         wc.cbSize = sizeof(WNDCLASSEXW);
@@ -1195,7 +1235,8 @@ void DimmerManager::LogState() {
     if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appDataPath))) {
         std::wstring logDir = std::wstring(appDataPath) + L"\\IdleDimmer";
         CreateDirectoryW(logDir.c_str(), NULL);
-        std::wstring logPath = logDir + L"\\dimmer.log";
+        if (m_logFileName.empty()) return;
+        std::wstring logPath = logDir + L"\\" + m_logFileName;
         
         // If log file size > 2MB, truncate it to avoid filling disk space
         std::wofstream logFile;
@@ -1215,10 +1256,14 @@ void DimmerManager::LogState() {
         if (logFile.is_open()) {
             SYSTEMTIME st;
             GetLocalTime(&st);
-            logFile << std::format(L"[{:02d}:{:02d}:{:02d}] == RUNTIME STATE ==\n", st.wHour, st.wMinute, st.wSecond);
-            logFile << std::format(L"  m_dimmingEnabled: {}\n", m_dimmingEnabled);
-            logFile << std::format(L"  m_isIdleState: {}\n", m_isIdleState);
-            logFile << std::format(L"  m_scheduleActive: {}\n", m_scheduleActive);
+            logFile << L"[" 
+                    << (st.wHour < 10 ? L"0" : L"") << st.wHour << L":"
+                    << (st.wMinute < 10 ? L"0" : L"") << st.wMinute << L":"
+                    << (st.wSecond < 10 ? L"0" : L"") << st.wSecond 
+                    << L"] == RUNTIME STATE ==\n";
+            logFile << L"  m_dimmingEnabled: " << (m_dimmingEnabled ? L"true" : L"false") << L"\n";
+            logFile << L"  m_isIdleState: " << (m_isIdleState ? L"true" : L"false") << L"\n";
+            logFile << L"  m_scheduleActive: " << (m_scheduleActive ? L"true" : L"false") << L"\n";
             
             HWND hFore = GetForegroundWindow();
             if (hFore) {
@@ -1230,31 +1275,37 @@ void DimmerManager::LogState() {
                 GetWindowThreadProcessId(hFore, &pid);
                 std::wstring procName = GetProcessNameFromPidNoLog(pid);
                 
-                logFile << std::format(L"  Foreground Window: Title=\"{}\" Class=\"{}\" Proc=\"{}\" PID={}\n", title, className, procName, pid);
+                logFile << L"  Foreground Window: Title=\"" << title 
+                        << L"\" Class=\"" << className 
+                        << L"\" Proc=\"" << procName 
+                        << L"\" PID=" << pid << L"\n";
                 
                 RECT rcWindow;
                 if (GetWindowRect(hFore, &rcWindow)) {
-                    logFile << std::format(L"    Rect: [{}, {}, {}, {}]\n", rcWindow.left, rcWindow.top, rcWindow.right, rcWindow.bottom);
+                    logFile << L"    Rect: [" << rcWindow.left << L", " 
+                            << rcWindow.top << L", " 
+                            << rcWindow.right << L", " 
+                            << rcWindow.bottom << L"]\n";
                 }
             } else {
                 logFile << L"  Foreground Window: None\n";
             }
             
-            logFile << std::format(L"  Monitors Count: {}\n", m_monitors.size());
+            logFile << L"  Monitors Count: " << m_monitors.size() << L"\n";
             for (size_t i = 0; i < m_monitors.size(); ++i) {
                 const auto& mon = m_monitors[i];
-                logFile << std::format(L"    Monitor [{}] ID=\"{}\" Name=\"{}\"\n", i, mon.id, mon.friendlyName);
-                logFile << std::format(L"      enabled: {}\n", mon.enabled);
-                logFile << std::format(L"      dimValue: {}\n", mon.dimValue);
-                logFile << std::format(L"      currentDimValue: {}\n", mon.currentDimValue);
-                logFile << std::format(L"      hasAudioVideo: {}\n", mon.hasAudioVideo);
-                logFile << std::format(L"      hasFullscreenVideo: {}\n", mon.hasFullscreenVideo);
-                logFile << std::format(L"      hasVideo (bypass active): {}\n", mon.hasVideo);
-                logFile << std::format(L"      hwndOverlay: {}\n", mon.hwndOverlay != nullptr ? L"Valid" : L"NULL");
+                logFile << L"    Monitor [" << i << L"] ID=\"" << mon.id << L"\" Name=\"" << mon.friendlyName << L"\"\n";
+                logFile << L"      enabled: " << (mon.enabled ? L"true" : L"false") << L"\n";
+                logFile << L"      dimValue: " << mon.dimValue << L"\n";
+                logFile << L"      currentDimValue: " << mon.currentDimValue << L"\n";
+                logFile << L"      hasAudioVideo: " << (mon.hasAudioVideo ? L"true" : L"false") << L"\n";
+                logFile << L"      hasFullscreenVideo: " << (mon.hasFullscreenVideo ? L"true" : L"false") << L"\n";
+                logFile << L"      hasVideo (bypass active): " << (mon.hasVideo ? L"true" : L"false") << L"\n";
+                logFile << L"      hwndOverlay: " << (mon.hwndOverlay != nullptr ? L"Valid" : L"NULL") << L"\n";
                 if (mon.hwndOverlay) {
-                    logFile << std::format(L"        IsWindowVisible: {}\n", IsWindowVisible(mon.hwndOverlay) != 0);
+                    logFile << L"        IsWindowVisible: " << (IsWindowVisible(mon.hwndOverlay) != 0 ? L"true" : L"false") << L"\n";
                     LONG_PTR exStyle = GetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE);
-                    logFile << std::format(L"        WS_EX_TRANSPARENT: {}\n", (exStyle & WS_EX_TRANSPARENT) != 0);
+                    logFile << L"        WS_EX_TRANSPARENT: " << ((exStyle & WS_EX_TRANSPARENT) != 0 ? L"true" : L"false") << L"\n";
                 }
             }
             logFile << L"==========================\n\n";

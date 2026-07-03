@@ -2,6 +2,15 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.9.4] - 2026-07-03
+
+### Updates
+* **Safe State Logger**: Rewrote the diagnostic logging function `DimmerManager::LogState()` to use raw stream insertions instead of wide-character `std::format`. This prevents crashes under the MinGW runtime due to unstable wide-character formatting support.
+* **Timestamped Log Rotation**: Each app launch now creates a new log file named `dimmer_YYYYMMDD_HHMMSS.log` in `%APPDATA%\IdleDimmer`. Only the 3 most recent log files are kept — older ones are automatically deleted on startup.
+
+### Bug Fixes
+* **Installer Launch Checkbox**: Corrected the style of the "Launch after install" checkbox in the setup installer to include `WS_VISIBLE` so it is visible from the start.
+
 ## [1.9.3] - 2026-07-03
 
 ### Updates
