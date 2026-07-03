@@ -2,6 +2,27 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.9.2] - 2026-07-03
+
+### Bug Fixes
+* **Maximized Window Dimming Bypass**: Fixed a bug where normal maximized windows (like Chrome with static text, Notepad, or File Explorer) incorrectly blocked dimming on their monitors. Added back `isBorderless` and `isCaptionless` style validation checks to the geometric monitor-coverage check so only true fullscreen apps (or maximized windows actively playing audio) bypass dimming.
+
+## [1.9.1] - 2026-07-03
+
+### Bug Fixes
+* **Idle Dimming Wake-up Loop**: Fixed a bug where the screens failed to remain dimmed when idle. The program-driven 1-pixel cursor shift (used to trigger cursor hiding) was falsely treated as real mouse movement by other overlay windows, instantly waking up the screens in an infinite loop. Solved by updating reference mouse coordinates and adding a 2-pixel movement threshold filter to ignore program-driven micro-shifts and hardware sensor vibrations.
+* **Manual Update Check (Offline Mode)**: Converted the automatic update check on startup to a manual "Check for Updates" button in the footer. The app now stays completely offline unless the button is explicitly clicked, and only queries release information without downloading or installing files.
+
+## [1.9.0] - 2026-07-03
+
+### New Features
+* **Physical Monitor Name Resolution**: Replaced the generic "Monitor X (\.\DISPLAYX)" labels in the multi-monitor settings panel with actual physical hardware names (e.g., "Dell U2415", "LG HDR 4K"). Resolves names dynamically using the Windows Display Configuration API (`QueryDisplayConfig`) with automatic GDI fallback.
+
+### Bug Fixes
+* **Video Detection Race Condition**: Fixed a timing bug where the audio playback detection (WASAPI) was read immediately after spawning the background check thread, causing the main thread to always use stale results from the *previous* 5-second cycle. The audio session data is now read before spawning the next async check.
+* **Audio Hysteresis — 30-Second Grace Period**: Added a 30-second grace period after audio stops on a monitor before re-enabling dimming. Netflix, YouTube, and other streaming services have brief silent moments (scene transitions, episode loading screens, quiet dialogue) that caused the audio peak meter to drop to zero, falsely clearing the video bypass and dimming the screen mid-movie.
+* **Maximized Browser Video Bypass**: Expanded the fullscreen detection to include any foreground window that geometrically covers the full monitor, regardless of window style. Previously, a maximized Chrome window playing Netflix was not detected because the old check required `WS_POPUP` or no `WS_CAPTION` — Chrome maximized has `WS_MAXIMIZE | WS_CAPTION`, which was rejected. Now the geometric coverage check runs on every tick without style restrictions.
+
 ## [1.8.8] - 2026-07-03
 
 ### Bug Fixes

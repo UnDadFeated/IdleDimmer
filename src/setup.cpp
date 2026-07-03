@@ -27,7 +27,7 @@ using Microsoft::WRL::ComPtr;
 static const wchar_t* APP_NAME = L"IdleDimmer";
 static const wchar_t* INSTALL_DIR = L"IdleDimmer";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\IdleDimmer";
-static const wchar_t* VER = L"1.8.8";
+static const wchar_t* VER = L"1.9.2";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
@@ -381,12 +381,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                         wchar_t exePath[MAX_PATH];
                         wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
                         Sleep(300);
-                        STARTUPINFOW si = {};
-                        si.cb = sizeof(si);
-                        PROCESS_INFORMATION pi = {};
-                        CreateProcessW(exePath, NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-                        CloseHandle(pi.hProcess);
-                        CloseHandle(pi.hThread);
+                        ShellExecuteW(nullptr, L"open", exePath, nullptr, nullptr, SW_SHOWNORMAL);
                     }
                     PostMessageW(hwnd, WM_CLOSE, 0, 0);
                 }

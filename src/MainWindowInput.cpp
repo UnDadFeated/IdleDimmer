@@ -156,6 +156,20 @@ void MainWindow::HandleMouseMove(int x, int y) {
 }
 
 void MainWindow::HandleLButtonDown(int x, int y) {
+    // Intercept Update check click in footer
+    if (x >= m_updateCheckRect.left && x <= m_updateCheckRect.right && y >= m_updateCheckRect.top && y <= m_updateCheckRect.bottom) {
+        if (!m_updateChecking) {
+            m_updateChecking = true;
+            m_updateChecked = false;
+            m_updateAvailable = false;
+            InvalidateRect(m_hwnd, nullptr, FALSE);
+            if (!m_hUpdateThread) {
+                m_hUpdateThread = CreateThread(nullptr, 0, CheckForUpdatesThread, this, 0, nullptr);
+            }
+        }
+        return;
+    }
+
     // Intercept Undo click in footer
     if (m_canUndo && x >= m_undoRect.left && x <= m_undoRect.right && y >= m_undoRect.top && y <= m_undoRect.bottom) {
         m_config = m_undoStack.back();

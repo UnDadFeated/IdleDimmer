@@ -23,6 +23,7 @@ struct ActiveMonitorInfo {
     bool hasVideo = false;
     bool hasAudioVideo = false;
     bool hasFullscreenVideo = false;
+    DWORD lastAudioSeenTick = 0; // GetTickCount() when audio was last detected
 };
 
 class DimmerManager {
@@ -109,6 +110,7 @@ private:
     int m_videoCheckTick = 0;
     bool m_isFullscreenAppActive = false;
     std::vector<std::wstring> m_blockedApps;
+    static constexpr DWORD AUDIO_GRACE_MS = 30000; // 30-second grace period after audio stops
     POINT m_lastMousePos = { -1, -1 };
     bool m_isSettingCursorPos = false;
     bool m_cursorShifted = false;

@@ -20,7 +20,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-[[maybe_unused]] static const wchar_t* APP_VERSION = L"v1.8.8";
+[[maybe_unused]] static const wchar_t* APP_VERSION = L"v1.9.2";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -637,6 +637,12 @@ void MainWindow::UpdateLayout() {
     m_undoRect.right = m_windowWidth / 2 + 70;
     m_undoRect.bottom = m_windowHeight;
 
+    // Footer update check rect (on the right of the footer)
+    m_updateCheckRect.left = CONTENT_WIDTH - 220;
+    m_updateCheckRect.top = m_windowHeight - 25;
+    m_updateCheckRect.right = CONTENT_WIDTH - 20;
+    m_updateCheckRect.bottom = m_windowHeight;
+
     // ── RIGHT-SIDE PANEL LAYOUT ──
     int panelLeft = CONTENT_WIDTH + 10;
     int panelTop = 30;
@@ -781,6 +787,11 @@ void MainWindow::OnUpdateCheckComplete(WPARAM wp, LPARAM lp) {
         delete[] latestVer;
     }
     m_updateChecked = true;
+    m_updateChecking = false;
+    if (m_hUpdateThread) {
+        CloseHandle(m_hUpdateThread);
+        m_hUpdateThread = nullptr;
+    }
     InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
@@ -1129,11 +1140,8 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 LogError(ErrorCode::E209, HRESULT_FROM_WIN32(GetLastError()));
             }
 
-            if (!IsPackaged()) {
-                SetTimer(hwnd, 203, 15000, nullptr);
-            } else {
-                m_updateChecked = true;
-            }
+            // v1.9.0: Keep app offline. Do not auto-check for updates at startup.
+            m_updateChecked = false;
 
             // Try tray icon once. If it fails (common during early startup
             // when Explorer is still loading), retry via timer 204.

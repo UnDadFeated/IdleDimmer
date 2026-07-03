@@ -143,10 +143,12 @@ private:
 
     // Update checking
     bool m_updateChecked = false;
+    bool m_updateChecking = false;
     bool m_updateAvailable = false;
     std::wstring m_latestVersion;
     HANDLE m_hUpdateThread = nullptr;
     HINTERNET m_hSession = nullptr;
+    RECT m_updateCheckRect = {};
     static DWORD WINAPI CheckForUpdatesThread(LPVOID lpParam);
     void OnUpdateCheckComplete(WPARAM wp, LPARAM lp);
     bool IsPackaged() const;

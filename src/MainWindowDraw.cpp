@@ -414,23 +414,30 @@ void MainWindow::OnPaint() {
     );
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 
-    // Version Number in footer right
+    // Version Number / Check for Updates in footer right
     wchar_t versionFull[64] = { 0 };
-    if (m_updateChecked) {
+    bool isUpdateAccentColor = false;
+
+    if (m_updateChecking) {
+        wcscpy_s(versionFull, ARRAYSIZE(versionFull), L"Checking updates...");
+    } else if (m_updateChecked) {
         if (m_updateAvailable) {
             wcscpy_s(versionFull, ARRAYSIZE(versionFull), std::format(L"Update Available | {}", m_latestVersion).c_str());
+            isUpdateAccentColor = true;
         } else {
             wcscpy_s(versionFull, ARRAYSIZE(versionFull), std::format(L"Up to Date | {}", m_appVersion).c_str());
         }
     } else {
-        wcscpy_s(versionFull, ARRAYSIZE(versionFull), m_appVersion.c_str());
+        wcscpy_s(versionFull, ARRAYSIZE(versionFull), std::format(L"Check for Updates ({})", m_appVersion).c_str());
+        isUpdateAccentColor = true; // highlight to draw attention as a button
     }
+
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
     m_pRenderTarget->DrawText(
         versionFull, static_cast<UINT32>(wcslen(versionFull)),
         m_pTextFormatDetail,
-        D2D1::RectF(CONTENT_WIDTH - 170.0f, footerY + 10.0f, CONTENT_WIDTH - 25.0f, footerY + 28.0f),
-        m_updateAvailable ? m_pBrushAccent : m_pBrushTextMuted
+        D2D1::RectF(CONTENT_WIDTH - 220.0f, footerY + 10.0f, CONTENT_WIDTH - 25.0f, footerY + 28.0f),
+        isUpdateAccentColor ? m_pBrushAccent : m_pBrushTextMuted
     );
     m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 

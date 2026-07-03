@@ -55,7 +55,7 @@ static void WriteStartupMarker() {
             HANDLE hFile = CreateFileW(path, GENERIC_WRITE, 0, NULL,
                                        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
             if (hFile != INVALID_HANDLE_VALUE) {
-                const wchar_t msg[] = L"IdleDimmer v1.8.8 WinMain reached\r\n";
+                const wchar_t msg[] = L"IdleDimmer v1.9.2 WinMain reached\r\n";
                 DWORD written;
                 WriteFile(hFile, msg, sizeof(msg) - sizeof(wchar_t), &written, NULL);
                 CloseHandle(hFile);

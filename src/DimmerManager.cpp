@@ -41,11 +41,47 @@ DEFINE_GUID(IID_IAudioMeterInformation, 0xC02216F6, 0x8C67, 0x4B5B, 0x9D, 0x00, 
 static std::wstring GetMonitorFriendlyName(HMONITOR hMonitor, int index) {
     MONITORINFOEXW mi;
     mi.cbSize = sizeof(mi);
-    if (GetMonitorInfoW(hMonitor, &mi)) {
-        mi.szDevice[CCHDEVICENAME - 1] = L'\0';
-        return L"Monitor " + std::to_wstring(index + 1) + L" (" + std::wstring(mi.szDevice) + L")";
+    if (!GetMonitorInfoW(hMonitor, &mi)) {
+        return L"Monitor " + std::to_wstring(index + 1);
     }
-    return L"Monitor " + std::to_wstring(index + 1);
+    mi.szDevice[CCHDEVICENAME - 1] = L'\0';
+    std::wstring gdiName = mi.szDevice;
+
+    // Try to get real friendly name using QueryDisplayConfig
+    UINT32 numPathArrayElements = 0;
+    UINT32 numModeInfoArrayElements = 0;
+    if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &numPathArrayElements, &numModeInfoArrayElements) == ERROR_SUCCESS) {
+        std::vector<DISPLAYCONFIG_PATH_INFO> pathArray(numPathArrayElements);
+        std::vector<DISPLAYCONFIG_MODE_INFO> modeInfoArray(numModeInfoArrayElements);
+        if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &numPathArrayElements, pathArray.data(),
+                               &numModeInfoArrayElements, modeInfoArray.data(), nullptr) == ERROR_SUCCESS) {
+            for (UINT32 i = 0; i < numPathArrayElements; ++i) {
+                DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = {};
+                sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+                sourceName.header.size = sizeof(sourceName);
+                sourceName.header.adapterId = pathArray[i].sourceInfo.adapterId;
+                sourceName.header.id = pathArray[i].sourceInfo.id;
+                
+                if (DisplayConfigGetDeviceInfo(&sourceName.header) == ERROR_SUCCESS) {
+                    if (gdiName == sourceName.viewGdiDeviceName) {
+                        DISPLAYCONFIG_TARGET_DEVICE_NAME targetName = {};
+                        targetName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+                        targetName.header.size = sizeof(targetName);
+                        targetName.header.adapterId = pathArray[i].targetInfo.adapterId;
+                        targetName.header.id = pathArray[i].targetInfo.id;
+                        
+                        if (DisplayConfigGetDeviceInfo(&targetName.header) == ERROR_SUCCESS) {
+                            if (targetName.monitorFriendlyDeviceName[0] != L'\0') {
+                                return targetName.monitorFriendlyDeviceName;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return L"Monitor " + std::to_wstring(index + 1) + L" (" + gdiName + L")";
 }
 
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
@@ -276,7 +312,9 @@ void DimmerManager::ShiftCursorForIdle() {
     if (GetCursorPos(&pt)) {
         m_isSettingCursorPos = true;
         int dx = (pt.x > 0) ? -1 : 1;
-        SetCursorPos(pt.x + dx, pt.y);
+        POINT newPt = { pt.x + dx, pt.y };
+        SetCursorPos(newPt.x, newPt.y);
+        m_lastMousePos = newPt;
     }
 }
 
@@ -302,50 +340,7 @@ static bool IsFullscreenAppActive() {
     return active;
 }
 
-static bool IsForegroundWindowFullscreen() {
-    HWND hwnd = GetForegroundWindow();
-    if (!hwnd) return false;
 
-    // A minimized window cannot be fullscreen.
-    if (IsIconic(hwnd)) return false;
-
-    // Skip the desktop, taskbar, and IdleDimmer windows
-    wchar_t className[256];
-    if (GetClassNameW(hwnd, className, 256)) {
-        if (wcscmp(className, L"Progman") == 0 || 
-            wcscmp(className, L"WorkerW") == 0 || 
-            wcscmp(className, L"Shell_TrayWnd") == 0 ||
-            wcscmp(className, L"Shell_SecondaryTrayWnd") == 0 ||
-            wcscmp(className, L"IdleDimmerMainClass") == 0 ||
-            wcscmp(className, L"IdleDimmerOverlayClass") == 0) {
-            return false;
-        }
-    }
-
-    RECT rcWindow;
-    if (GetWindowRect(hwnd, &rcWindow)) {
-        HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        MONITORINFO mi = {};
-        mi.cbSize = sizeof(mi);
-        if (GetMonitorInfoW(hMonitor, &mi)) {
-            // Check if window bounds cover the monitor bounds
-            if (rcWindow.left <= mi.rcMonitor.left &&
-                rcWindow.top <= mi.rcMonitor.top &&
-                rcWindow.right >= mi.rcMonitor.right &&
-                rcWindow.bottom >= mi.rcMonitor.bottom) {
-                
-                LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-                // True fullscreen = borderless popup OR captionless fullscreen (not just "not maximized")
-                bool isBorderlessFullscreen = (style & WS_POPUP) && !(style & WS_CAPTION);
-                bool isCaptionlessFullscreen = !(style & WS_MAXIMIZE) && !(style & WS_CAPTION);
-                if (isBorderlessFullscreen || isCaptionlessFullscreen) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
 
 static std::wstring GetProcessNameFromPidNoLog(DWORD pid) {
     wchar_t exe[MAX_PATH] = { 0 };
@@ -533,9 +528,12 @@ void DimmerManager::CheckVideoPlayback() {
 
     if (doFullCheck) {
         m_isFullscreenAppActive = IsFullscreenAppActive();
-        CheckAudioPlaybackAsync();
 
-        // Resolve playing process names -> monitors on the MAIN thread, throttled to 5 seconds.
+        // ── v1.8.9: Read the PREVIOUS cycle's audio results BEFORE spawning
+        // a new background thread. The old code read m_audioPlayingProcesses
+        // right after launching CheckAudioPlaybackAsync(), which meant it was
+        // always reading stale data from the cycle before last (the new thread
+        // hadn't finished yet). Now we read first, then spawn.
         std::vector<HMONITOR> audioMonitors;
         {
             std::lock_guard<std::mutex> lock(m_audioMutex);
@@ -549,19 +547,78 @@ void DimmerManager::CheckVideoPlayback() {
             }
         }
 
-        // Update hasAudioVideo based on the resolved monitor list
+        // Spawn the NEXT async audio check (results will be consumed on the
+        // next doFullCheck tick, which is the correct 5-second cadence).
+        CheckAudioPlaybackAsync();
+
+        // ── v1.8.9: Audio hysteresis — 30-second grace period ──
+        // When audio is actively detected, stamp the monitor. When audio
+        // stops, keep hasAudioVideo true for AUDIO_GRACE_MS to prevent
+        // dimming during silent moments in movies (scene transitions,
+        // loading screens between Netflix episodes, quiet dialogue).
+        DWORD now = GetTickCount();
         for (auto& mon : m_monitors) {
-            bool playing = (std::find(audioMonitors.begin(), audioMonitors.end(), mon.hMonitor) != audioMonitors.end());
-            mon.hasAudioVideo = playing;
+            bool audioNow = (std::find(audioMonitors.begin(), audioMonitors.end(), mon.hMonitor) != audioMonitors.end());
+            if (audioNow) {
+                mon.lastAudioSeenTick = now;
+                mon.hasAudioVideo = true;
+            } else {
+                // Grace period: keep bypass alive for 30s after audio stops
+                DWORD elapsed = now - mon.lastAudioSeenTick;
+                mon.hasAudioVideo = (mon.lastAudioSeenTick != 0 && elapsed < AUDIO_GRACE_MS);
+            }
         }
     }
 
-    // Determine current fullscreen monitor (on every second tick)
+    // Determine current fullscreen monitor (on every second tick).
+    // ── v1.8.9: Also detect maximized browser windows covering the full
+    // monitor when audio is playing from them. Netflix in a maximized
+    // Chrome window has WS_MAXIMIZE|WS_CAPTION which the old borderless/
+    // captionless check rejected. Now any window that geometrically covers
+    // the monitor is treated as fullscreen for dimming bypass purposes.
     HMONITOR hCurrentFullscreenMon = nullptr;
-    if (IsForegroundWindowFullscreen() || m_isFullscreenAppActive) {
+    if (m_isFullscreenAppActive) {
         HWND hFore = GetForegroundWindow();
         if (hFore) {
             hCurrentFullscreenMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
+        }
+    }
+    if (!hCurrentFullscreenMon) {
+        HWND hFore = GetForegroundWindow();
+        if (hFore && !IsIconic(hFore)) {
+            wchar_t className[256];
+            bool isSystemWindow = false;
+            if (GetClassNameW(hFore, className, 256)) {
+                isSystemWindow = (wcscmp(className, L"Progman") == 0 ||
+                                  wcscmp(className, L"WorkerW") == 0 ||
+                                  wcscmp(className, L"Shell_TrayWnd") == 0 ||
+                                  wcscmp(className, L"Shell_SecondaryTrayWnd") == 0 ||
+                                  wcscmp(className, L"IdleDimmerMainClass") == 0 ||
+                                  wcscmp(className, L"IdleDimmerOverlayClass") == 0);
+            }
+            if (!isSystemWindow) {
+                RECT rcWindow;
+                if (GetWindowRect(hFore, &rcWindow)) {
+                    HMONITOR hMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
+                    MONITORINFO mi = {};
+                    mi.cbSize = sizeof(mi);
+                    if (GetMonitorInfoW(hMon, &mi)) {
+                        // Window covers the full monitor (borderless or captionless)
+                        if (rcWindow.left <= mi.rcMonitor.left &&
+                            rcWindow.top <= mi.rcMonitor.top &&
+                            rcWindow.right >= mi.rcMonitor.right &&
+                            rcWindow.bottom >= mi.rcMonitor.bottom) {
+                            
+                            LONG_PTR style = GetWindowLongPtrW(hFore, GWL_STYLE);
+                            bool isBorderless = (style & WS_POPUP) && !(style & WS_CAPTION);
+                            bool isCaptionless = !(style & WS_MAXIMIZE) && !(style & WS_CAPTION);
+                            if (isBorderless || isCaptionless) {
+                                hCurrentFullscreenMon = hMon;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -817,7 +874,8 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                 POINT pt;
                 if (GetCursorPos(&pt)) {
                     POINT lastPt = DimmerManager::Instance().GetLastMousePos();
-                    if (pt.x == lastPt.x && pt.y == lastPt.y) {
+                    // Ignore shifts <= 2 pixels to filter out both program-driven shifts and mouse sensor jitter
+                    if (abs(pt.x - lastPt.x) <= 2 && abs(pt.y - lastPt.y) <= 2) {
                         return DefWindowProcW(hwnd, msg, wp, lp);
                     }
                     DimmerManager::Instance().SetLastMousePos(pt);
