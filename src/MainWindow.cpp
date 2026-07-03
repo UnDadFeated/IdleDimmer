@@ -20,7 +20,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-[[maybe_unused]] static const wchar_t* APP_VERSION = L"v1.8.6";
+[[maybe_unused]] static const wchar_t* APP_VERSION = L"v1.8.7";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -1226,8 +1226,18 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             }
             return 0;
         }
+        case WM_QUERYENDSESSION: {
+            return TRUE;
+        }
+        case WM_ENDSESSION: {
+            if (wp == TRUE) {
+                m_isSessionEnding = true;
+                DestroyWindow(hwnd);
+            }
+            return 0;
+        }
         case WM_CLOSE: {
-            if (m_config.closeToTray) {
+            if (m_config.closeToTray && !m_isSessionEnding) {
                 Show(false);
             } else {
                 DestroyWindow(hwnd);

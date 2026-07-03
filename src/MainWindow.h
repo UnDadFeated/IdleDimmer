@@ -155,6 +155,7 @@ private:
     bool m_d2dReady = false;    // D2D successfully initialized at least once
     bool m_d2dFailed = false;   // D2D permanently failed (SEH crash recovery)
     bool m_trayAdded = false;   // Shell_NotifyIcon succeeded
+    bool m_isSessionEnding = false; // System session is ending or package update requested close
 
     // Blocked apps UI
     static const int CONTENT_WIDTH = 480;

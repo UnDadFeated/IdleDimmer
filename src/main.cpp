@@ -29,7 +29,7 @@ static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
                     ? ep->ExceptionRecord->ExceptionCode : 0;
                 wchar_t buf[256];
                 int len = wsprintfW(buf,
-                    L"IdleDimmer v1.8.1 crash: exception 0x%08X\r\n", code);
+                    L"IdleDimmer v1.8.7 crash: exception 0x%08X\r\n", code);
                 DWORD written;
                 WriteFile(hFile, buf, len * sizeof(wchar_t), &written, NULL);
                 CloseHandle(hFile);
@@ -55,7 +55,7 @@ static void WriteStartupMarker() {
             HANDLE hFile = CreateFileW(path, GENERIC_WRITE, 0, NULL,
                                        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
             if (hFile != INVALID_HANDLE_VALUE) {
-                const wchar_t msg[] = L"IdleDimmer v1.8.1 WinMain reached\r\n";
+                const wchar_t msg[] = L"IdleDimmer v1.8.7 WinMain reached\r\n";
                 DWORD written;
                 WriteFile(hFile, msg, sizeof(msg) - sizeof(wchar_t), &written, NULL);
                 CloseHandle(hFile);

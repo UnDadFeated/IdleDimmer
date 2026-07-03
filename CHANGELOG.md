@@ -2,6 +2,13 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.8.7] - 2026-07-03
+
+### Bug Fixes
+* **Warm Amber Tint Toggle**: Fixed an issue where toggling the Warm Amber Tint setting did not instantly apply the color change to active overlays until a fade animation was triggered. Toggling now redraws the GDI surface and forces a layered window recomposition immediately.
+* **MS Store/MSIX Update Exit**: Added active session ending detection (`WM_QUERYENDSESSION` and `WM_ENDSESSION`). This lets the app shut down cleanly when an update is requested by Windows Deployment or the Microsoft Store, rather than minimizing to tray and blocking the update.
+* **Idle Dimming Reliability**: Fixed potential UI thread locks by throttling process-to-monitor matching in audio checks to every 5 seconds. Standardized click-through styles and frame changes when overlay windows are recreated during DPI/display changes.
+
 ## [1.8.6] - 2026-07-02
 
 ### Updates

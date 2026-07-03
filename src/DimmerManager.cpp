@@ -112,8 +112,13 @@ void DimmerManager::CreateOverlayForMonitor(ActiveMonitorInfo& info) {
     int w = info.rect.right - info.rect.left;
     int h = info.rect.bottom - info.rect.top;
 
+    DWORD exStyle = WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST;
+    if (!m_isIdleState) {
+        exStyle |= WS_EX_TRANSPARENT;
+    }
+
     info.hwndOverlay = CreateWindowExW(
-        WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+        exStyle,
         L"IdleDimmerOverlayClass",
         L"IdleDimmerOverlay",
         WS_POPUP,
@@ -174,7 +179,9 @@ void DimmerManager::SetWarmTint(bool warm) {
     m_warmTint = warm;
     for (auto& mon : m_monitors) {
         if (mon.hwndOverlay) {
-            InvalidateRect(mon.hwndOverlay, nullptr, TRUE);
+            RedrawWindow(mon.hwndOverlay, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
+            BYTE alpha = static_cast<BYTE>((mon.currentDimValue / 100.0) * 255.0);
+            SetLayeredWindowAttributes(mon.hwndOverlay, 0, alpha, LWA_ALPHA);
         }
     }
 }
@@ -206,6 +213,8 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
                     exStyle |= WS_EX_TRANSPARENT;
                 }
                 SetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE, exStyle);
+                SetWindowPos(mon.hwndOverlay, nullptr, 0, 0, 0, 0,
+                             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
                 TriggerFade(mon.hwndOverlay);
             }
         }
@@ -515,6 +524,26 @@ void DimmerManager::CheckVideoPlayback() {
     if (doFullCheck) {
         m_isFullscreenAppActive = IsFullscreenAppActive();
         CheckAudioPlaybackAsync();
+
+        // Resolve playing process names -> monitors on the MAIN thread, throttled to 5 seconds.
+        std::vector<HMONITOR> audioMonitors;
+        {
+            std::lock_guard<std::mutex> lock(m_audioMutex);
+            for (const auto& procName : m_audioPlayingProcesses) {
+                std::vector<HMONITOR> mons = GetMonitorsForProcessName(procName);
+                for (auto hMon : mons) {
+                    if (std::find(audioMonitors.begin(), audioMonitors.end(), hMon) == audioMonitors.end()) {
+                        audioMonitors.push_back(hMon);
+                    }
+                }
+            }
+        }
+
+        // Update hasAudioVideo based on the resolved monitor list
+        for (auto& mon : m_monitors) {
+            bool playing = (std::find(audioMonitors.begin(), audioMonitors.end(), mon.hMonitor) != audioMonitors.end());
+            mon.hasAudioVideo = playing;
+        }
     }
 
     // Determine current fullscreen monitor (on every second tick)
@@ -524,29 +553,6 @@ void DimmerManager::CheckVideoPlayback() {
         if (hFore) {
             hCurrentFullscreenMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
         }
-    }
-
-    // v1.7.8: Resolve playing process names → monitors on the MAIN thread.
-    // Previously GetMonitorsForProcessName (which calls EnumWindows) ran on
-    // the detached audio thread. EnumWindows from a thread without a message
-    // pump can deadlock or crash if any enumerated window has a hung handler.
-    std::vector<HMONITOR> audioMonitors;
-    {
-        std::lock_guard<std::mutex> lock(m_audioMutex);
-        for (const auto& procName : m_audioPlayingProcesses) {
-            std::vector<HMONITOR> mons = GetMonitorsForProcessName(procName);
-            for (auto hMon : mons) {
-                if (std::find(audioMonitors.begin(), audioMonitors.end(), hMon) == audioMonitors.end()) {
-                    audioMonitors.push_back(hMon);
-                }
-            }
-        }
-    }
-
-    // Update hasAudioVideo based on the resolved monitor list
-    for (auto& mon : m_monitors) {
-        bool playing = (std::find(audioMonitors.begin(), audioMonitors.end(), mon.hMonitor) != audioMonitors.end());
-        mon.hasAudioVideo = playing;
     }
 
     // Update hasFullscreenVideo on every tick and combine with hasAudioVideo.
