@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.8.8] - 2026-07-03
+
+### Bug Fixes
+* **Inactivity Timeout Priority**: Fixed a priority conflict where the screen would not dim after the inactivity timeout if a video or audio bypass app (such as web browsers or media players) was active in the background. Enforced Idle > video priority so overlay windows are shown and dimmed correctly when idle.
+
 ## [1.8.7] - 2026-07-03
 
 ### Bug Fixes

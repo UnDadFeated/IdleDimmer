@@ -215,6 +215,16 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
                 SetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE, exStyle);
                 SetWindowPos(mon.hwndOverlay, nullptr, 0, 0, 0, 0,
                              SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+
+                if (idle) {
+                    ShowWindow(mon.hwndOverlay, SW_SHOWNOACTIVATE);
+                } else {
+                    bool hasVideo = mon.hasAudioVideo || mon.hasFullscreenVideo;
+                    if (hasVideo) {
+                        ShowWindow(mon.hwndOverlay, SW_HIDE);
+                    }
+                }
+
                 TriggerFade(mon.hwndOverlay);
             }
         }
@@ -566,10 +576,11 @@ void DimmerManager::CheckVideoPlayback() {
         mon.hasFullscreenVideo = (mon.hMonitor == hCurrentFullscreenMon);
 
         bool newHasVideo = mon.hasAudioVideo || mon.hasFullscreenVideo;
-        if (newHasVideo != mon.hasVideo) {
-            mon.hasVideo = newHasVideo;
+        bool effectiveHasVideo = newHasVideo && !m_isIdleState;
+        if (effectiveHasVideo != mon.hasVideo) {
+            mon.hasVideo = effectiveHasVideo;
             if (mon.hwndOverlay) {
-                if (newHasVideo) {
+                if (effectiveHasVideo) {
                     // Entering bypass: hide overlay completely.
                     ShowWindow(mon.hwndOverlay, SW_HIDE);
                 } else {
