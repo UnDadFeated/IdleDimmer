@@ -240,32 +240,6 @@ void MainWindow::OnPaint() {
         m_blockedArrowHovered ? m_pBrushAccent : m_pBrushTextMuted
     );
 
-    // ── LIGHT MODE TOGGLE (top-right corner) ──
-    {
-        D2D1_ROUNDED_RECT switchTrack = D2D1::RoundedRect(
-            D2D1::RectF((float)m_lightModeRect.left, (float)m_lightModeRect.top, 
-                        (float)m_lightModeRect.right, (float)m_lightModeRect.bottom),
-            9.0f, 9.0f
-        );
-
-        bool lightModeChecked = m_config.lightMode;
-        if (lightModeChecked) {
-            m_pRenderTarget->FillRoundedRectangle(switchTrack, m_pBrushAccent);
-            m_pRenderTarget->DrawRoundedRectangle(switchTrack, m_lightModeHovered ? m_pBrushAccentHover : m_pBrushAccent, 1.2f);
-        } else {
-            m_pRenderTarget->FillRoundedRectangle(switchTrack, m_pBrushTrack);
-            m_pRenderTarget->DrawRoundedRectangle(switchTrack, m_lightModeHovered ? m_pBrushAccentHover : m_pBrushCardBorder, 1.2f);
-        }
-
-        // Draw circular sliding toggle knob
-        float knobX = lightModeChecked ? ((float)m_lightModeRect.left + 25.0f) : ((float)m_lightModeRect.left + 9.0f);
-        float knobY = (float)m_lightModeRect.top + 9.0f;
-        m_pRenderTarget->FillEllipse(
-            D2D1::Ellipse(D2D1::Point2F(knobX, knobY), 6.0f, 6.0f),
-            lightModeChecked ? m_pBrushText : m_pBrushTextMuted
-        );
-    }
-
     if (m_blockedExpanded) {
         D2D1_ROUNDED_RECT panelRect = D2D1::RoundedRect(
             D2D1::RectF(m_blockedPanelRect.left, m_blockedPanelRect.top,

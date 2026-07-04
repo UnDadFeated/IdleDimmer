@@ -129,11 +129,6 @@ void MainWindow::HandleMouseMove(int x, int y) {
     m_blockedArrowHovered = (x >= m_blockedArrowRect.left && x <= m_blockedArrowRect.right && y >= m_blockedArrowRect.top && y <= m_blockedArrowRect.bottom);
     if (m_blockedArrowHovered != wasArrowHover) needsRepaint = true;
 
-    // Light Mode toggle hover
-    bool wasLightModeHover = m_lightModeHovered;
-    m_lightModeHovered = (x >= m_lightModeRect.left && x <= m_lightModeRect.right && y >= m_lightModeRect.top && y <= m_lightModeRect.bottom);
-    if (m_lightModeHovered != wasLightModeHover) needsRepaint = true;
-
     bool wasAddHover = m_blockedAddHovered;
     m_blockedAddHovered = m_blockedExpanded && (x >= m_blockedAddRect.left && x <= m_blockedAddRect.right && y >= m_blockedAddRect.top && y <= m_blockedAddRect.bottom);
     if (m_blockedAddHovered != wasAddHover) needsRepaint = true;
@@ -208,17 +203,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
         if (!m_blockedExpanded) m_blockedScrollOffset = 0;
         UpdateLayout();
         Repaint();
-        return;
-    }
-
-    // Light Mode toggle interaction
-    if (x >= m_lightModeRect.left && x <= m_lightModeRect.right && y >= m_lightModeRect.top && y <= m_lightModeRect.bottom) {
-        m_config.lightMode = !m_config.lightMode;
-        BOOL useDark = !m_config.lightMode;
-        DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
-        SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-        SaveSettings();
-        InvalidateRect(m_hwnd, nullptr, FALSE);
         return;
     }
     if (m_blockedExpanded && x >= m_blockedAddRect.left && x <= m_blockedAddRect.right && y >= m_blockedAddRect.top && y <= m_blockedAddRect.bottom) {

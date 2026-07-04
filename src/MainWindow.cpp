@@ -530,6 +530,10 @@ void MainWindow::UpdateLayout() {
     AddCheckbox(L"CloseToTray", m_config.closeToTray, &m_config.closeToTray, L"Close to Tray", 0, yOffset);
     AddCheckbox(L"StartWithWindows", m_config.startWithWindows, &m_config.startWithWindows, L"Start with Windows", 1, yOffset);
     yOffset += 22;
+    yOffset += 8; // gap between sections
+    yOffset += 16; // space for section header label
+    AddCheckbox(L"LightMode", m_config.lightMode, &m_config.lightMode, L"Theme: Light Mode", 0, yOffset);
+    yOffset += 22;
 
     // ── SCHEDULE section (v1.6.5 Todo 8) ──
     yOffset += 8;
@@ -566,12 +570,6 @@ void MainWindow::UpdateLayout() {
 
     // ── BLOCKED APPS ──
     m_blockedArrowRect = { CONTENT_WIDTH - 120, 5, CONTENT_WIDTH - 80, 25 };
-
-    // ── LIGHT MODE TOGGLE (top-right corner) ──
-    m_lightModeRect.left = CONTENT_WIDTH - 80;
-    m_lightModeRect.top = 5;
-    m_lightModeRect.right = CONTENT_WIDTH - 36;
-    m_lightModeRect.bottom = 23;
 
     if (m_config.idleDimEnabled) {
         // Inactivity Minutes Slider Card

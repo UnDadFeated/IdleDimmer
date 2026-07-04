@@ -125,10 +125,6 @@ private:
     // Drag-drop tracking
     bool m_isDraggingAny = false;
 
-    // Light Mode toggle (top-right corner)
-    RECT m_lightModeRect = {};
-    bool m_lightModeHovered = false;
-
     //     // Undo features
     RECT m_undoRect = {};
     std::vector<AppConfig> m_undoStack;
