@@ -27,7 +27,6 @@ using Microsoft::WRL::ComPtr;
 static const wchar_t* APP_NAME = L"IdleDimmer";
 static const wchar_t* INSTALL_DIR = L"IdleDimmer";
 static const wchar_t* REG_PATH = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\IdleDimmer";
-static const wchar_t* VER = L"1.9.8";
 
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
@@ -269,6 +268,11 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 FreeLibrary(hDwm);
             }
 
+            // Get setup exe's version dynamically from PE resources
+            wchar_t setupPath[MAX_PATH];
+            GetModuleFileNameW(NULL, setupPath, MAX_PATH);
+            std::wstring setupVer = GetExeVersion(setupPath);
+
             GetInstallPath(g_installPath, MAX_PATH);
             wchar_t exePath[MAX_PATH];
             wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
@@ -297,7 +301,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                 appNameX, 62, cw - appNameX - m, 18, hwnd, (HMENU)1003, hInst, NULL);
 
             // Version static
-            HWND hVersion = CreateWindowW(L"STATIC", std::format(L"Version {}", VER).c_str(),
+            HWND hVersion = CreateWindowW(L"STATIC", std::format(L"Version {}", setupVer).c_str(),
                 WS_CHILD | WS_VISIBLE | SS_LEFT,
                 appNameX, 82, cw - appNameX - m, 18, hwnd, (HMENU)1004, hInst, NULL);
 
@@ -314,7 +318,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             else if (installed)
                 wcscpy_s(status, ARRAYSIZE(status), std::format(L"Installed: v{}\r\nSetup will overwrite.", installedVer).c_str());
             else
-                wcscpy_s(status, ARRAYSIZE(status), std::format(L"Ready to install {}", VER).c_str());
+                wcscpy_s(status, ARRAYSIZE(status), std::format(L"Ready to install v{}", setupVer).c_str());
             SetWindowTextW(g_hStatus, status);
 
             // Launch checkbox

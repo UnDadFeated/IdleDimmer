@@ -20,8 +20,6 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-[[maybe_unused]] static const wchar_t* APP_VERSION = L"v1.9.8";
-
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
     int majB = 0, minB = 0, patB = 0;
