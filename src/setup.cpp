@@ -32,14 +32,11 @@ static const wchar_t* VER = L"1.9.7";
 enum State { READY, INSTALLING, COMPLETE };
 static State g_state = READY;
 static wchar_t g_installPath[MAX_PATH];
-static HWND g_hStatus, g_hButton, g_hLaunchCheck, g_hLog;
-static HFONT g_hFontTitle, g_hFontBody, g_hFontLog;
-static HBRUSH g_hEditBgBrush;
+static HWND g_hStatus, g_hButton, g_hLaunchCheck;
+static HFONT g_hFontTitle, g_hFontBody;
 
 static void Log(const wchar_t* msg) {
-    int len = GetWindowTextLengthW(g_hLog);
-    SendMessageW(g_hLog, EM_SETSEL, len, len);
-    SendMessageW(g_hLog, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(msg));
+    (void)msg;
 }
 
 static void GetInstallPath(wchar_t* buf, DWORD size) {
@@ -254,11 +251,6 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     switch (msg) {
         case WM_CREATE: {
             HINSTANCE hInst = ((LPCREATESTRUCTW)lParam)->hInstance;
-            RECT rc;
-            GetClientRect(hwnd, &rc);
-            int cw = rc.right;
-            int ch = rc.bottom;
-            int m = 20;
 
             // Apply dark mode for title bar dynamically to allow running on environments without dwmapi.dll (e.g. WinPE)
             HMODULE hDwm = LoadLibraryW(L"dwmapi.dll");
@@ -281,14 +273,34 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             std::wstring installedVer;
             if (installed) installedVer = GetExeVersion(exePath);
 
-            int leftW = 170;
-            int logX = leftW + m * 2;
-            int logW = cw - logX - m;
+            // Icon static
+            CreateWindowW(L"STATIC", L"",
+                WS_CHILD | WS_VISIBLE | SS_ICON,
+                24, 32, 64, 64, hwnd, (HMENU)1001, hInst, NULL);
+            SendMessageW(GetDlgItem(hwnd, 1001), STM_SETIMAGE, IMAGE_ICON, 
+                (LPARAM)LoadIconW(hInst, MAKEINTRESOURCEW(IDI_APP)));
 
+            // App name static
+            HWND hAppName = CreateWindowW(L"STATIC", APP_NAME,
+                WS_CHILD | WS_VISIBLE | SS_LEFT,
+                104, 36, 280, 24, hwnd, (HMENU)1002, hInst, NULL);
+
+            // Publisher static
+            HWND hPublisher = CreateWindowW(L"STATIC", L"UnDadFeated",
+                WS_CHILD | WS_VISIBLE | SS_LEFT,
+                104, 62, 280, 18, hwnd, (HMENU)1003, hInst, NULL);
+
+            // Version static
+            HWND hVersion = CreateWindowW(L"STATIC", std::format(L"Version {}", VER).c_str(),
+                WS_CHILD | WS_VISIBLE | SS_LEFT,
+                104, 82, 280, 18, hwnd, (HMENU)1004, hInst, NULL);
+
+            // Status static
             g_hStatus = CreateWindowW(L"STATIC", L"",
-                WS_CHILD | WS_VISIBLE | SS_CENTER, m, 44, leftW, 50, hwnd, NULL, hInst, NULL);
+                WS_CHILD | WS_VISIBLE | SS_LEFT,
+                24, 120, 372, 36, hwnd, (HMENU)1005, hInst, NULL);
 
-            wchar_t status[196];
+            wchar_t status[256];
             if (running && installed)
                 wcscpy_s(status, ARRAYSIZE(status), std::format(L"Running: v{} | Installed: v{}\r\nSetup will terminate and overwrite.", installedVer, installedVer).c_str());
             else if (running)
@@ -296,21 +308,19 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             else if (installed)
                 wcscpy_s(status, ARRAYSIZE(status), std::format(L"Installed: v{}\r\nSetup will overwrite.", installedVer).c_str());
             else
-                wcscpy_s(status, ARRAYSIZE(status), std::format(L"Ready to install v{}", VER).c_str());
+                wcscpy_s(status, ARRAYSIZE(status), std::format(L"Ready to install {}", VER).c_str());
             SetWindowTextW(g_hStatus, status);
 
+            // Launch checkbox
             g_hLaunchCheck = CreateWindowW(L"BUTTON", L"Launch after install",
-                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX | BS_LEFT, m, 106, leftW, 18, hwnd, NULL, hInst, NULL);
+                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX | BS_LEFT,
+                24, 166, 372, 18, hwnd, (HMENU)1006, hInst, NULL);
             SendMessageW(g_hLaunchCheck, BM_SETCHECK, BST_CHECKED, 0);
 
+            // Install/Close button
             g_hButton = CreateWindowW(L"BUTTON", L"Install",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON,
-                m + (leftW - 100) / 2, ch - 48, 100, 30, hwnd, (HMENU)IDOK, hInst, NULL);
-
-            // Log panel
-            g_hLog = CreateWindowW(L"EDIT", NULL,
-                WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_LEFT,
-                logX, 14, logW, ch - 28, hwnd, NULL, hInst, NULL);
+                276, 200, 120, 30, hwnd, (HMENU)IDOK, hInst, NULL);
 
             g_hFontTitle = CreateFontW(20, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -318,28 +328,27 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             g_hFontBody = CreateFontW(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI Variable Text");
-            g_hFontLog = CreateFontW(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                CLEARTYPE_QUALITY, FIXED_PITCH | FF_MODERN, L"Consolas");
 
+            SendMessageW(hAppName, WM_SETFONT, (WPARAM)g_hFontTitle, TRUE);
+            SendMessageW(hPublisher, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
+            SendMessageW(hVersion, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
             SendMessageW(g_hStatus, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
             SendMessageW(g_hLaunchCheck, WM_SETFONT, (WPARAM)g_hFontBody, TRUE);
-            SendMessageW(g_hLog, WM_SETFONT, (WPARAM)g_hFontLog, TRUE);
-
-            Log(std::format(L">>> IdleDimmer Setup v{}\r\n", VER).c_str());
-            Log(std::format(L">>> {}\r\n\r\n", g_installPath).c_str());
-            if (installed) Log(std::format(L"  Installed: v{}\r\n", installedVer).c_str());
-            if (running)  Log(L"  App is running\r\n");
-
-            g_hEditBgBrush = CreateSolidBrush(RGB(30, 30, 30));
 
             break;
         }
-        case WM_CTLCOLOREDIT: {
+        case WM_CTLCOLORSTATIC: {
             HDC hdc = (HDC)wParam;
-            SetTextColor(hdc, RGB(200, 200, 200));
-            SetBkColor(hdc, RGB(30, 30, 30));
-            return (LRESULT)g_hEditBgBrush;
+            HWND hwndCtl = (HWND)lParam;
+            // Gray color for publisher and version statics
+            if (hwndCtl == GetDlgItem(hwnd, 1003) || hwndCtl == GetDlgItem(hwnd, 1004)) {
+                SetTextColor(hdc, RGB(120, 120, 120));
+                SetBkColor(hdc, GetSysColor(COLOR_WINDOW));
+                return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+            }
+            SetTextColor(hdc, GetSysColor(COLOR_WINDOWTEXT));
+            SetBkColor(hdc, GetSysColor(COLOR_WINDOW));
+            return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
         }
         case WM_COMMAND:
             if (LOWORD(wParam) == IDOK) {
@@ -349,13 +358,8 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                     EnableWindow(g_hButton, FALSE);
                     SetWindowTextW(g_hStatus, L"Installing...");
 
-                    Log(L"\r\n=== Installing ===\r\n\r\n");
                     KillRunning();
-                    Log(L"  Creating directory...\r\n");
-                    if (!CreateDirectoryW(g_installPath, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
-                        LogError(ErrorCode::E504, HRESULT_FROM_WIN32(GetLastError()));
-                        Log(std::format(L"  [FAILED] CreateDirectoryW error {}\r\n", GetLastError()).c_str());
-                    }
+
                     wchar_t exePath[MAX_PATH];
                     wcscpy_s(exePath, ARRAYSIZE(exePath), std::format(L"{}\\{}.exe", g_installPath, APP_NAME).c_str());
 
@@ -365,22 +369,16 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
                         GetModuleFileNameW(NULL, setupPath, MAX_PATH);
                         wchar_t uninstallExePath[MAX_PATH];
                         swprintf_s(uninstallExePath, ARRAYSIZE(uninstallExePath), L"%s\\uninstall.exe", g_installPath);
-                        Log(L"  Creating uninstaller...\r\n");
                         if (CopyFileW(setupPath, uninstallExePath, FALSE)) {
-                            Log(L"  Uninstaller created\r\n");
                         } else {
-                            Log(std::format(L"  [WARNING] Failed to copy uninstaller, error {}\r\n", GetLastError()).c_str());
                         }
                         CreateShortcut(exePath);
                         RegisterUninstall();
-                        Log(L"\r\n=== Installation complete! ===\r\n");
                         SetWindowTextW(g_hStatus, L"Installation complete!");
-                        ShowWindow(g_hLaunchCheck, SW_SHOW);
                         SetWindowTextW(g_hButton, L"Close");
                         EnableWindow(g_hButton, TRUE);
                         g_state = COMPLETE;
                     } else {
-                        Log(L"\r\n=== Installation FAILED ===\r\n");
                         SetWindowTextW(g_hStatus, L"Extraction failed.\r\nTry running as Administrator.");
                         SetWindowTextW(g_hButton, L"Close");
                         EnableWindow(g_hButton, TRUE);
@@ -403,8 +401,6 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         case WM_DESTROY:
             DeleteObject(g_hFontTitle);
             DeleteObject(g_hFontBody);
-            DeleteObject(g_hFontLog);
-            DeleteObject(g_hEditBgBrush);
             PostQuitMessage(0);
             return 0;
     }
@@ -450,7 +446,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, int) {
 
     HWND hwnd = CreateWindowExW(0, L"IdleDimmerSetupClass", L"IdleDimmer Setup",
         WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 540, 240,
+        CW_USEDEFAULT, CW_USEDEFAULT, 440, 250,
         NULL, NULL, hInst, NULL);
     if (!hwnd) { CloseHandle(hMutex); return 1; }
 
