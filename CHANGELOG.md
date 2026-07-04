@@ -4,6 +4,9 @@ All notable changes to the IdleDimmer project are documented here.
 
 ## [2.0.7] - 2026-07-04
 
+### Updates
+* **Footer Text Size Reduced**: Made the footer text one size smaller by reducing the `m_pTextFormatDetail` font size from 10.5pt to 10.0pt.
+
 ### Bug Fixes
 * **Status Countdown Repaint Fixed**: Fixed the status countdown not updating visually by adding `InvalidateRect(hwnd, nullptr, FALSE);` to the `WM_TIMER 202` handler, forcing a D2D repaint once per second to display the countdown number changes.
 
