@@ -14,7 +14,6 @@ struct AppConfig {
     bool closeToTray = true;
     bool showInTaskbar = false;
     bool startWithWindows = false;
-    bool warmTint = false;
     
     // Idle Energy & OLED Saver
     bool idleDimEnabled = true;

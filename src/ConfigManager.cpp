@@ -87,7 +87,6 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     if (findValue(L"CloseToTray", val)) config.closeToTray = ParseBool(val);
     if (findValue(L"ShowInTaskbar", val)) config.showInTaskbar = ParseBool(val);
     if (findValue(L"StartWithWindows", val)) config.startWithWindows = ParseBool(val);
-    if (findValue(L"WarmTint", val)) config.warmTint = ParseBool(val);
     if (findValue(L"IdleDimEnabled", val)) config.idleDimEnabled = ParseBool(val);
     if (findValue(L"IdleMinutes", val)) config.idleMinutes = ParseInt(val);
     if (findValue(L"IdleDimLevel", val)) config.idleDimLevel = ParseInt(val);
@@ -186,7 +185,6 @@ void ConfigManager::SaveConfig(const std::wstring& filePath, const AppConfig& co
         file << L"  \"CloseToTray\": " << (config.closeToTray ? L"true" : L"false") << L",\n";
         file << L"  \"ShowInTaskbar\": " << (config.showInTaskbar ? L"true" : L"false") << L",\n";
         file << L"  \"StartWithWindows\": " << (config.startWithWindows ? L"true" : L"false") << L",\n";
-        file << L"  \"WarmTint\": " << (config.warmTint ? L"true" : L"false") << L",\n";
         file << L"  \"IdleDimEnabled\": " << (config.idleDimEnabled ? L"true" : L"false") << L",\n";
         file << L"  \"IdleMinutes\": " << config.idleMinutes << L",\n";
         file << L"  \"IdleDimLevel\": " << config.idleDimLevel << L",\n";

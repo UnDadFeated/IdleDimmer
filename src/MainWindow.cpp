@@ -20,7 +20,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "comdlg32.lib")
 
-[[maybe_unused]] static const wchar_t* APP_VERSION = L"v1.9.5";
+[[maybe_unused]] static const wchar_t* APP_VERSION = L"v1.9.6";
 
 static int CompareVersion(const wchar_t* verA, const wchar_t* verB) {
     int majA = 0, minA = 0, patA = 0;
@@ -143,15 +143,10 @@ bool MainWindow::CreateImpl(HINSTANCE hInst, int nCmdShow) {
     m_hInst = hInst;
     LoadSettings();
 
-    // ── v1.6.5: OLED preset is the default for first launch ──
+    // ── Default config for first launch ──
     // Apply only on first launch — existing user configs are preserved.
-    // IMPORTANT: We set config fields directly here instead of calling
-    // ApplyPreset(0), because DimmerManager is not initialized yet at this
-    // point — ApplyPreset calls SetDimmingEnabled/SetWarmTint/SyncMonitors
-    // which all require a running DimmerManager.
     if (GetFileAttributesW(ConfigManager::GetConfigPath().c_str()) == INVALID_FILE_ATTRIBUTES) {
         m_config.dimmingEnabled = false;  // AGENTS.md: never auto-dim on launch
-        m_config.warmTint       = false;
         m_config.masterValue    = 90;
         m_config.masterEnabled  = true;
         for (auto& mon : m_config.monitors) {
@@ -504,28 +499,6 @@ void MainWindow::UpdateLayout() {
         yOffset = slider.rect.bottom + 10;
     }
 
-    // ── v1.6.5 (Todo 5): Preset Buttons Row ──
-    // 4 compact monochrome buttons: [OLED] [Gaming] [Reading] [Night]
-    yOffset += 6;
-    yOffset += 16; // space for section header label
-    {
-        int btnW = (CONTENT_WIDTH - 40 - 35 - 18) / 4;  // 4 buttons, 6px gaps
-        int btnH = 28;
-        int gap  = 6;
-        const wchar_t* names[4] = { L"OLED", L"Gaming", L"Reading", L"Night" };
-        for (int i = 0; i < 4; ++i) {
-            UIPresetButton btn;
-            btn.id = i;
-            btn.label = names[i];
-            btn.rect.left   = 20 + i * (btnW + gap);
-            btn.rect.top    = yOffset;
-            btn.rect.right  = btn.rect.left + btnW;
-            btn.rect.bottom = btn.rect.top + btnH;
-            m_presets.push_back(btn);
-        }
-        yOffset = m_presets.back().rect.bottom + 10;
-    }
-
     // Space before settings
     yOffset += 5;
 
@@ -546,7 +519,7 @@ void MainWindow::UpdateLayout() {
 
     // ── DIMMING section ──
     yOffset += 16; // space for section header label
-    AddCheckbox(L"DimmingEnabled", m_config.dimmingEnabled, &m_config.dimmingEnabled, L"Active Dimming", 0, yOffset);
+    AddCheckbox(L"DimmingEnabled", m_config.dimmingEnabled, &m_config.dimmingEnabled, L"Manual Dimming", 0, yOffset);
     AddCheckbox(L"IdleDimEnabled", m_config.idleDimEnabled, &m_config.idleDimEnabled, L"Dim When Away", 1, yOffset);
     yOffset += 22;
     AddCheckbox(L"IdleTurnOff", m_config.idleTurnOff, &m_config.idleTurnOff, L"Turn Off When Away", 0, yOffset);
@@ -555,8 +528,7 @@ void MainWindow::UpdateLayout() {
     // ── DISPLAY section ──
     yOffset += 8; // gap between sections
     yOffset += 16; // space for section header label
-    AddCheckbox(L"WarmTint", m_config.warmTint, &m_config.warmTint, L"Warm Amber Tint", 0, yOffset);
-    AddCheckbox(L"LightMode", m_config.lightMode, &m_config.lightMode, L"Light Mode", 1, yOffset);
+    AddCheckbox(L"LightMode", m_config.lightMode, &m_config.lightMode, L"Light Mode", 0, yOffset);
     yOffset += 22;
 
     // ── APPLICATION section ──
@@ -1128,7 +1100,6 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
             try {
                 DimmerManager::Instance().RefreshMonitors();
                 SyncMonitorsWithConfig();
-                DimmerManager::Instance().SetWarmTint(m_config.warmTint);
                 DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
             } catch (...) {
                 LogError(ErrorCode::E108);
@@ -1261,73 +1232,10 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 }
 
 
-// v1.6.5 (Todo 5): Preset Profile application
-// ════════════════════════════════════════════════════════════════════════════
-//
-// Four curated presets. Each one mutates the live config in place and then
-// calls SyncMonitorsWithConfig() so overlay dim values track the new master,
-// plus SetWarmTint / SetDimmingEnabled on DimmerManager for immediate visual
-// feedback. The change is undoable (caller has already pushed the undo state).
-//
-//   OLED    — dimming on,  warm tint off, master 90 (true-black OLED dimming)
-//   Gaming  — dimming off, warm tint off, master 0  (vibrant, undimmed)
-//   Reading — dimming on,  warm tint on,  master 30 (soothing low dim + amber)
-//   Night   — dimming on,  warm tint on,  master 80 (heavy dim + amber)
+// Removed presets - no presets
 void MainWindow::ApplyPreset(int id) {
-    switch (id) {
-        case 0: // OLED
-            m_config.dimmingEnabled = true;
-            m_config.warmTint       = false;
-            m_config.masterValue    = 90;
-            break;
-        case 1: // Gaming
-            m_config.dimmingEnabled = false;
-            m_config.warmTint       = false;
-            m_config.masterValue    = 0;
-            break;
-        case 2: // Reading
-            m_config.dimmingEnabled = true;
-            m_config.warmTint       = true;
-            m_config.masterValue    = 30;
-            break;
-        case 3: // Night
-            m_config.dimmingEnabled = true;
-            m_config.warmTint       = true;
-            m_config.masterValue    = 80;
-            break;
-        default:
-            return;
-    }
-
-    // Propagate master value to every monitor.
-    for (auto& mon : m_config.monitors) {
-        mon.value   = m_config.masterValue;
-        mon.enabled = true;
-    }
-
-    // Refresh live DimmerManager state.
-    DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
-    DimmerManager::Instance().SetWarmTint(m_config.warmTint);
-    SyncMonitorsWithConfig();
-
-    // Reflect new checkbox states in the live checkbox vector so the next
-    // repaint doesn't show stale toggle positions.
-    for (auto& cb : m_checkboxes) {
-        if (cb.settingName == L"DimmingEnabled") cb.checked = m_config.dimmingEnabled;
-        else if (cb.settingName == L"WarmTint")  cb.checked = m_config.warmTint;
-        else if (cb.settingName == L"MasterEnabled") cb.checked = true;
-        else if (!cb.monitorId.empty()) cb.checked = true;
-    }
-
-    UpdateLayout();
-    InvalidateRect(m_hwnd, nullptr, FALSE);
-
-    // v1.6.5 (Todo 4): OSD feedback for the preset application.
-    const wchar_t* presetNames[4] = { L"OLED", L"Gaming", L"Reading", L"Night" };
-    if (id >= 0 && id < 4) {
-        DimmerManager::Instance().ShowOSD(std::format(L"Preset: {}  |  {}%",
-                         presetNames[id], 100 - m_config.masterValue));
-    }
+    (void)id;
+    // No presets available
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1371,12 +1279,11 @@ void MainWindow::ShowImportProfileDialog() {
     if (GetOpenFileNameW(&ofn)) {
         // Preserve monitor IDs that are currently attached — overwrite only
         // the values/enabled flags from the imported file for known monitors,
-        // and import everything else (closeToTray, warmTint, etc.) wholesale.
+        // and import everything else (closeToTray, etc.) wholesale.
         AppConfig imported = ConfigManager::LoadConfig(szFile);
         m_config = imported;
 
         DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
-        DimmerManager::Instance().SetWarmTint(m_config.warmTint);
         DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
         DimmerManager::Instance().SetScheduleRange(
             m_config.scheduleStartMins, m_config.scheduleEndMins, m_config.scheduleDimLevel);

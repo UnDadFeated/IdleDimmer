@@ -153,7 +153,7 @@ void DimmerManager::Initialize(HINSTANCE hInst) {
         wc.lpfnWndProc = OverlayWndProc;
         wc.hInstance = hInst;
         wc.hCursor = nullptr;
-        wc.hbrBackground = nullptr; // Let WM_PAINT handle background to support custom warm tints
+        wc.hbrBackground = nullptr; // Let WM_PAINT handle background
         wc.lpszClassName = L"IdleDimmerOverlayClass";
         if (!RegisterClassExW(&wc)) {
             LogError(ErrorCode::E402, HRESULT_FROM_WIN32(GetLastError()));
@@ -250,17 +250,6 @@ void DimmerManager::SetMonitorEnabled(std::wstring_view id, bool enabled) {
 
 void DimmerManager::SetShowBoundaries(bool show) {
     (void)show;
-}
-
-void DimmerManager::SetWarmTint(bool warm) {
-    m_warmTint = warm;
-    for (auto& mon : m_monitors) {
-        if (mon.hwndOverlay) {
-            RedrawWindow(mon.hwndOverlay, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
-            BYTE alpha = static_cast<BYTE>((mon.currentDimValue / 100.0) * 255.0);
-            SetLayeredWindowAttributes(mon.hwndOverlay, 0, alpha, LWA_ALPHA);
-        }
-    }
 }
 
 void DimmerManager::SetFocusMode(bool focus) {
@@ -863,11 +852,7 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                 RECT rc;
                 GetClientRect(hwnd, &rc);
                 HBRUSH bgBrush;
-                if (DimmerManager::Instance().GetWarmTint()) {
-                    bgBrush = CreateSolidBrush(RGB(255, 130, 45)); // curated soothing warm amber
-                } else {
-                    bgBrush = CreateSolidBrush(RGB(0, 0, 0)); // standard black
-                }
+                bgBrush = CreateSolidBrush(RGB(0, 0, 0)); // standard black
                 FillRect(hdc, &rc, bgBrush);
                 DeleteObject(bgBrush);
             }

@@ -38,14 +38,12 @@ public:
     void SetMonitorDim(std::wstring_view id, int value);
     void SetMonitorEnabled(std::wstring_view id, bool enabled);
     void SetShowBoundaries(bool show);
-    void SetWarmTint(bool warm);
     void SetFocusMode(bool focus);
     void SetIdleState(bool idle, int idleLevel = 90);
     void TriggerFade(HWND hwnd);
     void DestroyOverlays();
 
     const std::vector<ActiveMonitorInfo>& GetActiveMonitors() const { return m_monitors; }
-    bool GetWarmTint() const { return m_warmTint; }
     bool IsIdleState() const { return m_isIdleState; }
     int GetIdleDimLevel() const { return m_idleDimLevel; }
     void SetDimmingEnabled(bool enabled);
@@ -96,7 +94,6 @@ private:
 
     HINSTANCE m_hInst = nullptr;
     std::vector<ActiveMonitorInfo> m_monitors;
-    bool m_warmTint = false;
 
     // Asynchronous audio checking
     std::atomic<bool> m_audioCheckInFlight = false;

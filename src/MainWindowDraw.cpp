@@ -208,7 +208,7 @@ void MainWindow::OnPaint() {
                 D2D1::RectF(25.0f, cb.rect.top - 18.0f, 200.0f, cb.rect.top - 2.0f),
                 m_pBrushTextMuted
             );
-        } else if (cb.settingName == L"WarmTint" && !cb.label.empty()) {
+        } else if (cb.settingName == L"LightMode" && !cb.label.empty()) {
             m_pRenderTarget->DrawText(
                 L"SCREEN DISPLAY", 14, m_pTextFormatDetail,
                 D2D1::RectF(25.0f, cb.rect.top - 18.0f, 200.0f, cb.rect.top - 2.0f),

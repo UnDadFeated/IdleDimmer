@@ -174,10 +174,6 @@ private:
     void ShowAddAppDialog();
     void Repaint() { InvalidateRect(m_hwnd, nullptr, FALSE); }
 
-    // v1.6.5 (Todo 5): Apply one of the 4 preset configurations.
-    //   0 = Gaming  : dimming off, warm tint off, master 0
-    //   1 = Reading : warm tint on, master 30
-    //   2 = Night   : warm tint on, master 80
-    //   3 = OLED    : dimming on, master 90, warm tint off (true black for OLED)
+    // Removed presets - no presets
     void ApplyPreset(int id);
 };

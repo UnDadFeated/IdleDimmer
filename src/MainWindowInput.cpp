@@ -189,7 +189,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 }
             }
         }
-        DimmerManager::Instance().SetWarmTint(m_config.warmTint);
         DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
         if (!m_config.idleDimEnabled) {
             DimmerManager::Instance().SetIdleState(false);
@@ -324,8 +323,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 // Handled dynamically
             } else if (cb.settingName == L"StartWithWindows") {
                 ToggleStartWithWindows(cb.checked);
-            } else if (cb.settingName == L"WarmTint") {
-                DimmerManager::Instance().SetWarmTint(cb.checked);
             } else if (cb.settingName == L"IdleDimEnabled") {
                 if (!cb.checked) {
                     DimmerManager::Instance().SetIdleState(false);
