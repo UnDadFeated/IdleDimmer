@@ -511,6 +511,10 @@ void DimmerManager::CheckVideoPlayback() {
     m_videoCheckTick++;
     bool doFullCheck = (m_videoCheckTick % 5 == 0);
 
+    // Simplification: only monitor the primary monitor for video playing
+    POINT ptPrimary = {0, 0};
+    HMONITOR hPrimaryMon = MonitorFromPoint(ptPrimary, MONITOR_DEFAULTTOPRIMARY);
+
     if (doFullCheck) {
         m_isFullscreenAppActive = IsFullscreenAppActive();
 
@@ -519,12 +523,15 @@ void DimmerManager::CheckVideoPlayback() {
         // right after launching CheckAudioPlaybackAsync(), which meant it was
         // always reading stale data from the cycle before last (the new thread
         // hadn't finished yet). Now we read first, then spawn.
+        // Simplification: only consider audio/video on the primary monitor
         std::vector<HMONITOR> audioMonitors;
         {
             std::lock_guard<std::mutex> lock(m_audioMutex);
             for (const auto& procName : m_audioPlayingProcesses) {
                 std::vector<HMONITOR> mons = GetMonitorsForProcessName(procName);
                 for (auto hMon : mons) {
+                    // Only consider audio/video on the primary monitor
+                    if (hMon != hPrimaryMon) continue;
                     if (std::find(audioMonitors.begin(), audioMonitors.end(), hMon) == audioMonitors.end()) {
                         audioMonitors.push_back(hMon);
                     }
@@ -556,16 +563,15 @@ void DimmerManager::CheckVideoPlayback() {
     }
 
     // Determine current fullscreen monitor (on every second tick).
-    // ── v1.8.9: Also detect maximized browser windows covering the full
-    // monitor when audio is playing from them. Netflix in a maximized
-    // Chrome window has WS_MAXIMIZE|WS_CAPTION which the old borderless/
-    // captionless check rejected. Now any window that geometrically covers
-    // the monitor is treated as fullscreen for dimming bypass purposes.
+    // Simplification: only consider the primary monitor for video bypass
     HMONITOR hCurrentFullscreenMon = nullptr;
     if (m_isFullscreenAppActive) {
         HWND hFore = GetForegroundWindow();
         if (hFore) {
-            hCurrentFullscreenMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
+            HMONITOR hMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
+            if (hMon == hPrimaryMon) {
+                hCurrentFullscreenMon = hMon;
+            }
         }
     }
     if (!hCurrentFullscreenMon) {
@@ -585,16 +591,18 @@ void DimmerManager::CheckVideoPlayback() {
                 RECT rcWindow;
                 if (GetWindowRect(hFore, &rcWindow)) {
                     HMONITOR hMon = MonitorFromWindow(hFore, MONITOR_DEFAULTTONEAREST);
-                    MONITORINFO mi = {};
-                    mi.cbSize = sizeof(mi);
-                    if (GetMonitorInfoW(hMon, &mi)) {
-                        // Window covers the full monitor (any window that geometrically
-                        // covers the monitor is treated as fullscreen for dimming bypass)
-                        if (rcWindow.left <= mi.rcMonitor.left &&
-                            rcWindow.top <= mi.rcMonitor.top &&
-                            rcWindow.right >= mi.rcMonitor.right &&
-                            rcWindow.bottom >= mi.rcMonitor.bottom) {
-                            hCurrentFullscreenMon = hMon;
+                    if (hMon == hPrimaryMon) {
+                        MONITORINFO mi = {};
+                        mi.cbSize = sizeof(mi);
+                        if (GetMonitorInfoW(hMon, &mi)) {
+                            // Window covers the full monitor (any window that geometrically
+                            // covers the monitor is treated as fullscreen for dimming bypass)
+                            if (rcWindow.left <= mi.rcMonitor.left &&
+                                rcWindow.top <= mi.rcMonitor.top &&
+                                rcWindow.right >= mi.rcMonitor.right &&
+                                rcWindow.bottom >= mi.rcMonitor.bottom) {
+                                hCurrentFullscreenMon = hMon;
+                            }
                         }
                     }
                 }
