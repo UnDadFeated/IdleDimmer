@@ -3,18 +3,13 @@
 ## Build
 
 - **MSVC**: `build.bat` (auto-detects VS 2022, runs `rc.exe` + `cl.exe`)
-- **LLVM-MinGW** (always rebuild `resources.o` and `setup_res.o`):
+- **LLVM-MinGW**:
   ```cmd
   llvm-windres resources\resources.rc -O coff -o resources\resources.o
   clang++ -O2 -std=c++23 -D_WIN32_WINNT=0x0A00 -mwindows -Os -s -mguard=cf -fms-extensions -static -o IdleDimmer.exe src\main.cpp src\MainWindow.cpp src\MainWindowDraw.cpp src\MainWindowInput.cpp src\DimmerManager.cpp src\ConfigManager.cpp resources\resources.o -lgdi32 -ld2d1 -ldwrite -ldwmapi -lole32 -luuid -lwinhttp -lversion -lcomdlg32 -Wl,--delayload,d2d1.dll -Wl,--delayload,dwrite.dll -Wl,--delayload,dwmapi.dll -Wl,--delayload,winhttp.dll -Wl,--delayload,comdlg32.dll -Wl,--delayload,version.dll -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
   ```
-- **Setup** (requires `IdleDimmer.exe` in project root — rebuild resources *after* app exe to embed the correct version):
-   ```cmd
-   llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
-    clang++ -O2 -std=c++23 -D_WIN32_WINNT=0x0A00 -mwindows -Os -s -mguard=cf -static -o IdleDimmer-Setup-vX.Y.Z.exe src\setup.cpp resources\setup_res.o -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
-    ```
 
-- Output: `IdleDimmer.exe` (~150 KB), `IdleDimmer-Setup-v1.8.0.exe` (~280 KB with embedded exe), `dist\IdleDimmer_1.8.0.0_x64.msix` (~880 KB, for Microsoft Store)
+- Output: `IdleDimmer.exe` (~150 KB), `dist\IdleDimmer_1.8.0.0_x64.msix` (~880 KB, for Microsoft Store)
 
 ## Microsoft Store (MSIX) Build
 
@@ -133,24 +128,12 @@ Timer 201 (Focus Mode cursor tracking, 150ms) was removed in v1.4.3. All hotkeys
 
 Write in natural human style in CHANGELOG.md. No AI boilerplate/buzzwords. Sections: **Updates**, **Bug Fixes**, **New Features**. Keep descriptions direct and punchy.
 
-## Installer (setup.cpp)
-
-- Dark title bar via `DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark))`
-- Left panel: standard light window colors (no custom WM_CTLCOLORSTATIC/BTN handlers)
-- Log panel: dark background via `WM_CTLCOLOREDIT` returning `RGB(30,30,30)` brush
-- Fonts: Segoe UI Variable Display (20pt semibold), Segoe UI Variable Text (13pt), Consolas (13pt log)
-- "Launch after install" checkbox: checked by default, always visible (not hidden until install completes)
-- No "Location:" label — install path already shown in log header
-- Build with `-lversion` for version resource reading (and dynamic loading for DWM dark mode)
-- Links `-lversion` for `GetExeVersion()` and loads `dwmapi.dll` dynamically for `DwmSetWindowAttribute`
-
 ## Gotchas
 
 - `std::wifstream` with `.c_str()` not `std::wstring` — MinGW may fail otherwise (`ConfigManager.cpp:38,121`)
 - Resource manifest: `1 24 "manifest.xml"` — standard type 24 for MSVC + MinGW compat
 - `m_pRenderTarget->SetColor()` is called each `OnPaint()` to switch theme — brushes are created once, colors swapped at render time
-- Version resources: update all of `resources.rc`, `setup.rc`, and `manifest.xml` on each version bump. Also update the hardcoded `VER` string in `setup.cpp`.
-- Version: define `APP_VERSION` constant in `MainWindow.cpp` — keep in sync with resources.rc, setup.rc, manifest.xml, and setup.cpp `VER` on every bump.
+- Version resources: update all of `resources.rc` and `manifest.xml` on each version bump.
 - MinGW pragma `comment(lib, ...)` is silently ignored — use `-l` flags on the clang command line instead.
 
 ## Releases & Headless Publishing
@@ -176,20 +159,20 @@ To publish a release to the GitHub web interface when local authentication for t
      ```
 
 2. **Execute Headless Release**: Set the token to the `GH_TOKEN` environment variable so `gh` uses it directly, bypassing scope verification login limits:
-   ```cmd
-    $env:GH_TOKEN="<retrieved_token>"
-    gh release create v1.6.6 IdleDimmer-Setup-v1.6.6.exe --title "v1.6.6" --notes "Release notes go here"
-   ```
+    ```cmd
+     $env:GH_TOKEN="<retrieved_token>"
+     # Note: Setup exe releases removed. Only MSIX builds are now used for Microsoft Store distribution.
+    ```
 
 3. **Delete old tags before re-releasing**: `git tag -d vX.Y.Z; git push origin --delete vX.Y.Z` when replacing a release.
 
 4. **Release Checklist** (run after every build):
-   0. **Auth Check**: If `git push` or `gh` commands fail with `401 Unauthorized`/Bad credentials, clear the environment variable conflict: `Remove-Item Env:\GITHUB_TOKEN` (PowerShell) or unset it.
-   1. `git add` all changed files, commit with version in message, `git push origin master`.
-   2. **Update README.md**: replace all `X.Y.Z` version strings (badge, download link, build commands).
-   3. **Create GitHub release**: `gh release create vX.Y.Z IdleDimmer-Setup-vX.Y.Z.exe --title "vX.Y.Z" --notes "Release notes"`
-   4. **Delete old releases**: `gh release delete vX.Y.Z-1 --yes` for any older versions.
-    5. Verify the release page shows the correct `.exe` and README links resolve.
+    0. **Auth Check**: If `git push` or `gh` commands fail with `401 Unauthorized`/Bad credentials, clear the environment variable conflict: `Remove-Item Env:\GITHUB_TOKEN` (PowerShell) or unset it.
+    1. `git add` all changed files, commit with version in message, `git push origin master`.
+    2. **Update README.md**: replace all `X.Y.Z` version strings (badge, download link, build commands).
+    3. **Create GitHub release**: `gh release create vX.Y.Z --title "vX.Y.Z" --notes "Release notes"` (No setup exe attachments — MSIX only via Store)
+    4. **Delete old releases**: `gh release delete vX.Y.Z-1 --yes` for any older versions.
+    5. Verify the release page and README links resolve.
 
 ## Git Configuration & Troubleshooting
 - **Git username:** `UnDadFeated`

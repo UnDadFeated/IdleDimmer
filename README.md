@@ -17,28 +17,11 @@ Built in native C++23 with Direct2D and the raw Win32 API. **~150 KB on disk. Ze
 
 ## Download
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### Direct installer (GitHub Releases)
-
-[**IdleDimmer-Setup-v1.9.8.exe**](https://github.com/UnDadFeated/IdleDimmer/releases/download/v1.9.8/IdleDimmer-Setup-v1.9.8.exe) — 280 KB
-
-Per-user install to `%LOCALAPPDATA%`. No admin elevation. Clean uninstall from Settings > Apps. Self-extracting installer with dark theme UI.
-
-</td>
-<td width="50%" valign="top">
-
 ### Microsoft Store
 
 [**Get it from Microsoft Store →**](https://apps.microsoft.com/)
 
 Desktop Bridge MSIX package. Auto-updates. Sandbox-friendly. Free.
-
-</td>
-</tr>
-</table>
 
 ---
 
@@ -95,7 +78,7 @@ Save your entire config as a portable `.ini` file and share it across machines. 
 
 | | |
 |---|---|
-| **Executable size** | 150 KB (standalone), 280 KB (installer), 140 KB (MSIX) |
+| **Executable size** | 150 KB (standalone), 140 KB (MSIX) |
 | **Config file size** | < 1 KB at `%APPDATA%\IdleDimmer\dimmer.ini` |
 | **Memory footprint** | ~3 MB working set at idle |
 | **Disk footprint** | 150 KB exe + 1 KB config |
@@ -141,16 +124,6 @@ clang++ -O2 -std=c++23 -mwindows -Os -s -mguard=cf -fms-extensions -static ^
     -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
 ```
 
-### Installer
-```cmd
-llvm-windres resources\setup.rc -O coff -o resources\setup_res.o
-clang++ -O2 -std=c++23 -mwindows -Os -s -mguard=cf -static ^
-    -o IdleDimmer-Setup-v1.9.8.exe ^
-    src\setup.cpp resources\setup_res.o ^
-    -lole32 -lshell32 -ladvapi32 -luuid -lcomctl32 -lversion ^
-    -Wl,--dynamicbase -Wl,--nxcompat -Wl,--high-entropy-va -Wl,--subsystem,windows
-```
-
 ### Microsoft Store MSIX
 ```cmd
 msix\build_msix.bat
@@ -167,9 +140,8 @@ Requires Windows 10 SDK 10.0.22621 (`winget install --id=Microsoft.WindowsSDK.10
 | Settings UI | `src/MainWindow.cpp` | D2D-rendered settings panel, slider cards, toggle switches |
 | Overlay manager | `src/DimmerManager.cpp` | Per-monitor layered overlay windows, fade animation, video detection |
 | Config I/O | `src/ConfigManager.cpp` | JSON-like config at `%APPDATA%\IdleDimmer\dimmer.ini` |
-| Installer | `src/setup.cpp` | Self-extracting installer with dark DWM theme |
 
-Window classes: `IdleDimmerMainClass`, `IdleDimmerOverlayClass`, `IdleDimmerSetupClass`.
+Window classes: `IdleDimmerMainClass`, `IdleDimmerOverlayClass`.
 
 Overlay style: `WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST`.
 
