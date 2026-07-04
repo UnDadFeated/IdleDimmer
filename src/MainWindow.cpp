@@ -1049,16 +1049,21 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                     lii.cbSize = sizeof(lii);
                     if (GetLastInputInfo(&lii)) {
                         DWORD idleTime = GetTickCount() - lii.dwTime;
-                        DWORD threshold = m_config.idleMinutes * 60 * 1000;
-                        if (idleTime >= threshold) {
-                            if (!DimmerManager::Instance().IsIdleState()) {
-                                DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
-                            }
-                        } else {
-                            if (DimmerManager::Instance().IsIdleState()) {
-                                DimmerManager::Instance().SetIdleState(false);
-                            }
-                        }
+                         DWORD threshold = m_config.idleMinutes * 60 * 1000;
+                         if (idleTime >= threshold) {
+                             bool videoPlaying = DimmerManager::Instance().IsVideoDetected();
+                             if (!DimmerManager::Instance().IsIdleState() && !videoPlaying) {
+                                 // Only enter idle if no video is playing on the primary monitor
+                                 DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
+                             } else if (DimmerManager::Instance().IsIdleState() && videoPlaying) {
+                                 // Video started while idle (e.g. user resumes Netflix) — exit idle
+                                 DimmerManager::Instance().SetIdleState(false);
+                             }
+                         } else {
+                             if (DimmerManager::Instance().IsIdleState()) {
+                                 DimmerManager::Instance().SetIdleState(false);
+                             }
+                         }
                     }
                 } else if (DimmerManager::Instance().IsIdleState()) {
                     DimmerManager::Instance().SetIdleState(false);

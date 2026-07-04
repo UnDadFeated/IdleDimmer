@@ -426,43 +426,13 @@ static void DoAudioCheckWork(
                                         if (isTarget) {
                                             bool isPlaying = false;
                                             
-                                            // First try IAudioMeterInformation peak value
+                                            // Try IAudioMeterInformation peak value
                                             ComPtr<IAudioMeterInformation> pMeter;
                                             hr = pSessionControl->QueryInterface(IID_IAudioMeterInformation, &pMeter);
                                             if (SUCCEEDED(hr) && pMeter) {
                                                 float peak = 0.0f;
                                                 if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
                                                     isPlaying = true;
-                                                }
-                                            }
-                                            
-                                            // Fallback: check session state, muted status, and volume
-                                            // (Chrome's media sessions often don't expose peak metering properly)
-                                            if (!isPlaying) {
-                                                int sessionStateInt = 0;
-                                                hr = pSessionControl2->GetState(reinterpret_cast<AudioSessionState*>(&sessionStateInt));
-                                                if (SUCCEEDED(hr) && sessionStateInt == 1) { // AudioSessionStateActive = 1
-                                                    // Check muted status and volume via IAudioSessionVolume
-                                                    struct IAudioSessionVolumeLocal : IUnknown {
-                                                        virtual HRESULT STDMETHODCALLTYPE GetVolumeRange(float *pfloatVolumeMin, float *pfloatVolumeMax, float *pfloatVolumeStep) = 0;
-                                                        virtual HRESULT STDMETHODCALLTYPE GetVolume(float *pfloatVolume) = 0;
-                                                        virtual HRESULT STDMETHODCALLTYPE SetVolume(float floatVolume, const GUID *eventContext) = 0;
-                                                        virtual HRESULT STDMETHODCALLTYPE IsMuted(BOOL *pboolMuted) = 0;
-                                                        virtual HRESULT STDMETHODCALLTYPE SetMuted(BOOL boolMuted, const GUID *eventContext) = 0;
-                                                    };
-                                                    static const IID IID_IAudioSessionVolumeLocal = { 0xc02216f6, 0x8c67, 0x4b5b, { 0x9d, 0x00, 0xd0, 0x08, 0xe7, 0x3e, 0x00, 0x64 } };
-                                                    IAudioSessionVolumeLocal* pSessionVol = nullptr;
-                                                    hr = pSessionControl->QueryInterface(IID_IAudioSessionVolumeLocal, reinterpret_cast<void**>(&pSessionVol));
-                                                    if (SUCCEEDED(hr) && pSessionVol) {
-                                                        BOOL isMuted = FALSE;
-                                                        if (SUCCEEDED(pSessionVol->IsMuted(&isMuted)) && !isMuted) {
-                                                            float volume = 0.0f;
-                                                            if (SUCCEEDED(pSessionVol->GetVolume(&volume)) && volume > 0.0f) {
-                                                                isPlaying = true;
-                                                            }
-                                                        }
-                                                        pSessionVol->Release();
-                                                    }
                                                 }
                                             }
 
@@ -658,7 +628,7 @@ void DimmerManager::CheckVideoPlayback() {
         mon.hasFullscreenVideo = (mon.hMonitor == hCurrentFullscreenMon);
 
         bool newHasVideo = mon.hasAudioVideo || mon.hasFullscreenVideo;
-        bool effectiveHasVideo = newHasVideo && !m_isIdleState;
+        bool effectiveHasVideo = newHasVideo;  // bypass applies regardless of idle state
         if (effectiveHasVideo != mon.hasVideo) {
             mon.hasVideo = effectiveHasVideo;
             if (mon.hwndOverlay) {

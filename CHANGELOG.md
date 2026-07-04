@@ -5,7 +5,9 @@ All notable changes to the IdleDimmer project are documented here.
 ## [1.9.9] - 2026-07-04
 
 ### Bug Fixes
-* **Windowed Video App Dimming Bypass Fix**: Fixed a bug where windowed Netflix, YouTube, or other video apps in Chrome/Edge were incorrectly dimming after 5 minutes while video was playing with sound. The audio playback detection fallback now checks the session state (`AudioSessionStateActive`), muted status, and volume level via `IAudioSessionVolume`, since Chrome's media sessions often don't expose peak metering through `IAudioMeterInformation`.
+* **Video Bypass Nullified by Idle State Fixed**: Removed the `&& !m_isIdleState` condition from the `effectiveHasVideo` calculation in `DimmerManager.cpp`. Previously, once `GetLastInputInfo` indicated the user was idle, the video bypass was nullified and the overlay dimmed to idle level even with Netflix/audio detected. Video bypass now applies regardless of idle state.
+* **Audio Detection Fallback Deleted**: Deleted the faulty audio playback detection fallback block that used the wrong IID (`IID_IAudioMeterInformation` instead of `ISimpleAudioVolume`). The primary `IAudioMeterInformation::GetPeakValue` peak check (`peak > 0.0001f`) is the only working detection path.
+* **Idle State Entry Prevented by Video Detection**: Updated the `WM_TIMER` handler in `MainWindow.cpp` to check `IsVideoDetected()` before entering idle state. Video playing on the primary monitor now prevents idle from being set at the source, and exiting idle if video starts while already idle.
 * **Video Detection Simplification to Primary Monitor**: Simplified video/audio detection to only monitor the primary monitor for video playing inside browser windows or media apps. Other monitors are still shown and dimmed normally. This ensures windowed video apps on the primary monitor correctly bypass dimming.
 
 ## [1.9.5] - 2026-07-03
