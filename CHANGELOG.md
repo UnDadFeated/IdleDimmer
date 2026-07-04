@@ -2,12 +2,12 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [2.0.6] - 2026-07-04
+
+### Bug Fixes
+* **Status String Fixed**: Fixed `GetStatusString()` to use `audioDetectedNow` (raw, non-grace-extended flag) instead of `hasAudioVideo` (30-second grace-extended flag), and to check `hasFullscreenVideo || audioDetectedNow` for video detection so windowed Netflix with audio is correctly reported as "Audio+Video Detected!". Added video check countdown (5→1 seconds) to the status label.
+
 ## [2.0.5] - 2026-07-04
-
-### Updates
-* **Removed Dead Code**: Removed unreachable dead code for the deleted Add App dialog (`AddAppDlgProc`, `ADD_DLG_CLASS`, and related globals) for code hygiene.
-
-## [2.0.4] - 2026-07-04
 
 ### Bug Fixes
 * **GUI Layout Centering Fixed**: Fixed horizontal centering of slider cards and controls by adjusting right margin from 35px to 20px to match the left margin, ensuring items are perfectly centered within the 430px GUI width.

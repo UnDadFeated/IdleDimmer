@@ -15,7 +15,7 @@
   <Identity
     Name="UnDadFeated.IdleDimmer"
     Publisher="CN=A69EF8C6-AD1B-4296-A157-C3CC0B4A89A8"
-    Version="2.0.5.0"
+    Version="2.0.6.0"
     ProcessorArchitecture="x64" />
 
   <Properties>

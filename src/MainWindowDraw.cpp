@@ -247,7 +247,9 @@ void MainWindow::OnPaint() {
     }
 
     std::wstring statusStr = DimmerManager::Instance().GetStatusString();
-    std::wstring statusLabel = L"Status: " + statusStr;
+    int countdown = DimmerManager::Instance().GetVideoCheckCountdown();
+    std::wstring statusLabel = L"Status: " + statusStr +
+        L" (" + std::to_wstring(countdown) + L"s)";
 
     m_pRenderTarget->DrawText(
         statusLabel.c_str(), static_cast<UINT32>(statusLabel.length()),

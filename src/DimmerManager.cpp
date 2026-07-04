@@ -564,6 +564,7 @@ void DimmerManager::CheckVideoPlayback() {
         DWORD now = GetTickCount();
         for (auto& mon : m_monitors) {
             bool audioNow = (std::find(audioMonitors.begin(), audioMonitors.end(), mon.hMonitor) != audioMonitors.end());
+            mon.audioDetectedNow = audioNow;   // ← add this line
             if (audioNow) {
                 mon.lastAudioSeenTick = now;
                 mon.hasAudioVideo = true;
@@ -1179,24 +1180,13 @@ std::wstring DimmerManager::GetStatusString() const {
     bool hasAudio = false;
 
     for (const auto& mon : m_monitors) {
-        if (mon.hasFullscreenVideo) {
-            hasVideo = true;
-        }
-        if (mon.hasAudioVideo) {
-            hasAudio = true;
-        }
+        if (mon.hasFullscreenVideo || mon.audioDetectedNow) hasVideo = true;
+        if (mon.audioDetectedNow) hasAudio = true;
     }
 
-    if (hasVideo && hasAudio) {
-        return L"Video+Audio Detected!";
-    } else if (hasVideo) {
-        return L"Video Detected!";
-    } else if (hasAudio) {
-        return L"Audio Detected!";
-    } else if (m_isIdleState) {
-        return L"Idle";
-    } else {
-        return L"Active";
-    }
+    if (hasVideo && hasAudio) return L"Audio+Video Detected!";
+    if (hasVideo)             return L"Video Detected!";
+    if (m_isIdleState)        return L"Idle";
+    return L"Active";
 }
 

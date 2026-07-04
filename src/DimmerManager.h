@@ -24,6 +24,7 @@ struct ActiveMonitorInfo {
     bool hasAudioVideo = false;
     bool hasFullscreenVideo = false;
     DWORD lastAudioSeenTick = 0; // GetTickCount() when audio was last detected
+    bool audioDetectedNow = false; // raw, non-grace-extended; for status display only
 };
 
 class DimmerManager {
@@ -77,6 +78,10 @@ public:
         return false;
     }
     std::wstring GetStatusString() const;
+    int GetVideoCheckCountdown() const {
+        int mod = m_videoCheckTick % 5;
+        return (mod == 0) ? 5 : (5 - mod);
+    }
     POINT GetLastMousePos() const { return m_lastMousePos; }
     void SetLastMousePos(POINT pt) { m_lastMousePos = pt; }
     bool IsSettingCursorPos() const { return m_isSettingCursorPos; }
