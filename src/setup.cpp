@@ -304,7 +304,7 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             // Status static
             g_hStatus = CreateWindowW(L"STATIC", L"",
                 WS_CHILD | WS_VISIBLE | SS_LEFT,
-                m, 120, cw - m * 2, 36, hwnd, (HMENU)1005, hInst, NULL);
+                m, 102, cw - m * 2, 36, hwnd, (HMENU)1005, hInst, NULL);
 
             wchar_t status[256];
             if (running && installed)
@@ -320,14 +320,14 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             // Launch checkbox
             g_hLaunchCheck = CreateWindowW(L"BUTTON", L"Launch after install",
                 WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX | BS_LEFT,
-                m, 166, cw - m * 2, 18, hwnd, (HMENU)1006, hInst, NULL);
+                m, 140, cw - m * 2, 18, hwnd, (HMENU)1006, hInst, NULL);
             SendMessageW(g_hLaunchCheck, BM_SETCHECK, BST_CHECKED, 0);
 
             // Install/Close button
             int buttonX = cw - 120 - m;
             g_hButton = CreateWindowW(L"BUTTON", L"Install",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON,
-                buttonX, 200, 120, 30, hwnd, (HMENU)IDOK, hInst, NULL);
+                buttonX, 164, 120, 30, hwnd, (HMENU)IDOK, hInst, NULL);
 
             g_hFontTitle = CreateFontW(20, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
