@@ -19,7 +19,6 @@ struct AppConfig {
     bool idleDimEnabled = true;
     int idleMinutes = 5; // 1 to 60 minutes
     int idleDimLevel = 90; // 0% to 100% dimming
-    bool idleTurnOff = false;
 
     int masterValue = 75; // 0 to 90 (default 75% dimming)
     bool masterEnabled = true;

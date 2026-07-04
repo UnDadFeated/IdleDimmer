@@ -90,7 +90,6 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     if (findValue(L"IdleDimEnabled", val)) config.idleDimEnabled = ParseBool(val);
     if (findValue(L"IdleMinutes", val)) config.idleMinutes = ParseInt(val);
     if (findValue(L"IdleDimLevel", val)) config.idleDimLevel = ParseInt(val);
-    if (findValue(L"IdleTurnOff", val)) config.idleTurnOff = ParseBool(val);
     if (findValue(L"MasterValue", val)) config.masterValue = ParseInt(val);
     if (findValue(L"MasterEnabled", val)) config.masterEnabled = ParseBool(val);
     if (findValue(L"LightMode", val)) config.lightMode = ParseBool(val);
@@ -188,7 +187,6 @@ void ConfigManager::SaveConfig(const std::wstring& filePath, const AppConfig& co
         file << L"  \"IdleDimEnabled\": " << (config.idleDimEnabled ? L"true" : L"false") << L",\n";
         file << L"  \"IdleMinutes\": " << config.idleMinutes << L",\n";
         file << L"  \"IdleDimLevel\": " << config.idleDimLevel << L",\n";
-        file << L"  \"IdleTurnOff\": " << (config.idleTurnOff ? L"true" : L"false") << L",\n";
         file << L"  \"MasterValue\": " << config.masterValue << L",\n";
         file << L"  \"MasterEnabled\": " << (config.masterEnabled ? L"true" : L"false") << L",\n";
         file << L"  \"LightMode\": " << (config.lightMode ? L"true" : L"false") << L",\n";

@@ -87,7 +87,6 @@ private:
     DimmerManager& operator=(const DimmerManager&) = delete;
 
     void CreateOverlayForMonitor(ActiveMonitorInfo& info);
-    void LogState();
     static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
     void CheckAudioPlaybackAsync();
@@ -112,7 +111,6 @@ private:
     POINT m_lastMousePos = { -1, -1 };
     bool m_isSettingCursorPos = false;
     bool m_cursorShifted = false;
-    std::wstring m_logFileName;
 
     // ── v1.6.5: Scheduling state ──
     bool m_scheduleEnabled  = false;

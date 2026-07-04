@@ -521,8 +521,6 @@ void MainWindow::UpdateLayout() {
     AddCheckbox(L"DimmingEnabled", m_config.dimmingEnabled, &m_config.dimmingEnabled, L"Manual Dimming", 0, yOffset);
     AddCheckbox(L"IdleDimEnabled", m_config.idleDimEnabled, &m_config.idleDimEnabled, L"Dim When Away", 1, yOffset);
     yOffset += 22;
-    AddCheckbox(L"IdleTurnOff", m_config.idleTurnOff, &m_config.idleTurnOff, L"Turn Off When Away", 0, yOffset);
-    yOffset += 22;
 
     // ── APPLICATION section ──
     yOffset += 8; // gap between sections
@@ -1057,14 +1055,6 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                         if (idleTime >= threshold) {
                             if (!DimmerManager::Instance().IsIdleState()) {
                                 DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
-                                if (m_config.idleTurnOff) {
-                                    HWND hShell = FindWindowW(L"Shell_TrayWnd", NULL);
-                                    if (hShell) {
-                                        PostMessageW(hShell, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
-                                    } else {
-                                        SendMessageW(GetDesktopWindow(), WM_SYSCOMMAND, SC_MONITORPOWER, 2);
-                                    }
-                                }
                             }
                         } else {
                             if (DimmerManager::Instance().IsIdleState()) {

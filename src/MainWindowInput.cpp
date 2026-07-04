@@ -306,8 +306,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                     DimmerManager::Instance().SetIdleState(false);
                 }
                 UpdateLayout();
-            } else if (cb.settingName == L"IdleTurnOff") {
-                // Handled dynamically
             } else if (cb.settingName == L"DimmingEnabled") {
                 DimmerManager::Instance().SetDimmingEnabled(cb.checked);
             } else if (cb.settingName == L"ScheduleEnabled") {

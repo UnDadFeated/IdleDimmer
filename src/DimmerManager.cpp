@@ -107,44 +107,8 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 void DimmerManager::Initialize(HINSTANCE hInst) {
     m_hInst = hInst;
 
-    // Generate date-time stamped log filename and keep only the last 3 runs
-    wchar_t appDataPath[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appDataPath))) {
-        std::wstring logDir = std::wstring(appDataPath) + L"\\IdleDimmer";
-        CreateDirectoryW(logDir.c_str(), NULL);
-        
-        SYSTEMTIME st;
-        GetLocalTime(&st);
-        wchar_t nameBuf[64];
-        swprintf_s(nameBuf, ARRAYSIZE(nameBuf), L"dimmer_%04d%02d%02d_%02d%02d%02d.log",
-                   st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-        m_logFileName = nameBuf;
-
-        // Scan folder for existing dimmer_*.log files
-        std::vector<std::wstring> logFiles;
-        std::wstring searchPath = logDir + L"\\dimmer_*.log";
-        WIN32_FIND_DATAW ffd;
-        HANDLE hFind = FindFirstFileW(searchPath.c_str(), &ffd);
-        if (hFind != INVALID_HANDLE_VALUE) {
-            do {
-                if (!(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-                    logFiles.push_back(logDir + L"\\" + ffd.cFileName);
-                }
-            } while (FindNextFileW(hFind, &ffd) != 0);
-            FindClose(hFind);
-        }
-
-        // Sort alphabetically (chronologically, since format is YYYYMMDD_HHMMSS)
-        std::sort(logFiles.begin(), logFiles.end());
-
-        // Keep only the 2 newest files (so this new instance creates the 3rd)
-        if (logFiles.size() >= 3) {
-            size_t toDelete = logFiles.size() - 2;
-            for (size_t i = 0; i < toDelete; ++i) {
-                DeleteFileW(logFiles[i].c_str());
-            }
-        }
-    }
+    // Logging disabled - log file creation removed to save vertical space and disk I/O
+    // Can be re-enabled for debugging if needed
 
     if (!m_classRegistered) {
         WNDCLASSEXW wc = {};
@@ -668,7 +632,7 @@ void DimmerManager::CheckVideoPlayback() {
 
     // ── v1.6.5 (Todo 2): Drive time-of-day scheduling on the same 1s tick ──
     CheckSchedule();
-    LogState();
+    // Logging disabled - can be re-enabled for debugging if needed
 }
 
 
@@ -1195,100 +1159,6 @@ LRESULT CALLBACK DimmerManager::OSDWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARA
             ValidateRect(hwnd, nullptr);
         }
         return 0;
-    }
-}
-
-#include <fstream>
-#include <sstream>
-
-void DimmerManager::LogState() {
-    wchar_t appDataPath[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appDataPath))) {
-        std::wstring logDir = std::wstring(appDataPath) + L"\\IdleDimmer";
-        CreateDirectoryW(logDir.c_str(), NULL);
-        if (m_logFileName.empty()) return;
-        std::wstring logPath = logDir + L"\\" + m_logFileName;
-        
-        // If log file size > 2MB, truncate it to avoid filling disk space
-        std::wofstream logFile;
-        WIN32_FILE_ATTRIBUTE_DATA fad;
-        if (GetFileAttributesExW(logPath.c_str(), GetFileExInfoStandard, &fad)) {
-            LARGE_INTEGER size;
-            size.LowPart = fad.nFileSizeLow;
-            size.HighPart = fad.nFileSizeHigh;
-            if (size.QuadPart > 2 * 1024 * 1024) {
-                logFile.open(logPath.c_str(), std::ios_base::out | std::ios_base::trunc);
-            }
-        }
-        if (!logFile.is_open()) {
-            logFile.open(logPath.c_str(), std::ios_base::app);
-        }
-        
-        if (logFile.is_open()) {
-            SYSTEMTIME st;
-            GetLocalTime(&st);
-            logFile << L"[" 
-                    << (st.wHour < 10 ? L"0" : L"") << st.wHour << L":"
-                    << (st.wMinute < 10 ? L"0" : L"") << st.wMinute << L":"
-                    << (st.wSecond < 10 ? L"0" : L"") << st.wSecond 
-                    << L"] == RUNTIME STATE ==\n";
-            logFile << L"  m_dimmingEnabled: " << (m_dimmingEnabled ? L"true" : L"false") << L"\n";
-            logFile << L"  m_isIdleState: " << (m_isIdleState ? L"true" : L"false") << L"\n";
-            logFile << L"  m_scheduleActive: " << (m_scheduleActive ? L"true" : L"false") << L"\n";
-            
-            // Idle timing diagnostics
-            LASTINPUTINFO lii = {};
-            lii.cbSize = sizeof(lii);
-            if (GetLastInputInfo(&lii)) {
-                DWORD idleMs = GetTickCount() - lii.dwTime;
-                logFile << L"  idleMs: " << idleMs << L"\n";
-            }
-            
-            HWND hFore = GetForegroundWindow();
-            if (hFore) {
-                wchar_t title[256] = {0};
-                wchar_t className[256] = {0};
-                GetWindowTextW(hFore, title, 256);
-                GetClassNameW(hFore, className, 256);
-                DWORD pid = 0;
-                GetWindowThreadProcessId(hFore, &pid);
-                std::wstring procName = GetProcessNameFromPidNoLog(pid);
-                
-                logFile << L"  Foreground Window: Title=\"" << title 
-                        << L"\" Class=\"" << className 
-                        << L"\" Proc=\"" << procName 
-                        << L"\" PID=" << pid << L"\n";
-                
-                RECT rcWindow;
-                if (GetWindowRect(hFore, &rcWindow)) {
-                    logFile << L"    Rect: [" << rcWindow.left << L", " 
-                            << rcWindow.top << L", " 
-                            << rcWindow.right << L", " 
-                            << rcWindow.bottom << L"]\n";
-                }
-            } else {
-                logFile << L"  Foreground Window: None\n";
-            }
-            
-            logFile << L"  Monitors Count: " << m_monitors.size() << L"\n";
-            for (size_t i = 0; i < m_monitors.size(); ++i) {
-                const auto& mon = m_monitors[i];
-                logFile << L"    Monitor [" << i << L"] ID=\"" << mon.id << L"\" Name=\"" << mon.friendlyName << L"\"\n";
-                logFile << L"      enabled: " << (mon.enabled ? L"true" : L"false") << L"\n";
-                logFile << L"      dimValue: " << mon.dimValue << L"\n";
-                logFile << L"      currentDimValue: " << mon.currentDimValue << L"\n";
-                logFile << L"      hasAudioVideo: " << (mon.hasAudioVideo ? L"true" : L"false") << L"\n";
-                logFile << L"      hasFullscreenVideo: " << (mon.hasFullscreenVideo ? L"true" : L"false") << L"\n";
-                logFile << L"      hasVideo (bypass active): " << (mon.hasVideo ? L"true" : L"false") << L"\n";
-                logFile << L"      hwndOverlay: " << (mon.hwndOverlay != nullptr ? L"Valid" : L"NULL") << L"\n";
-                if (mon.hwndOverlay) {
-                    logFile << L"        IsWindowVisible: " << (IsWindowVisible(mon.hwndOverlay) != 0 ? L"true" : L"false") << L"\n";
-                    LONG_PTR exStyle = GetWindowLongPtrW(mon.hwndOverlay, GWL_EXSTYLE);
-                    logFile << L"        WS_EX_TRANSPARENT: " << ((exStyle & WS_EX_TRANSPARENT) != 0 ? L"true" : L"false") << L"\n";
-                }
-            }
-            logFile << L"==========================\n\n";
-        }
     }
 }
 
