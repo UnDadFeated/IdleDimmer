@@ -2,12 +2,12 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
-## [2.0.6] - 2026-07-04
+## [2.0.7] - 2026-07-04
 
 ### Bug Fixes
-* **Status String Fixed**: Fixed `GetStatusString()` to use `audioDetectedNow` (raw, non-grace-extended flag) instead of `hasAudioVideo` (30-second grace-extended flag), and to check `hasFullscreenVideo || audioDetectedNow` for video detection so windowed Netflix with audio is correctly reported as "Audio+Video Detected!". Added video check countdown (5→1 seconds) to the status label.
+* **Status Countdown Repaint Fixed**: Fixed the status countdown not updating visually by adding `InvalidateRect(hwnd, nullptr, FALSE);` to the `WM_TIMER 202` handler, forcing a D2D repaint once per second to display the countdown number changes.
 
-## [2.0.5] - 2026-07-04
+## [2.0.6] - 2026-07-04
 
 ### Bug Fixes
 * **GUI Layout Centering Fixed**: Fixed horizontal centering of slider cards and controls by adjusting right margin from 35px to 20px to match the left margin, ensuring items are perfectly centered within the 430px GUI width.

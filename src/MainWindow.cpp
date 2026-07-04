@@ -939,6 +939,7 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 } else if (DimmerManager::Instance().IsIdleState()) {
                     DimmerManager::Instance().SetIdleState(false);
                 }
+            InvalidateRect(hwnd, nullptr, FALSE);
             } else if (wp == 203) {
                 KillTimer(hwnd, 203);
                 if (!m_hUpdateThread) {
