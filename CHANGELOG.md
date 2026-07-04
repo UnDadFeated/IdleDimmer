@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [2.0.4] - 2026-07-04
+
+### Bug Fixes
+* **GUI Layout Centering Fixed**: Fixed horizontal centering of slider cards and controls by adjusting right margin from 35px to 20px to match the left margin, ensuring items are perfectly centered within the 430px GUI width.
+
 ## [2.0.3] - 2026-07-04
 
 ### Updates

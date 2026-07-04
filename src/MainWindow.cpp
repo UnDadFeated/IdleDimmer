@@ -449,7 +449,7 @@ void MainWindow::UpdateLayout() {
         
         master.rect.left = 20;
         master.rect.top = yOffset;
-        master.rect.right = m_windowWidth - 35;
+        master.rect.right = m_windowWidth - 20;
         master.rect.bottom = master.rect.top + 65;
 
         m_sliders.push_back(master);
@@ -477,7 +477,7 @@ void MainWindow::UpdateLayout() {
         
         slider.rect.left = 20;
         slider.rect.top = yOffset;
-        slider.rect.right = m_windowWidth - 35;
+        slider.rect.right = m_windowWidth - 20;
         slider.rect.bottom = slider.rect.top + 65;
 
         m_sliders.push_back(slider);
@@ -543,7 +543,7 @@ void MainWindow::UpdateLayout() {
         startSlider.active = true;
         startSlider.rect.left = 20;
         startSlider.rect.top = yOffset + 4;
-        startSlider.rect.right = m_windowWidth - 35;
+        startSlider.rect.right = m_windowWidth - 20;
         startSlider.rect.bottom = startSlider.rect.top + 58;
         m_sliders.push_back(startSlider);
 
@@ -553,7 +553,7 @@ void MainWindow::UpdateLayout() {
         endSlider.active = true;
         endSlider.rect.left = 20;
         endSlider.rect.top = startSlider.rect.bottom + 10;
-        endSlider.rect.right = m_windowWidth - 35;
+        endSlider.rect.right = m_windowWidth - 20;
         endSlider.rect.bottom = endSlider.rect.top + 58;
         m_sliders.push_back(endSlider);
 
@@ -580,7 +580,7 @@ void MainWindow::UpdateLayout() {
         idleMin.active = true;
         idleMin.rect.left = 20;
         idleMin.rect.top = yOffset + 15;
-        idleMin.rect.right = m_windowWidth - 35;
+        idleMin.rect.right = m_windowWidth - 20;
         idleMin.rect.bottom = idleMin.rect.top + 58;
         m_sliders.push_back(idleMin);
 
@@ -591,7 +591,7 @@ void MainWindow::UpdateLayout() {
         idleLvl.active = true;
         idleLvl.rect.left = 20;
         idleLvl.rect.top = idleMin.rect.bottom + 15;
-        idleLvl.rect.right = m_windowWidth - 35;
+        idleLvl.rect.right = m_windowWidth - 20;
         idleLvl.rect.bottom = idleLvl.rect.top + 58;
         m_sliders.push_back(idleLvl);
 
