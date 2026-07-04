@@ -2,6 +2,12 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.9.9] - 2026-07-04
+
+### Bug Fixes
+* **Windowed Video App Dimming Bypass Fix**: Fixed a bug where windowed Netflix, YouTube, or other video apps in Chrome/Edge were incorrectly dimming after 5 minutes while video was playing with sound. The audio playback detection fallback now checks the session state (`AudioSessionStateActive`), muted status, and volume level via `IAudioSessionVolume`, since Chrome's media sessions often don't expose peak metering through `IAudioMeterInformation`.
+* **Video Detection Simplification to Primary Monitor**: Simplified video/audio detection to only monitor the primary monitor for video playing inside browser windows or media apps. Other monitors are still shown and dimmed normally. This ensures windowed video apps on the primary monitor correctly bypass dimming.
+
 ## [1.9.5] - 2026-07-03
 
 ### Bug Fixes
