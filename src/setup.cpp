@@ -251,6 +251,11 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     switch (msg) {
         case WM_CREATE: {
             HINSTANCE hInst = ((LPCREATESTRUCTW)lParam)->hInstance;
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            int cw = rc.right;
+            int ch = rc.bottom;
+            int m = 24;
 
             // Apply dark mode for title bar dynamically to allow running on environments without dwmapi.dll (e.g. WinPE)
             HMODULE hDwm = LoadLibraryW(L"dwmapi.dll");
@@ -276,29 +281,30 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             // Icon static
             CreateWindowW(L"STATIC", L"",
                 WS_CHILD | WS_VISIBLE | SS_ICON,
-                24, 32, 64, 64, hwnd, (HMENU)1001, hInst, NULL);
+                m, 32, 64, 64, hwnd, (HMENU)1001, hInst, NULL);
             SendMessageW(GetDlgItem(hwnd, 1001), STM_SETIMAGE, IMAGE_ICON, 
                 (LPARAM)LoadIconW(hInst, MAKEINTRESOURCEW(IDI_APP)));
 
             // App name static
+            int appNameX = m + 64 + 16;
             HWND hAppName = CreateWindowW(L"STATIC", APP_NAME,
                 WS_CHILD | WS_VISIBLE | SS_LEFT,
-                104, 36, 280, 24, hwnd, (HMENU)1002, hInst, NULL);
+                appNameX, 36, cw - appNameX - m, 24, hwnd, (HMENU)1002, hInst, NULL);
 
             // Publisher static
             HWND hPublisher = CreateWindowW(L"STATIC", L"UnDadFeated",
                 WS_CHILD | WS_VISIBLE | SS_LEFT,
-                104, 62, 280, 18, hwnd, (HMENU)1003, hInst, NULL);
+                appNameX, 62, cw - appNameX - m, 18, hwnd, (HMENU)1003, hInst, NULL);
 
             // Version static
             HWND hVersion = CreateWindowW(L"STATIC", std::format(L"Version {}", VER).c_str(),
                 WS_CHILD | WS_VISIBLE | SS_LEFT,
-                104, 82, 280, 18, hwnd, (HMENU)1004, hInst, NULL);
+                appNameX, 82, cw - appNameX - m, 18, hwnd, (HMENU)1004, hInst, NULL);
 
             // Status static
             g_hStatus = CreateWindowW(L"STATIC", L"",
                 WS_CHILD | WS_VISIBLE | SS_LEFT,
-                24, 120, 372, 36, hwnd, (HMENU)1005, hInst, NULL);
+                m, 120, cw - m * 2, 36, hwnd, (HMENU)1005, hInst, NULL);
 
             wchar_t status[256];
             if (running && installed)
@@ -314,13 +320,14 @@ static LRESULT CALLBACK SetupWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
             // Launch checkbox
             g_hLaunchCheck = CreateWindowW(L"BUTTON", L"Launch after install",
                 WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX | BS_LEFT,
-                24, 166, 372, 18, hwnd, (HMENU)1006, hInst, NULL);
+                m, 166, cw - m * 2, 18, hwnd, (HMENU)1006, hInst, NULL);
             SendMessageW(g_hLaunchCheck, BM_SETCHECK, BST_CHECKED, 0);
 
             // Install/Close button
+            int buttonX = cw - 120 - m;
             g_hButton = CreateWindowW(L"BUTTON", L"Install",
                 WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_DEFPUSHBUTTON,
-                276, 200, 120, 30, hwnd, (HMENU)IDOK, hInst, NULL);
+                buttonX, 200, 120, 30, hwnd, (HMENU)IDOK, hInst, NULL);
 
             g_hFontTitle = CreateFontW(20, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
