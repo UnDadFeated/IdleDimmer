@@ -2,6 +2,13 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [2.0.0] - 2026-07-04
+
+### Bug Fixes
+* **Monitor Enable/Disable Button State Sync Fixed**: Fixed a UI state mismatch where enabling/disabling individual monitor checkboxes or the Master Enabled checkbox before "Manual Dimming" was enabled caused sliders to visually appear "active" while the overlays did not actually dim. Slider visual active state is now correctly tied to both the monitor's enabled state and the global "Manual Dimming" state (`m_config.dimmingEnabled`). 
+* **Master Checkbox Slider Update Fix**: Fixed the Master Enabled checkbox handler to correctly exclude schedule sliders (`isScheduleStart`/`isScheduleEnd`) from being affected by the Master enable/disable state. Schedule sliders now remain independent and visually active regardless of the Master checkbox state.
+* **Manual Dimming Toggle Slider State Update**: Fixed the "Manual Dimming" checkbox toggle to properly update all monitor/master slider visual active states when "Manual Dimming" is enabled or disabled, ensuring the UI accurately reflects the actual dimming capability.
+
 ## [1.9.9] - 2026-07-04
 
 ### Bug Fixes

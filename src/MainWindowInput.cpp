@@ -274,7 +274,8 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 }
                 for (auto& sl : m_sliders) {
                     if (sl.monitorId == cb.monitorId) {
-                        sl.active = cb.checked;
+                        // Slider is visually active only if monitor is enabled AND manual dimming is enabled
+                        sl.active = cb.checked && m_config.dimmingEnabled;
                         break;
                     }
                 }
@@ -288,8 +289,10 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                     monConf.enabled = cb.checked;
                 }
                 for (auto& sl : m_sliders) {
-                    if (!sl.isIdleMinutes && !sl.isIdleDimLevel) {
-                        sl.active = cb.checked;
+                    // Only update sliders that are not idle/schedule sliders
+                    if (!sl.isIdleMinutes && !sl.isIdleDimLevel && !sl.isScheduleStart && !sl.isScheduleEnd) {
+                        // Slider is visually active only if master is enabled AND manual dimming is enabled
+                        sl.active = cb.checked && m_config.dimmingEnabled;
                     }
                 }
                 for (auto& otherCb : m_checkboxes) {
@@ -308,6 +311,25 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 UpdateLayout();
             } else if (cb.settingName == L"DimmingEnabled") {
                 DimmerManager::Instance().SetDimmingEnabled(cb.checked);
+                
+                // Update slider active states based on new dimmingEnabled state
+                for (auto& sl : m_sliders) {
+                    if (!sl.isIdleMinutes && !sl.isIdleDimLevel && !sl.isScheduleStart && !sl.isScheduleEnd) {
+                        // Slider is visually active only if corresponding monitor/master is enabled AND manual dimming is enabled
+                        bool monEnabled = true;
+                        if (sl.isMaster) {
+                            monEnabled = m_config.masterEnabled;
+                        } else if (!sl.monitorId.empty()) {
+                            for (const auto& monConf : m_config.monitors) {
+                                if (monConf.id == sl.monitorId) {
+                                    monEnabled = monConf.enabled;
+                                    break;
+                                }
+                            }
+                        }
+                        sl.active = monEnabled && cb.checked;
+                    }
+                }
             } else if (cb.settingName == L"ScheduleEnabled") {
                 // v1.6.5 (Todo 8): push to DimmerManager and re-layout so
                 // the start/end sliders appear or disappear.
