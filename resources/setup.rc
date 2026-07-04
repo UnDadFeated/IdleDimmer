@@ -15,12 +15,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "UnDadFeated"
             VALUE "FileDescription", "IdleDimmer Setup"
-            VALUE "FileVersion", "1.9.7.0"
+            VALUE "FileVersion", "1.9.8.0"
             VALUE "InternalName", "IdleDimmer"
             VALUE "LegalCopyright", "Copyright (C) 2026 UnDadFeated. Licensed under GPLv3-or-later."
             VALUE "OriginalFilename", "IdleDimmer-Setup.exe"
             VALUE "ProductName", "IdleDimmer Setup"
-            VALUE "ProductVersion", "1.9.7.0"
+            VALUE "ProductVersion", "1.9.8.0"
         END
     END
     BLOCK "VarFileInfo"
