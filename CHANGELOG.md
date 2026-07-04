@@ -2,15 +2,16 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
-## [2.0.7] - 2026-07-04
+## [2.0.8] - 2026-07-04
 
 ### Updates
-* **Footer Text Size Reduced**: Made the footer text one size smaller by reducing the `m_pTextFormatDetail` font size from 10.5pt to 10.0pt.
+* **Footer Text Size Reduced Again**: Made the footer text one more size smaller by reducing the `m_pTextFormatDetail` font size from 10.0pt to 9.5pt.
+* **Audio/Video Check Interval Updated**: Changed the audio/video full check interval from 5 seconds to 30 seconds to reduce Defender heuristics overhead. Updated the status countdown to reflect the actual 30-second check interval (30→29→...→1).
 
 ### Bug Fixes
 * **Status Countdown Repaint Fixed**: Fixed the status countdown not updating visually by adding `InvalidateRect(hwnd, nullptr, FALSE);` to the `WM_TIMER 202` handler, forcing a D2D repaint once per second to display the countdown number changes.
 
-## [2.0.6] - 2026-07-04
+## [2.0.7] - 2026-07-04
 
 ### Bug Fixes
 * **GUI Layout Centering Fixed**: Fixed horizontal centering of slider cards and controls by adjusting right margin from 35px to 20px to match the left margin, ensuring items are perfectly centered within the 430px GUI width.

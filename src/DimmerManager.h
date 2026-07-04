@@ -79,8 +79,8 @@ public:
     }
     std::wstring GetStatusString() const;
     int GetVideoCheckCountdown() const {
-        int mod = m_videoCheckTick % 5;
-        return (mod == 0) ? 5 : (5 - mod);
+        int mod = m_videoCheckTick % 30;
+        return (mod == 0) ? 30 : (30 - mod);
     }
     POINT GetLastMousePos() const { return m_lastMousePos; }
     void SetLastMousePos(POINT pt) { m_lastMousePos = pt; }

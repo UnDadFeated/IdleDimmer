@@ -522,7 +522,7 @@ void DimmerManager::CheckAudioPlaybackAsync() {
 
 void DimmerManager::CheckVideoPlayback() {
     m_videoCheckTick++;
-    bool doFullCheck = (m_videoCheckTick % 5 == 0);
+    bool doFullCheck = (m_videoCheckTick % 30 == 0); // every 30 seconds
 
     // Simplification: only monitor the primary monitor for video playing
     POINT ptPrimary = {0, 0};

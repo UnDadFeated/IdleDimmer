@@ -363,13 +363,13 @@ HRESULT MainWindow::CreateGraphicsResources() {
         hr = m_pDWriteFactory->CreateTextFormat(
             L"Segoe UI Variable Text", nullptr,
             DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-            10.0f, L"en-us", &m_pTextFormatDetail
+            9.5f, L"en-us", &m_pTextFormatDetail
         );
         if (FAILED(hr)) {
             hr = m_pDWriteFactory->CreateTextFormat(
                 L"Segoe UI", nullptr,
                 DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-                10.0f, L"en-us", &m_pTextFormatDetail
+                9.5f, L"en-us", &m_pTextFormatDetail
             );
         }
         if (FAILED(hr)) { LogError(ErrorCode::E205, hr); DiscardGraphicsResources(); return hr; }
