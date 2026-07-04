@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [2.0.5] - 2026-07-04
+
+### Updates
+* **Removed Dead Code**: Removed unreachable dead code for the deleted Add App dialog (`AddAppDlgProc`, `ADD_DLG_CLASS`, and related globals) for code hygiene.
+
 ## [2.0.4] - 2026-07-04
 
 ### Bug Fixes

@@ -59,42 +59,6 @@ static std::wstring GetOwnVersion() {
 #define ID_TRAY_EXIT 1001
 #define ID_TRAY_SHOW 1002
 
-// Add App dialog
-static const wchar_t* ADD_DLG_CLASS = L"IdleDimmerAddAppDlg";
-static bool g_addDlgRegistered = false;
-static wchar_t g_addDlgResult[128];
-static bool g_addDlgConfirmed;
-
-static LRESULT CALLBACK AddAppDlgProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
-    switch (msg) {
-        case WM_CREATE: {
-            HINSTANCE hInst = ((LPCREATESTRUCT)lp)->hInstance;
-            HWND hEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 12, 30, 240, 22, hwnd, (HMENU)100, hInst, NULL);
-            CreateWindowW(L"STATIC", L"Process name (e.g. chrome.exe):", WS_CHILD | WS_VISIBLE, 12, 12, 240, 14, hwnd, NULL, hInst, NULL);
-            CreateWindowW(L"BUTTON", L"Add", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON | WS_TABSTOP, 82, 62, 64, 24, hwnd, (HMENU)IDOK, hInst, NULL);
-            CreateWindowW(L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 154, 62, 64, 24, hwnd, (HMENU)IDCANCEL, hInst, NULL);
-            SendMessageW(hEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-            SetFocus(hEdit);
-            return 0;
-        }
-        case WM_COMMAND:
-            if (LOWORD(wp) == IDOK) {
-                g_addDlgResult[0] = 0;
-                GetDlgItemTextW(hwnd, 100, g_addDlgResult, 128);
-                size_t len = wcslen(g_addDlgResult);
-                while (len > 0 && g_addDlgResult[len - 1] == L' ') g_addDlgResult[--len] = 0;
-                if (len > 0) { g_addDlgConfirmed = true; DestroyWindow(hwnd); }
-            } else if (LOWORD(wp) == IDCANCEL) {
-                DestroyWindow(hwnd);
-            }
-            return 0;
-        case WM_CLOSE:
-            DestroyWindow(hwnd);
-            return 0;
-    }
-    return DefWindowProcW(hwnd, msg, wp, lp);
-}
-
 static bool AddTrayIcon(HWND hwnd, UINT uID, HICON hIcon, const wchar_t* tip) {
     NOTIFYICONDATAW nid = {};
     nid.cbSize = sizeof(nid);
