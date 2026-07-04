@@ -50,7 +50,6 @@ public:
     bool IsDimmingEnabled() const { return m_dimmingEnabled; }
     void UpdateCursorDimming();
     void CheckVideoPlayback();
-    void SetBlockedApps(const std::vector<std::wstring>& apps);
 
     // ── v1.6.5: Time-of-day scheduling ──
     void SetScheduleEnabled(bool enabled) { m_scheduleEnabled = enabled; }
@@ -71,7 +70,13 @@ public:
         }
         return false;
     }
-    bool IsAnyBlockedAppPlayingAudio();
+    bool IsAudioVideoDetected() const {
+        for (const auto& mon : m_monitors) {
+            if (mon.hasAudioVideo) return true;
+        }
+        return false;
+    }
+    std::wstring GetStatusString() const;
     POINT GetLastMousePos() const { return m_lastMousePos; }
     void SetLastMousePos(POINT pt) { m_lastMousePos = pt; }
     bool IsSettingCursorPos() const { return m_isSettingCursorPos; }
@@ -106,7 +111,6 @@ private:
     bool m_cursorHidden = false;
     int m_videoCheckTick = 0;
     bool m_isFullscreenAppActive = false;
-    std::vector<std::wstring> m_blockedApps;
     static constexpr DWORD AUDIO_GRACE_MS = 30000; // 30-second grace period after audio stops
     POINT m_lastMousePos = { -1, -1 };
     bool m_isSettingCursorPos = false;
@@ -122,6 +126,7 @@ private:
     // ── v1.6.5 (Todos 3+4): OSD window state ──
     HWND m_hwndOSD = nullptr;
     bool m_osdClassRegistered = false;
+
     // Direct2D resources for OSD. Stored as raw pointers; lifecycle is fully
     // owned by DimmerManager. They are created lazily on first paint and
     // released in DestroyOSD / destructor.

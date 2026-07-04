@@ -225,105 +225,6 @@ void MainWindow::OnPaint() {
         }
     }
 
-    // ── RIGHT-SIDE PANEL ──
-    // Draw expansion arrow at top-right of content area
-    float ax = (float)m_blockedArrowRect.left;
-    float ay = (float)m_blockedArrowRect.top;
-    m_pRenderTarget->DrawText(
-        m_blockedExpanded ? L"\u25BC" : L"\u25B6", 1, m_pTextFormatDetail,
-        D2D1::RectF(ax, ay, ax + 16, ay + 16),
-        m_blockedArrowHovered ? m_pBrushAccent : m_pBrushTextMuted
-    );
-    m_pRenderTarget->DrawText(
-        L"Bypass Apps", 11, m_pTextFormatDetail,
-        D2D1::RectF(ax + 17, ay, CONTENT_WIDTH - 10, ay + 16),
-        m_blockedArrowHovered ? m_pBrushAccent : m_pBrushTextMuted
-    );
-
-    if (m_blockedExpanded) {
-        D2D1_ROUNDED_RECT panelRect = D2D1::RoundedRect(
-            D2D1::RectF(m_blockedPanelRect.left, m_blockedPanelRect.top,
-                        m_blockedPanelRect.right, m_blockedPanelRect.bottom),
-            8.0f, 8.0f
-        );
-        m_pRenderTarget->FillRoundedRectangle(panelRect, m_pBrushCard);
-        m_pRenderTarget->DrawRoundedRectangle(panelRect, m_pBrushCardBorder, 1.2f);
-
-        float headerY = (float)m_blockedPanelRect.top + 12.0f;
-        m_pRenderTarget->DrawText(
-            L"Bypass Apps", 11, m_pTextFormatDetail,
-            D2D1::RectF(m_blockedPanelRect.left + 12, headerY,
-                        m_blockedAddRect.right - 56, headerY + 18),
-            m_pBrushTextMuted
-        );
-        m_pRenderTarget->DrawText(
-            L"[+ Add]", 6, m_pTextFormatDetail,
-            D2D1::RectF(m_blockedAddRect.right - 52, headerY - 2,
-                        m_blockedAddRect.right, headerY + 18),
-            m_blockedAddHovered ? m_pBrushAccent : m_pBrushText
-        );
-
-        // ── v1.6.5 (Todo 6): Import / Export Profile buttons ──
-        // Draw two small compact buttons between the panel header and the
-        // separator line. The right panel's content y-offset was already
-        // shifted down by 26px in UpdateLayout to make room for these.
-        auto DrawProfileBtn = [&](const RECT& r, bool hovered, const wchar_t* label, int labelLen) {
-            D2D1_ROUNDED_RECT pr = D2D1::RoundedRect(
-                D2D1::RectF((float)r.left, (float)r.top,
-                            (float)r.right, (float)r.bottom),
-                4.0f, 4.0f);
-            m_pRenderTarget->FillRoundedRectangle(pr, hovered ? m_pBrushAccent : m_pBrushTrack);
-            m_pRenderTarget->DrawRoundedRectangle(
-                pr, hovered ? m_pBrushAccentHover : m_pBrushCardBorder, 1.0f);
-            m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-            m_pRenderTarget->DrawText(
-                label, labelLen, m_pTextFormatDetail,
-                D2D1::RectF((float)r.left, (float)r.top + 4.0f,
-                            (float)r.right, (float)r.bottom),
-                hovered ? m_pBrushText : m_pBrushTextMuted
-            );
-            m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-        };
-        DrawProfileBtn(m_importProfileRect, m_importProfileHovered, L"Import",  6);
-        DrawProfileBtn(m_exportProfileRect, m_exportProfileHovered, L"Export",  6);
-
-        float sepY = headerY + 26 + 32; // shift separator down to clear profile row
-        m_pRenderTarget->DrawLine(
-            D2D1::Point2F(m_blockedPanelRect.left + 12, sepY),
-            D2D1::Point2F(m_blockedPanelRect.right - 12, sepY),
-            m_pBrushCardBorder, 1.0f
-        );
-
-        float clipTop = sepY + 2;
-        float clipBottom = m_blockedPanelRect.bottom - 4;
-        m_pRenderTarget->PushAxisAlignedClip(
-            D2D1::RectF(m_blockedPanelRect.left, clipTop,
-                        m_blockedPanelRect.right, clipBottom),
-            D2D1_ANTIALIAS_MODE_PER_PRIMITIVE
-        );
-        m_pRenderTarget->SetTransform(
-            D2D1::Matrix3x2F::Translation(0.0f, -(float)m_blockedScrollOffset)
-        );
-
-        for (const auto& item : m_blockedItems) {
-            m_pRenderTarget->DrawText(
-                item.name.c_str(), (UINT32)item.name.length(), m_pTextFormatBody,
-                D2D1::RectF(item.textRect.left, item.textRect.top,
-                           item.textRect.right, item.textRect.bottom),
-                m_pBrushText
-            );
-            m_pRenderTarget->DrawText(
-                L"\u2715", 1, m_pTextFormatDetail,
-                D2D1::RectF(item.removeRect.left + 3, item.removeRect.top + 1,
-                           item.removeRect.left + 19, item.removeRect.top + 17),
-                item.hoveredRemove ? m_pBrushAccent : m_pBrushTextMuted
-            );
-        }
-
-        m_pRenderTarget->SetTransform(D2D1::IdentityMatrix());
-        m_pRenderTarget->PopAxisAlignedClip();
-    }
-
     // Technical Separator Line before Footer Metadata
     float footerY = static_cast<float>(m_windowHeight - 35);
     m_pRenderTarget->DrawLine(
@@ -333,7 +234,7 @@ void MainWindow::OnPaint() {
         1.0f
     );
 
-    // Dynamic Dimmer Status Indicator
+    // Dynamic Status Indicator
     bool anyDimmerActive = false;
     if (m_config.dimmingEnabled) {
         const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
@@ -345,18 +246,14 @@ void MainWindow::OnPaint() {
         }
     }
 
-    wchar_t statusStr[64] = { 0 };
-    if (anyDimmerActive) {
-        wcscpy_s(statusStr, ARRAYSIZE(statusStr), L"SYSTEM: ACTIVE");
-    } else {
-        wcscpy_s(statusStr, ARRAYSIZE(statusStr), L"SYSTEM: STANDBY");
-    }
+    std::wstring statusStr = DimmerManager::Instance().GetStatusString();
+    std::wstring statusLabel = L"Status: " + statusStr;
 
     m_pRenderTarget->DrawText(
-        statusStr, static_cast<UINT32>(wcslen(statusStr)),
+        statusLabel.c_str(), static_cast<UINT32>(statusLabel.length()),
         m_pTextFormatDetail,
         D2D1::RectF(25.0f, footerY + 10.0f, 250.0f, footerY + 28.0f),
-        anyDimmerActive ? m_pBrushAccent : m_pBrushTextMuted
+        anyDimmerActive || DimmerManager::Instance().IsVideoDetected() || DimmerManager::Instance().IsAudioVideoDetected() ? m_pBrushAccent : m_pBrushTextMuted
     );
 
     // Undo Changes centered in footer

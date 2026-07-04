@@ -375,7 +375,6 @@ static std::vector<HMONITOR> GetMonitorsForProcessName(const std::wstring& proce
 // Helper function containing C++ objects with destructors.
 // This function MUST NOT use structured exception handling (__try/__except) directly.
 static void DoAudioCheckWork(
-    const std::vector<std::wstring>* blockedApps,
     std::vector<std::wstring>* outPlayingProcesses)
 {
     HRESULT hrCOM = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -407,23 +406,33 @@ static void DoAudioCheckWork(
                                     DWORD pid = 0;
                                     if (SUCCEEDED(pSessionControl2->GetProcessId(&pid)) && pid != 0) {
                                         std::wstring fname = GetProcessNameFromPidNoLog(pid);
-                                        bool isTarget = false;
-                                        for (const auto& name : *blockedApps) {
-                                            if (lstrcmpiW(fname.c_str(), name.c_str()) == 0) {
-                                                isTarget = true;
-                                                break;
-                                            }
-                                        }
-                                        if (!isTarget) {
-                                            // auto-check major browsers
-                                            isTarget = (lstrcmpiW(fname.c_str(), L"chrome.exe") == 0 ||
-                                                        lstrcmpiW(fname.c_str(), L"firefox.exe") == 0 ||
-                                                        lstrcmpiW(fname.c_str(), L"msedge.exe") == 0 ||
-                                                        lstrcmpiW(fname.c_str(), L"opera.exe") == 0 ||
-                                                        lstrcmpiW(fname.c_str(), L"brave.exe") == 0);
-                                        }
+                                        
+                                        // Check major media/browsers for audio playback
+                                        bool isMediaApp = (lstrcmpiW(fname.c_str(), L"vlc.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"mpc-hc.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"mpc-hc64.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"mpc-be.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"mpc-be64.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"potplayer.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"wmplayer.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"Plex.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"PlexScriptHost.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"kodi.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"mpv.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"mpv.net.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"netflix.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"screenbox.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"kmplayer.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"kmp.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"gom.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"smplayer.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"chrome.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"firefox.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"msedge.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"opera.exe") == 0 ||
+                                                           lstrcmpiW(fname.c_str(), L"brave.exe") == 0);
 
-                                        if (isTarget) {
+                                        if (isMediaApp) {
                                             bool isPlaying = false;
                                             
                                             // Try IAudioMeterInformation peak value
@@ -464,11 +473,10 @@ static void DoAudioCheckWork(
 // the same function body. This static helper isolates the SEH wrapper so
 // the caller's lambda can use std::vector, ComPtr, etc. freely.
 static void DoAudioCheckSEH(
-    const std::vector<std::wstring>& blockedApps,
     std::vector<std::wstring>& outPlayingProcesses)
 {
     __try {
-        DoAudioCheckWork(&blockedApps, &outPlayingProcesses);
+        DoAudioCheckWork(&outPlayingProcesses);
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         // Audio check hit an SEH (access violation, etc.). Abandon this tick.
         // The guard in the caller will reset m_audioCheckInFlight.
@@ -480,10 +488,8 @@ void DimmerManager::CheckAudioPlaybackAsync() {
         return; // already checking
     }
 
-    std::vector<std::wstring> blockedApps = m_blockedApps;
-
     try {
-        std::thread([this, blockedApps]() {
+        std::thread([this]() {
             // Ensure m_audioCheckInFlight is reset even if the thread body throws
             struct AudioCheckGuard {
                 std::atomic<bool>& flag;
@@ -498,7 +504,7 @@ void DimmerManager::CheckAudioPlaybackAsync() {
             // main thread in CheckVideoPlayback() to avoid calling
             // EnumWindows from a thread without a message pump.
             try {
-                DoAudioCheckSEH(blockedApps, playingProcesses);
+                DoAudioCheckSEH(playingProcesses);
             } catch (...) {
                 // C++ exception (bad_alloc, etc.) — abandon this tick
             }
@@ -648,15 +654,6 @@ void DimmerManager::CheckVideoPlayback() {
     // ── v1.6.5 (Todo 2): Drive time-of-day scheduling on the same 1s tick ──
     CheckSchedule();
     // Logging disabled - can be re-enabled for debugging if needed
-}
-
-
-bool DimmerManager::IsAnyBlockedAppPlayingAudio() {
-    return false;
-}
-
-void DimmerManager::SetBlockedApps(const std::vector<std::wstring>& apps) {
-    m_blockedApps = apps;
 }
 
 // ── v1.6.5: Time-of-day scheduling ──
@@ -1174,6 +1171,32 @@ LRESULT CALLBACK DimmerManager::OSDWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARA
             ValidateRect(hwnd, nullptr);
         }
         return 0;
+    }
+}
+
+std::wstring DimmerManager::GetStatusString() const {
+    bool hasVideo = false;
+    bool hasAudio = false;
+
+    for (const auto& mon : m_monitors) {
+        if (mon.hasFullscreenVideo) {
+            hasVideo = true;
+        }
+        if (mon.hasAudioVideo) {
+            hasAudio = true;
+        }
+    }
+
+    if (hasVideo && hasAudio) {
+        return L"Video+Audio Detected!";
+    } else if (hasVideo) {
+        return L"Video Detected!";
+    } else if (hasAudio) {
+        return L"Audio Detected!";
+    } else if (m_isIdleState) {
+        return L"Idle";
+    } else {
+        return L"Active";
     }
 }
 

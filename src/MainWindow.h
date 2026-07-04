@@ -33,13 +33,6 @@ struct UICheckbox {
     std::wstring label;
 };
 
-struct UIBlockedAppItem {
-    std::wstring name;
-    RECT textRect;
-    RECT removeRect;
-    bool hoveredRemove = false;
-};
-
 class MainWindow {
 public:
     static MainWindow& Instance() {
@@ -111,14 +104,6 @@ private:
     int m_windowHeight = 520;
     AppConfig m_config;
 
-    // v1.6.5 (Todo 6): Profile Import/Export buttons (right-side panel)
-    RECT m_importProfileRect = {};
-    RECT m_exportProfileRect = {};
-    bool m_importProfileHovered = false;
-    bool m_exportProfileHovered = false;
-    void ShowImportProfileDialog();
-    void ShowExportProfileDialog();
-
     // Current app version read from resource
     std::wstring m_appVersion;
 
@@ -150,18 +135,6 @@ private:
     bool m_trayAdded = false;   // Shell_NotifyIcon succeeded
     bool m_isSessionEnding = false; // System session is ending or package update requested close
 
-    // Blocked apps UI
-    static const int CONTENT_WIDTH = 480;
-    static const int PANEL_WIDTH = 200;
-    bool m_blockedExpanded = false;
-    int m_blockedScrollOffset = 0;
-    RECT m_blockedPanelRect = {};
-    RECT m_blockedArrowRect = {};
-    RECT m_blockedAddRect = {};
-    std::vector<UIBlockedAppItem> m_blockedItems;
-    bool m_blockedArrowHovered = false;
-    bool m_blockedAddHovered = false;
-    int m_blockedContentHeight = 0;
-    void ShowAddAppDialog();
+    static const int CONTENT_WIDTH = 430;
     void Repaint() { InvalidateRect(m_hwnd, nullptr, FALSE); }
 };

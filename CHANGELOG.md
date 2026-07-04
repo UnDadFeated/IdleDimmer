@@ -2,6 +2,21 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [2.0.3] - 2026-07-04
+
+### Updates
+* **Removed Console Panel and Right-Side Panel**: Removed the "Console>" panel and all related console logging code, as video and sound detection are now fully functional without the need for verbose background check logs. Also removed the profile import/export buttons and right-side panel to make the main GUI more horizontally compact.
+* **Main GUI Width Reduced**: Made the main GUI about 50px skinner by reducing `CONTENT_WIDTH` from 480 to 430 pixels. The interface is now more horizontally compact with all primary controls in a single pane.
+
+## [2.0.2] - 2026-07-04
+
+### Updates
+* **Console Panel Replaces Blocked Apps**: Removed the bypass apps code completely. Replaced the "Blocked Apps" right-side panel with a "Console>" panel that tracks 5 minutes of verbose activity, with autoscroll behavior (only when user is at the bottom).
+* **Footer Status Updated**: Changed the footer status text from "SYSTEM: STANDBY" to "Status: ..." with dynamic video/audio detection status like "Video Detected!", "Video+Audio Detected!", "Idle", or "Active".
+
+### Bug Fixes
+* **Blocked Apps Code Removal**: Removed all `blockedApps` and `SetBlockedApps` references from `ConfigManager`, `DimmerManager`, and `MainWindow` to cleanly remove bypass apps code.
+
 ## [2.0.1] - 2026-07-04
 
 ### Bug Fixes

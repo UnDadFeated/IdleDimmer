@@ -112,36 +112,6 @@ void MainWindow::HandleMouseMove(int x, int y) {
         }
     }
 
-    // v1.6.5 (Todo 6): Import/Export profile button hover
-    bool wasImport = m_importProfileHovered;
-    m_importProfileHovered = m_blockedExpanded &&
-        (x >= m_importProfileRect.left && x <= m_importProfileRect.right &&
-         y >= m_importProfileRect.top && y <= m_importProfileRect.bottom);
-    if (m_importProfileHovered != wasImport) needsRepaint = true;
-    bool wasExport = m_exportProfileHovered;
-    m_exportProfileHovered = m_blockedExpanded &&
-        (x >= m_exportProfileRect.left && x <= m_exportProfileRect.right &&
-         y >= m_exportProfileRect.top && y <= m_exportProfileRect.bottom);
-    if (m_exportProfileHovered != wasExport) needsRepaint = true;
-
-    // Blocked apps hover
-    bool wasArrowHover = m_blockedArrowHovered;
-    m_blockedArrowHovered = (x >= m_blockedArrowRect.left && x <= m_blockedArrowRect.right && y >= m_blockedArrowRect.top && y <= m_blockedArrowRect.bottom);
-    if (m_blockedArrowHovered != wasArrowHover) needsRepaint = true;
-
-    bool wasAddHover = m_blockedAddHovered;
-    m_blockedAddHovered = m_blockedExpanded && (x >= m_blockedAddRect.left && x <= m_blockedAddRect.right && y >= m_blockedAddRect.top && y <= m_blockedAddRect.bottom);
-    if (m_blockedAddHovered != wasAddHover) needsRepaint = true;
-
-    // Panel items hover (adjusted for scroll offset)
-    int adjustedY = y + m_blockedScrollOffset;
-    for (auto& item : m_blockedItems) {
-        bool wasHover = item.hoveredRemove;
-        item.hoveredRemove = (x >= item.removeRect.left && x <= item.removeRect.right &&
-                             adjustedY >= item.removeRect.top && adjustedY <= item.removeRect.bottom);
-        if (item.hoveredRemove != wasHover) needsRepaint = true;
-    }
-
     if (needsRepaint) {
         InvalidateRect(m_hwnd, nullptr, FALSE);
     }
@@ -181,7 +151,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 }
             }
         }
-        DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
         if (!m_config.idleDimEnabled) {
             DimmerManager::Instance().SetIdleState(false);
         }
@@ -195,46 +164,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
         SaveSettings();
         InvalidateRect(m_hwnd, nullptr, FALSE);
         return;
-    }
-
-    // Blocked apps interactions
-    if (x >= m_blockedArrowRect.left && x <= m_blockedArrowRect.right && y >= m_blockedArrowRect.top && y <= m_blockedArrowRect.bottom) {
-        m_blockedExpanded = !m_blockedExpanded;
-        if (!m_blockedExpanded) m_blockedScrollOffset = 0;
-        UpdateLayout();
-        Repaint();
-        return;
-    }
-    if (m_blockedExpanded && x >= m_blockedAddRect.left && x <= m_blockedAddRect.right && y >= m_blockedAddRect.top && y <= m_blockedAddRect.bottom) {
-        ShowAddAppDialog();
-        return;
-    }
-    // v1.6.5 (Todo 6): Import / Export profile buttons
-    if (m_blockedExpanded &&
-        x >= m_importProfileRect.left && x <= m_importProfileRect.right &&
-        y >= m_importProfileRect.top && y <= m_importProfileRect.bottom) {
-        ShowImportProfileDialog();
-        return;
-    }
-    if (m_blockedExpanded &&
-        x >= m_exportProfileRect.left && x <= m_exportProfileRect.right &&
-        y >= m_exportProfileRect.top && y <= m_exportProfileRect.bottom) {
-        ShowExportProfileDialog();
-        return;
-    }
-    if (m_blockedExpanded) {
-        int adjustedY = y + m_blockedScrollOffset;
-        for (size_t i = 0; i < m_blockedItems.size(); ++i) {
-            if (x >= m_blockedItems[i].removeRect.left && x <= m_blockedItems[i].removeRect.right &&
-                adjustedY >= m_blockedItems[i].removeRect.top && adjustedY <= m_blockedItems[i].removeRect.bottom) {
-                m_config.blockedApps.erase(m_config.blockedApps.begin() + i);
-                DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
-                UpdateLayout();
-                SaveSettings();
-                Repaint();
-                return;
-            }
-        }
     }
 
     for (auto& slider : m_sliders) {
@@ -372,21 +301,6 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
     float scale = GetDpiScale();
     pt.x = static_cast<LONG>(pt.x / scale);
     pt.y = static_cast<LONG>(pt.y / scale);
-
-    // Panel scroll: if mouse is over the right-side panel
-    if (m_blockedExpanded) {
-        if (pt.x >= m_blockedPanelRect.left && pt.x <= m_blockedPanelRect.right &&
-            pt.y >= m_blockedPanelRect.top && pt.y <= m_blockedPanelRect.bottom) {
-            int visibleHeight = m_blockedPanelRect.bottom - m_blockedPanelRect.top - 60;
-            int maxOffset = (std::max)(0, m_blockedContentHeight - visibleHeight);
-            int step = (delta > 0) ? -30 : 30;
-            m_blockedScrollOffset += step;
-            if (m_blockedScrollOffset < 0) m_blockedScrollOffset = 0;
-            if (m_blockedScrollOffset > maxOffset) m_blockedScrollOffset = maxOffset;
-            Repaint();
-            return;
-        }
-    }
 
     // Zoom/increment the slider currently hovered
     bool changed = false;

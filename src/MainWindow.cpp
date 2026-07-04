@@ -560,9 +560,6 @@ void MainWindow::UpdateLayout() {
         yOffset = endSlider.rect.bottom + 4;
     }
 
-    // ── BLOCKED APPS ──
-    m_blockedArrowRect = { CONTENT_WIDTH - 120, 5, CONTENT_WIDTH - 80, 25 };
-
     // Theme (Light Mode) toggle at top left of main GUI window
     UICheckbox lightModeCb;
     lightModeCb.settingName = L"LightMode";
@@ -616,40 +613,7 @@ void MainWindow::UpdateLayout() {
     m_updateCheckRect.right = CONTENT_WIDTH - 20;
     m_updateCheckRect.bottom = m_windowHeight;
 
-    // ── RIGHT-SIDE PANEL LAYOUT ──
-    int panelLeft = CONTENT_WIDTH + 10;
-    int panelTop = 30;
-    int panelRight = panelLeft + PANEL_WIDTH;
-    int panelBottom = m_windowHeight - 42;
-    m_blockedPanelRect = { panelLeft, panelTop, panelRight, panelBottom };
-
-    m_blockedAddRect = { panelLeft + 10, panelTop + 8, panelRight - 10, panelTop + 26 };
-
-    // v1.6.5 (Todo 6): Import / Export profile buttons below the panel header.
-    int profileY = panelTop + 32;
-    int profileH = 22;
-    m_importProfileRect = { panelLeft + 10, profileY,
-                            panelLeft + 10 + (PANEL_WIDTH - 30) / 2, profileY + profileH };
-    m_exportProfileRect = { m_importProfileRect.right + 6, profileY,
-                            panelRight - 10, profileY + profileH };
-
-    m_blockedItems.clear();
-    m_blockedContentHeight = 0;
-    if (m_blockedExpanded) {
-        int itemY = panelTop + 70; // leave room for header + import/export row
-        for (const auto& app : m_config.blockedApps) {
-            UIBlockedAppItem item;
-            item.name = app;
-            item.textRect = { panelLeft + 10, itemY, panelRight - 50, itemY + 22 };
-            item.removeRect = { panelRight - 38, itemY + 2, panelRight - 14, itemY + 20 };
-            m_blockedItems.push_back(item);
-            itemY += 24;
-        }
-        itemY += 10;
-        m_blockedContentHeight = itemY - panelTop;
-    }
-
-    m_windowWidth = m_blockedExpanded ? (CONTENT_WIDTH + 10 + PANEL_WIDTH + 10) : CONTENT_WIDTH;
+    m_windowWidth = CONTENT_WIDTH;
 
     UINT dpi = GetWindowDpi();
     float scale = dpi / 96.0f;
@@ -791,7 +755,6 @@ bool MainWindow::IsPackaged() const {
 
 void MainWindow::LoadSettings() {
     m_config = ConfigManager::LoadConfig(ConfigManager::GetConfigPath());
-    DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
     // ── v1.6.5: push schedule settings into DimmerManager ──
     DimmerManager::Instance().SetScheduleRange(
         m_config.scheduleStartMins,
@@ -802,62 +765,6 @@ void MainWindow::LoadSettings() {
 
 void MainWindow::SaveSettings() {
     ConfigManager::SaveConfig(ConfigManager::GetConfigPath(), m_config);
-}
-
-void MainWindow::ShowAddAppDialog() {
-    if (!g_addDlgRegistered) {
-        WNDCLASSEXW wc = {};
-        wc.cbSize = sizeof(WNDCLASSEXW);
-        wc.lpfnWndProc = AddAppDlgProc;
-        wc.hInstance = m_hInst;
-        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-        wc.lpszClassName = ADD_DLG_CLASS;
-        if (!RegisterClassExW(&wc)) {
-            LogError(ErrorCode::E214, HRESULT_FROM_WIN32(GetLastError()));
-            return;
-        }
-        g_addDlgRegistered = true;
-    }
-
-    g_addDlgConfirmed = false;
-    g_addDlgResult[0] = 0;
-
-    HWND hDlg = CreateWindowExW(WS_EX_DLGMODALFRAME, ADD_DLG_CLASS, L"Add Blocked App",
-        WS_CAPTION | WS_SYSMENU | WS_VISIBLE,
-        CW_USEDEFAULT, CW_USEDEFAULT, 270, 105,
-        m_hwnd, NULL, m_hInst, NULL);
-
-    if (!hDlg) {
-        LogError(ErrorCode::E215, HRESULT_FROM_WIN32(GetLastError()));
-        return;
-    }
-
-    EnableWindow(m_hwnd, FALSE);
-    MSG msg;
-    while (IsWindow(hDlg) && GetMessageW(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessageW(&msg);
-    }
-    EnableWindow(m_hwnd, TRUE);
-    SetForegroundWindow(m_hwnd);
-
-    if (g_addDlgConfirmed && g_addDlgResult[0]) {
-        std::wstring name = g_addDlgResult;
-        CharLowerW(&name[0]);
-        if (name.find(L'.') == std::wstring::npos) name += L".exe";
-        bool dup = false;
-        for (const auto& app : m_config.blockedApps) {
-            if (lstrcmpiW(app.c_str(), name.c_str()) == 0) { dup = true; break; }
-        }
-        if (!dup) {
-            m_config.blockedApps.push_back(name);
-            DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
-            UpdateLayout();
-            SaveSettings();
-            Repaint();
-        }
-    }
 }
 
 void MainWindow::SyncMonitorsWithConfig() {
@@ -1229,63 +1136,4 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     return DefWindowProcW(hwnd, msg, wp, lp);
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// v1.6.5 (Todo 6): Profile Import / Export via Win32 GetOpenFileNameW /
-// GetSaveFileNameW. We reuse the existing ConfigManager SaveConfig/LoadConfig
-// helpers, since the file format is identical — an exported profile is just
-// a dimmer.ini file written to a user-chosen path.
-// ════════════════════════════════════════════════════════════════════════════
 
-void MainWindow::ShowExportProfileDialog() {
-    wchar_t szFile[MAX_PATH] = { 0 };
-    OPENFILENAMEW ofn = {};
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner   = m_hwnd;
-    ofn.lpstrFile   = szFile;
-    ofn.nMaxFile    = MAX_PATH;
-    ofn.lpstrFilter = L"IdleDimmer Profile (*.ini)\0*.ini\0All Files (*.*)\0*.*\0";
-    ofn.nFilterIndex = 1;
-    ofn.lpstrDefExt = L"ini";
-    ofn.lpstrTitle  = L"Export IdleDimmer Profile";
-    ofn.Flags       = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
-
-    if (GetSaveFileNameW(&ofn)) {
-        ConfigManager::SaveConfig(szFile, m_config);
-        DimmerManager::Instance().ShowOSD(L"Profile exported");
-    }
-}
-
-void MainWindow::ShowImportProfileDialog() {
-    wchar_t szFile[MAX_PATH] = { 0 };
-    OPENFILENAMEW ofn = {};
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner   = m_hwnd;
-    ofn.lpstrFile   = szFile;
-    ofn.nMaxFile    = MAX_PATH;
-    ofn.lpstrFilter = L"IdleDimmer Profile (*.ini)\0*.ini\0All Files (*.*)\0*.*\0";
-    ofn.nFilterIndex = 1;
-    ofn.lpstrTitle  = L"Import IdleDimmer Profile";
-    ofn.Flags       = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
-
-    if (GetOpenFileNameW(&ofn)) {
-        // Preserve monitor IDs that are currently attached — overwrite only
-        // the values/enabled flags from the imported file for known monitors,
-        // and import everything else (closeToTray, etc.) wholesale.
-        AppConfig imported = ConfigManager::LoadConfig(szFile);
-        m_config = imported;
-
-        DimmerManager::Instance().SetBlockedApps(m_config.blockedApps);
-        DimmerManager::Instance().SetDimmingEnabled(m_config.dimmingEnabled);
-        DimmerManager::Instance().SetScheduleRange(
-            m_config.scheduleStartMins, m_config.scheduleEndMins, m_config.scheduleDimLevel);
-        DimmerManager::Instance().SetScheduleEnabled(m_config.scheduleEnabled);
-        DimmerManager::Instance().CheckSchedule();
-
-        SyncMonitorsWithConfig();
-        UpdateLayout();
-        SaveSettings();
-        InvalidateRect(m_hwnd, nullptr, FALSE);
-
-        DimmerManager::Instance().ShowOSD(L"Profile imported");
-    }
-}

@@ -25,7 +25,6 @@ struct AppConfig {
     bool lightMode = false;
     bool dimmingEnabled = false; // Default to false so it does NOT dim on startup!
     std::vector<MonitorConfig> monitors;
-    std::vector<std::wstring> blockedApps;
 
     // ── Time-of-Day Scheduling (v1.6.5) ──
     // All times are stored as minutes-of-day (0..1439).
@@ -37,12 +36,6 @@ struct AppConfig {
     int  scheduleDimLevel  = 60;
 
     AppConfig() {
-        blockedApps = {
-            L"vlc.exe", L"mpc-hc.exe", L"mpc-hc64.exe", L"mpc-be.exe", L"mpc-be64.exe",
-            L"potplayer.exe", L"wmplayer.exe", L"Plex.exe", L"PlexScriptHost.exe",
-            L"kodi.exe", L"mpv.exe", L"mpv.net.exe", L"netflix.exe", L"screenbox.exe",
-            L"kmplayer.exe", L"kmp.exe", L"gom.exe", L"smplayer.exe"
-        };
     }
 };
 
