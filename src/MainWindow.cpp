@@ -572,7 +572,7 @@ void MainWindow::UpdateLayout() {
     lightModeCb.settingName = L"LightMode";
     lightModeCb.checked = m_config.lightMode;
     lightModeCb.pValue = &m_config.lightMode;
-    lightModeCb.label = L"Theme: Light Mode";
+    lightModeCb.label = L"Theme";
     lightModeCb.rect.left = 20;
     lightModeCb.rect.top = 5;
     lightModeCb.rect.right = lightModeCb.rect.left + 34;
