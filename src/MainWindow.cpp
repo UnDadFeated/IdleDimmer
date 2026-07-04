@@ -530,10 +530,6 @@ void MainWindow::UpdateLayout() {
     AddCheckbox(L"CloseToTray", m_config.closeToTray, &m_config.closeToTray, L"Close to Tray", 0, yOffset);
     AddCheckbox(L"StartWithWindows", m_config.startWithWindows, &m_config.startWithWindows, L"Start with Windows", 1, yOffset);
     yOffset += 22;
-    yOffset += 8; // gap between sections
-    yOffset += 16; // space for section header label
-    AddCheckbox(L"LightMode", m_config.lightMode, &m_config.lightMode, L"Theme: Light Mode", 0, yOffset);
-    yOffset += 22;
 
     // ── SCHEDULE section (v1.6.5 Todo 8) ──
     yOffset += 8;
@@ -570,6 +566,18 @@ void MainWindow::UpdateLayout() {
 
     // ── BLOCKED APPS ──
     m_blockedArrowRect = { CONTENT_WIDTH - 120, 5, CONTENT_WIDTH - 80, 25 };
+
+    // Theme (Light Mode) toggle at top right, same line as "Bypass Apps"
+    UICheckbox lightModeCb;
+    lightModeCb.settingName = L"LightMode";
+    lightModeCb.checked = m_config.lightMode;
+    lightModeCb.pValue = &m_config.lightMode;
+    lightModeCb.label = L""; // No label, toggle is self-contained
+    lightModeCb.rect.left = CONTENT_WIDTH - 130;
+    lightModeCb.rect.top = 5;
+    lightModeCb.rect.right = lightModeCb.rect.left + 34;
+    lightModeCb.rect.bottom = lightModeCb.rect.top + 18;
+    m_checkboxes.push_back(lightModeCb);
 
     if (m_config.idleDimEnabled) {
         // Inactivity Minutes Slider Card
