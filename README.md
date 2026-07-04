@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3--or--later-6B7280?style=flat-square" alt="GPLv3-or-later License"></a>
-  <img src="https://img.shields.io/badge/Version-2.0.0-10B981?style=flat-square" alt="Version 2.0.0">
+  <img src="https://img.shields.io/badge/Version-2.0.1-10B981?style=flat-square" alt="Version 2.0.1">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 10/11">
   <img src="https://img.shields.io/badge/C%2B%2B23-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++23">
 </p>

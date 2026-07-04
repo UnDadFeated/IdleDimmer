@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [2.0.1] - 2026-07-04
+
+### Bug Fixes
+* **Dynamic Version Display in Footer Fixed**: Fixed a bug where the footer version number was displaying `1.9.9` instead of the current version because the `FILEVERSION` and `PRODUCTVERSION` lines in `resources/resources.rc` were not updated during the 2.0.0 bump. The footer now correctly reads and displays the dynamic version from the PE file's version resources at runtime.
+
 ## [2.0.0] - 2026-07-04
 
 ### Bug Fixes
