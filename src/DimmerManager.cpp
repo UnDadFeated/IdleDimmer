@@ -624,18 +624,13 @@ void DimmerManager::CheckVideoPlayback() {
                     MONITORINFO mi = {};
                     mi.cbSize = sizeof(mi);
                     if (GetMonitorInfoW(hMon, &mi)) {
-                        // Window covers the full monitor (borderless or captionless)
+                        // Window covers the full monitor (any window that geometrically
+                        // covers the monitor is treated as fullscreen for dimming bypass)
                         if (rcWindow.left <= mi.rcMonitor.left &&
                             rcWindow.top <= mi.rcMonitor.top &&
                             rcWindow.right >= mi.rcMonitor.right &&
                             rcWindow.bottom >= mi.rcMonitor.bottom) {
-                            
-                            LONG_PTR style = GetWindowLongPtrW(hFore, GWL_STYLE);
-                            bool isBorderless = (style & WS_POPUP) && !(style & WS_CAPTION);
-                            bool isCaptionless = !(style & WS_MAXIMIZE) && !(style & WS_CAPTION);
-                            if (isBorderless || isCaptionless) {
-                                hCurrentFullscreenMon = hMon;
-                            }
+                            hCurrentFullscreenMon = hMon;
                         }
                     }
                 }
