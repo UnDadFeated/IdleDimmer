@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [1.9.5] - 2026-07-03
+
+### Bug Fixes
+* **Idle Detection Timer Reset**: Fixed a bug where the Windows idle timer (`GetLastInputInfo`) was being reset every second by `SetCursorPos` calls during idle cursor hiding. The cursor shift logic now only uses `ShowCursor(FALSE)` which hides the cursor without triggering input events, allowing the idle dimming state to engage correctly after the configured timeout.
+
 ## [1.9.4] - 2026-07-03
 
 ### Updates

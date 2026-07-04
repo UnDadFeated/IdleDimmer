@@ -348,15 +348,6 @@ void DimmerManager::UpdateCursorDimming() {
 void DimmerManager::ShiftCursorForIdle() {
     if (m_cursorShifted) return;
     m_cursorShifted = true;
-
-    POINT pt;
-    if (GetCursorPos(&pt)) {
-        m_isSettingCursorPos = true;
-        int dx = (pt.x > 0) ? -1 : 1;
-        POINT newPt = { pt.x + dx, pt.y };
-        SetCursorPos(newPt.x, newPt.y);
-        m_lastMousePos = newPt;
-    }
 }
 
 typedef HRESULT (WINAPI* PFN_SHQueryUserNotificationState)(QUERY_USER_NOTIFICATION_STATE*);
@@ -1264,6 +1255,14 @@ void DimmerManager::LogState() {
             logFile << L"  m_dimmingEnabled: " << (m_dimmingEnabled ? L"true" : L"false") << L"\n";
             logFile << L"  m_isIdleState: " << (m_isIdleState ? L"true" : L"false") << L"\n";
             logFile << L"  m_scheduleActive: " << (m_scheduleActive ? L"true" : L"false") << L"\n";
+            
+            // Idle timing diagnostics
+            LASTINPUTINFO lii = {};
+            lii.cbSize = sizeof(lii);
+            if (GetLastInputInfo(&lii)) {
+                DWORD idleMs = GetTickCount() - lii.dwTime;
+                logFile << L"  idleMs: " << idleMs << L"\n";
+            }
             
             HWND hFore = GetForegroundWindow();
             if (hFore) {
