@@ -167,50 +167,11 @@ void MainWindow::OnPaint() {
         }
     }
 
-    // ── v1.6.5 (Todo 5): Preset Buttons Row ──
-    // First draw the section header label above the first preset button.
-    if (!m_presets.empty()) {
-        m_pRenderTarget->DrawText(
-            L"PRESETS", 7, m_pTextFormatDetail,
-            D2D1::RectF(25.0f, (float)m_presets[0].rect.top - 18.0f,
-                        200.0f, (float)m_presets[0].rect.top - 2.0f),
-            m_pBrushTextMuted
-        );
-
-        for (const auto& btn : m_presets) {
-            D2D1_ROUNDED_RECT r = D2D1::RoundedRect(
-                D2D1::RectF((float)btn.rect.left, (float)btn.rect.top,
-                            (float)btn.rect.right, (float)btn.rect.bottom),
-                6.0f, 6.0f);
-            // Hovered = accent fill (light), normal = card fill (dark).
-            m_pRenderTarget->FillRoundedRectangle(r, btn.hovered ? m_pBrushAccent : m_pBrushCard);
-            m_pRenderTarget->DrawRoundedRectangle(
-                r, btn.hovered ? m_pBrushAccentHover : m_pBrushCardBorder, 1.2f);
-
-            // Label color flips with hover for clear feedback.
-            m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-            m_pRenderTarget->DrawText(
-                btn.label.c_str(), (UINT32)btn.label.length(),
-                m_pTextFormatDetail,
-                D2D1::RectF((float)btn.rect.left, (float)btn.rect.top + 6.0f,
-                            (float)btn.rect.right, (float)btn.rect.bottom),
-                btn.hovered ? m_pBrushText : m_pBrushTextMuted
-            );
-            m_pTextFormatDetail->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-        }
-    }
-
     // Draw grouped section header labels above their first toggle
     for (const auto& cb : m_checkboxes) {
         if (cb.settingName == L"DimmingEnabled" && !cb.label.empty()) {
             m_pRenderTarget->DrawText(
                 L"SCREEN DIMMING", 14, m_pTextFormatDetail,
-                D2D1::RectF(25.0f, cb.rect.top - 18.0f, 200.0f, cb.rect.top - 2.0f),
-                m_pBrushTextMuted
-            );
-        } else if (cb.settingName == L"LightMode" && !cb.label.empty()) {
-            m_pRenderTarget->DrawText(
-                L"SCREEN DISPLAY", 14, m_pTextFormatDetail,
                 D2D1::RectF(25.0f, cb.rect.top - 18.0f, 200.0f, cb.rect.top - 2.0f),
                 m_pBrushTextMuted
             );
@@ -278,6 +239,32 @@ void MainWindow::OnPaint() {
         D2D1::RectF(ax + 17, ay, CONTENT_WIDTH - 10, ay + 16),
         m_blockedArrowHovered ? m_pBrushAccent : m_pBrushTextMuted
     );
+
+    // ── LIGHT MODE TOGGLE (top-right corner) ──
+    {
+        D2D1_ROUNDED_RECT switchTrack = D2D1::RoundedRect(
+            D2D1::RectF((float)m_lightModeRect.left, (float)m_lightModeRect.top, 
+                        (float)m_lightModeRect.right, (float)m_lightModeRect.bottom),
+            9.0f, 9.0f
+        );
+
+        bool lightModeChecked = m_config.lightMode;
+        if (lightModeChecked) {
+            m_pRenderTarget->FillRoundedRectangle(switchTrack, m_pBrushAccent);
+            m_pRenderTarget->DrawRoundedRectangle(switchTrack, m_lightModeHovered ? m_pBrushAccentHover : m_pBrushAccent, 1.2f);
+        } else {
+            m_pRenderTarget->FillRoundedRectangle(switchTrack, m_pBrushTrack);
+            m_pRenderTarget->DrawRoundedRectangle(switchTrack, m_lightModeHovered ? m_pBrushAccentHover : m_pBrushCardBorder, 1.2f);
+        }
+
+        // Draw circular sliding toggle knob
+        float knobX = lightModeChecked ? ((float)m_lightModeRect.left + 25.0f) : ((float)m_lightModeRect.left + 9.0f);
+        float knobY = (float)m_lightModeRect.top + 9.0f;
+        m_pRenderTarget->FillEllipse(
+            D2D1::Ellipse(D2D1::Point2F(knobX, knobY), 6.0f, 6.0f),
+            lightModeChecked ? m_pBrushText : m_pBrushTextMuted
+        );
+    }
 
     if (m_blockedExpanded) {
         D2D1_ROUNDED_RECT panelRect = D2D1::RoundedRect(

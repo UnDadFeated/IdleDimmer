@@ -23,14 +23,6 @@ struct UISlider {
     bool isHovered = false;
 };
 
-// v1.6.5 (Todo 5): Monochrome preset buttons row.
-struct UIPresetButton {
-    int  id = 0;            // 0=OLED, 1=Gaming, 2=Reading, 3=Night
-    RECT rect = {};
-    bool hovered = false;
-    std::wstring label;
-};
-
 struct UICheckbox {
     std::wstring monitorId;
     std::wstring settingName; // "CloseToTray", "ShowInTaskbar", etc.
@@ -115,7 +107,6 @@ private:
     // UI Interactive components
     std::vector<UISlider> m_sliders;
     std::vector<UICheckbox> m_checkboxes;
-    std::vector<UIPresetButton> m_presets;        // v1.6.5 (Todo 5)
     int m_windowWidth = 480;
     int m_windowHeight = 520;
     AppConfig m_config;
@@ -133,6 +124,10 @@ private:
 
     // Drag-drop tracking
     bool m_isDraggingAny = false;
+
+    // Light Mode toggle (top-right corner)
+    RECT m_lightModeRect = {};
+    bool m_lightModeHovered = false;
 
     //     // Undo features
     RECT m_undoRect = {};
@@ -173,7 +168,4 @@ private:
     int m_blockedContentHeight = 0;
     void ShowAddAppDialog();
     void Repaint() { InvalidateRect(m_hwnd, nullptr, FALSE); }
-
-    // Removed presets - no presets
-    void ApplyPreset(int id);
 };

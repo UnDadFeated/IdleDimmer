@@ -112,14 +112,6 @@ void MainWindow::HandleMouseMove(int x, int y) {
         }
     }
 
-    // v1.6.5 (Todo 5): preset button hover detection
-    for (auto& btn : m_presets) {
-        bool was = btn.hovered;
-        btn.hovered = (x >= btn.rect.left && x <= btn.rect.right &&
-                       y >= btn.rect.top && y <= btn.rect.bottom);
-        if (btn.hovered != was) needsRepaint = true;
-    }
-
     // v1.6.5 (Todo 6): Import/Export profile button hover
     bool wasImport = m_importProfileHovered;
     m_importProfileHovered = m_blockedExpanded &&
@@ -136,6 +128,11 @@ void MainWindow::HandleMouseMove(int x, int y) {
     bool wasArrowHover = m_blockedArrowHovered;
     m_blockedArrowHovered = (x >= m_blockedArrowRect.left && x <= m_blockedArrowRect.right && y >= m_blockedArrowRect.top && y <= m_blockedArrowRect.bottom);
     if (m_blockedArrowHovered != wasArrowHover) needsRepaint = true;
+
+    // Light Mode toggle hover
+    bool wasLightModeHover = m_lightModeHovered;
+    m_lightModeHovered = (x >= m_lightModeRect.left && x <= m_lightModeRect.right && y >= m_lightModeRect.top && y <= m_lightModeRect.bottom);
+    if (m_lightModeHovered != wasLightModeHover) needsRepaint = true;
 
     bool wasAddHover = m_blockedAddHovered;
     m_blockedAddHovered = m_blockedExpanded && (x >= m_blockedAddRect.left && x <= m_blockedAddRect.right && y >= m_blockedAddRect.top && y <= m_blockedAddRect.bottom);
@@ -213,6 +210,17 @@ void MainWindow::HandleLButtonDown(int x, int y) {
         Repaint();
         return;
     }
+
+    // Light Mode toggle interaction
+    if (x >= m_lightModeRect.left && x <= m_lightModeRect.right && y >= m_lightModeRect.top && y <= m_lightModeRect.bottom) {
+        m_config.lightMode = !m_config.lightMode;
+        BOOL useDark = !m_config.lightMode;
+        DwmSetWindowAttribute(m_hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
+        SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+        SaveSettings();
+        InvalidateRect(m_hwnd, nullptr, FALSE);
+        return;
+    }
     if (m_blockedExpanded && x >= m_blockedAddRect.left && x <= m_blockedAddRect.right && y >= m_blockedAddRect.top && y <= m_blockedAddRect.bottom) {
         ShowAddAppDialog();
         return;
@@ -242,20 +250,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 Repaint();
                 return;
             }
-        }
-    }
-
-    // v1.6.5 (Todo 5): preset button clicks. Must be checked BEFORE the
-    // slider-drag block — preset buttons sit in the same y-band as the
-    // slider track hot zone, and we don't want a preset click to start a drag.
-    for (auto& btn : m_presets) {
-        if (x >= btn.rect.left && x <= btn.rect.right &&
-            y >= btn.rect.top  && y <= btn.rect.bottom) {
-            PushUndoState();
-            ApplyPreset(btn.id);
-            SaveSettings();
-            InvalidateRect(m_hwnd, nullptr, FALSE);
-            return;
         }
     }
 

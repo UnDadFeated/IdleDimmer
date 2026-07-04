@@ -435,7 +435,6 @@ void MainWindow::DiscardGraphicsResources() {
 void MainWindow::UpdateLayout() {
     m_sliders.clear();
     m_checkboxes.clear();
-    m_presets.clear();
     m_windowWidth = CONTENT_WIDTH;
 
     const auto& activeMons = DimmerManager::Instance().GetActiveMonitors();
@@ -525,12 +524,6 @@ void MainWindow::UpdateLayout() {
     AddCheckbox(L"IdleTurnOff", m_config.idleTurnOff, &m_config.idleTurnOff, L"Turn Off When Away", 0, yOffset);
     yOffset += 22;
 
-    // ── DISPLAY section ──
-    yOffset += 8; // gap between sections
-    yOffset += 16; // space for section header label
-    AddCheckbox(L"LightMode", m_config.lightMode, &m_config.lightMode, L"Light Mode", 0, yOffset);
-    yOffset += 22;
-
     // ── APPLICATION section ──
     yOffset += 8; // gap between sections
     yOffset += 16; // space for section header label
@@ -573,6 +566,12 @@ void MainWindow::UpdateLayout() {
 
     // ── BLOCKED APPS ──
     m_blockedArrowRect = { CONTENT_WIDTH - 120, 5, CONTENT_WIDTH - 80, 25 };
+
+    // ── LIGHT MODE TOGGLE (top-right corner) ──
+    m_lightModeRect.left = CONTENT_WIDTH - 80;
+    m_lightModeRect.top = 5;
+    m_lightModeRect.right = CONTENT_WIDTH - 36;
+    m_lightModeRect.bottom = 23;
 
     if (m_config.idleDimEnabled) {
         // Inactivity Minutes Slider Card
@@ -1229,13 +1228,6 @@ LRESULT MainWindow::WndProcImpl(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         }
     }
     return DefWindowProcW(hwnd, msg, wp, lp);
-}
-
-
-// Removed presets - no presets
-void MainWindow::ApplyPreset(int id) {
-    (void)id;
-    // No presets available
 }
 
 // ════════════════════════════════════════════════════════════════════════════
