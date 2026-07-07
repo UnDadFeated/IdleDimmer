@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://undadfeated.github.io/IdleDimmer/sitemap.xml

@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Primary SEO Meta Tags -->
+  <title>IdleDimmer - OLED Burn-In Protection & Per-Monitor Screen Dimmer</title>
+  <meta name="description" content="Protect your OLED monitor from static element burn-in. IdleDimmer is a free, native, ultra-lightweight per-monitor screen dimming utility for Windows 10 & 11 with smart video detection and idle fading.">
+  <meta name="keywords" content="OLED burn-in protection, screen dimmer, Windows 10, Windows 11, per-monitor dimming, prevent burn-in, desktop utility, screen dimming, blue light, eye strain">
+  <meta name="author" content="UnDadFeated">
+  <meta name="robots" content="index, follow">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://undadfeated.github.io/IdleDimmer/">
+  <meta property="og:title" content="IdleDimmer - OLED Burn-In Protection & Per-Monitor Screen Dimmer">
+  <meta property="og:description" content="Protect your OLED monitor from static element burn-in. IdleDimmer is a free, native, ultra-lightweight per-monitor screen dimming utility for Windows 10 & 11.">
+  <meta property="og:image" content="https://undadfeated.github.io/IdleDimmer/assets/screenshot_dark.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://undadfeated.github.io/IdleDimmer/">
+  <meta property="twitter:title" content="IdleDimmer - OLED Burn-In Protection & Per-Monitor Screen Dimmer">
+  <meta property="twitter:description" content="Protect your OLED monitor from static element burn-in. IdleDimmer is a free, native, ultra-lightweight per-monitor screen dimming utility for Windows 10 & 11.">
+  <meta property="twitter:image" content="https://undadfeated.github.io/IdleDimmer/assets/screenshot_dark.png">
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://undadfeated.github.io/IdleDimmer/">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- JSON-LD Structured Data for Google Search -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "IdleDimmer",
+    "operatingSystem": "Windows 10, Windows 11",
+    "applicationCategory": "UtilityApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0.00",
+      "priceCurrency": "USD"
+    },
+    "description": "A native, ultra-lightweight Windows screen dimmer that protects OLED displays from burn-in, reduces eye strain, and respects user privacy.",
+    "softwareVersion": "2.0.8",
+    "publisher": {
+      "@type": "Organization",
+      "name": "UnDadFeated",
+      "url": "https://github.com/UnDadFeated"
+    },
+    "downloadUrl": "https://apps.microsoft.com/"
+  }
+  </script>
+
+  <style>
+    /* Styling variables aligned with premium monochrome theme */
+    :root {
+      /* Dark mode tokens */
+      --bg-color: #0b0b0c;
+      --card-bg: #141416;
+      --card-border: #222225;
+      --active-track: #8e8e93;
+      --active-knob-text: #e1e1e1;
+      --inactive-track: #222225;
+      --inactive-knob-muted: #808080;
+      --accent-hover: #c7c7cc;
+      
+      --text-main: #a1a1a6;
+      --text-muted: #62626a;
+      --text-heading: #f5f5f7;
+      
+      --accent-blue: #0078d4;
+      --accent-blue-hover: #0086f0;
+      --glow-color: rgba(142, 142, 147, 0.1);
+      
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    [data-theme="light"] {
+      /* Light mode tokens */
+      --bg-color: #f4f4f7;
+      --card-bg: #ffffff;
+      --card-border: #e2e2e8;
+      --active-track: #7a7a7e;
+      --active-knob-text: #1f1f1f;
+      --inactive-track: #e0e0e2;
+      --inactive-knob-muted: #757575;
+      --accent-hover: #555558;
+      
+      --text-main: #3c3c43;
+      --text-muted: #86868b;
+      --text-heading: #1d1d1f;
+      
+      --accent-blue: #0078d4;
+      --accent-blue-hover: #006bc0;
+      --glow-color: rgba(0, 120, 212, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      line-height: 1.6;
+      transition: background-color 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.4s ease;
+      overflow-x: hidden;
+      padding-top: 80px;
+    }
+
+    /* Selection Color */
+    ::selection {
+      background: var(--active-track);
+      color: var(--bg-color);
+    }
+
+    /* Container Utilities */
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header & Navigation */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+      background: rgba(11, 11, 12, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+      z-index: 1000;
+      transition: background-color 0.4s ease, border-bottom-color 0.4s ease;
+    }
+
+    [data-theme="light"] header {
+      background: rgba(244, 244, 247, 0.7);
+    }
+
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 100%;
+    }
+
+    .logo-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-heading);
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--text-heading);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--bg-color);
+      font-weight: 800;
+      font-size: 18px;
+      transition: background-color 0.4s ease, color 0.4s ease;
+    }
+
+    nav ul {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 500;
+      font-size: 14px;
+      transition: color 0.2s ease;
+    }
+
+    nav a:hover {
+      color: var(--text-heading);
+    }
+
+    /* Controls right-aligned */
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    /* Custom Switch Toggle styling (matching app) */
+    .switch-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .switch-label {
+      cursor: pointer;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--inactive-track);
+      border: 1px solid var(--card-border);
+      border-radius: 34px;
+      transition: .3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 12px;
+      width: 12px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--inactive-knob-muted);
+      border-radius: 50%;
+      transition: .3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    input:checked + .slider {
+      background-color: var(--active-track);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(18px);
+      background-color: var(--active-knob-text);
+    }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      padding: 80px 0 60px 0;
+      text-align: center;
+    }
+
+    .hero-glow {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 800px;
+      height: 300px;
+      background: radial-gradient(circle at top, var(--glow-color) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 100px;
+      color: var(--text-heading);
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 24px;
+      gap: 8px;
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      background: #34c759;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.5); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(52, 199, 89, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); }
+    }
+
+    h1 {
+      font-family: var(--font-heading);
+      font-size: clamp(36px, 5vw, 64px);
+      font-weight: 800;
+      color: var(--text-heading);
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--text-heading) 30%, #86868b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      font-size: clamp(16px, 2vw, 20px);
+      max-width: 700px;
+      margin: 0 auto 40px auto;
+      color: var(--text-main);
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 60px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background-color: var(--text-heading);
+      color: var(--bg-color);
+      border: 1px solid var(--text-heading);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background-color: var(--card-bg);
+      color: var(--text-heading);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--card-border);
+      transform: translateY(-1px);
+    }
+
+    /* Device Mockup & Showcase */
+    .showcase {
+      margin-bottom: 100px;
+    }
+
+    .device-mockup {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    [data-theme="light"] .device-mockup {
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.1);
+    }
+
+    .device-header {
+      height: 36px;
+      background: rgba(0, 0, 0, 0.05);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 6px;
+      transition: border-color 0.4s ease;
+    }
+
+    .device-dot-btn {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--inactive-knob-muted);
+      opacity: 0.5;
+    }
+
+    .device-title {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+      margin-right: auto;
+      font-weight: 500;
+    }
+
+    .device-content-wrapper {
+      position: relative;
+      line-height: 0;
+      overflow: hidden;
+      aspect-ratio: 438/630;
+    }
+
+    .screenshot-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Overlay Dimmer simulation layer */
+    .dimmer-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000000;
+      opacity: 0.0;
+      pointer-events: none;
+      transition: opacity 0.1s ease;
+      z-index: 10;
+    }
+
+    .control-interactive {
+      max-width: 440px;
+      margin: 24px auto 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.4s ease;
+    }
+
+    .slider-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-heading);
+    }
+
+    .slider-range-control {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--inactive-track);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .slider-range-control::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--active-knob-text);
+      border: 2px solid var(--active-track);
+      transition: transform 0.1s ease;
+    }
+
+    .slider-range-control::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .interactive-label {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Section Styles */
+    section {
+      padding: 80px 0;
+      border-top: 1px solid var(--card-border);
+      transition: border-top-color 0.4s ease;
+    }
+
+    .section-title {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 60px auto;
+    }
+
+    .section-title h2 {
+      font-family: var(--font-heading);
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 700;
+      color: var(--text-heading);
+      margin-bottom: 16px;
+      letter-spacing: -1px;
+    }
+
+    .section-title p {
+      font-size: 16px;
+      color: var(--text-main);
+    }
+
+    /* Features Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 32px;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--active-track);
+      box-shadow: 0 10px 30px -10px var(--glow-color);
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background: rgba(142, 142, 147, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-heading);
+      margin-bottom: 24px;
+      font-size: 20px;
+      transition: background-color 0.3s ease;
+    }
+
+    .feature-card:hover .feature-icon {
+      background: var(--text-heading);
+      color: var(--bg-color);
+    }
+
+    .feature-card h3 {
+      font-family: var(--font-heading);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-heading);
+      margin-bottom: 12px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text-main);
+    }
+
+    /* OLED Inactivity Simulator Section */
+    .simulator-container {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 48px;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 48px;
+      margin-top: 40px;
+      transition: all 0.4s ease;
+    }
+
+    @media (max-width: 768px) {
+      .simulator-container {
+        grid-template-columns: 1fr;
+        padding: 32px 24px;
+        gap: 32px;
+      }
+    }
+
+    .sim-info h3 {
+      font-family: var(--font-heading);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-heading);
+      margin-bottom: 16px;
+    }
+
+    .sim-info p {
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+
+    .sim-display {
+      background: #000000;
+      border-radius: 12px;
+      aspect-ratio: 16/10;
+      position: relative;
+      overflow: hidden;
+      border: 4px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+      cursor: crosshair;
+    }
+
+    .sim-desktop-bg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+
+    .sim-windows-container {
+      display: flex;
+      gap: 12px;
+    }
+
+    .sim-window {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 6px;
+      width: 140px;
+      height: 90px;
+      padding: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sim-window-header {
+      height: 6px;
+      background: #ddd;
+      border-radius: 3px;
+      width: 40px;
+    }
+
+    .sim-window-line {
+      height: 4px;
+      background: #eee;
+      border-radius: 2px;
+      width: 100%;
+    }
+
+    .sim-window-line.short {
+      width: 70%;
+    }
+
+    /* Simulated taskbar representing static burn-in elements */
+    .sim-taskbar {
+      height: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      width: 100%;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      gap: 8px;
+    }
+
+    .sim-start-button {
+      width: 10px;
+      height: 10px;
+      background: #0078d4;
+      border-radius: 2px;
+    }
+
+    .sim-tray {
+      margin-left: auto;
+      width: 24px;
+      height: 6px;
+      background: #444;
+      border-radius: 2px;
+    }
+
+    /* Dimming Overlay for Simulator */
+    .sim-dimming-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      opacity: 0;
+      z-index: 5;
+      pointer-events: none;
+      transition: opacity 1.5s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
+    .sim-cursor {
+      position: absolute;
+      width: 12px;
+      height: 16px;
+      background: transparent;
+      border-left: 8px solid white;
+      border-bottom: 8px solid transparent;
+      border-top: 2px solid transparent;
+      border-right: 2px solid transparent;
+      z-index: 6;
+      top: 50%;
+      left: 50%;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+      pointer-events: none;
+      transition: opacity 0.5s ease, transform 0.1s ease;
+    }
+
+    /* Sim HUD */
+    .sim-hud {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      z-index: 8;
+      pointer-events: none;
+    }
+
+    /* Specs & Specifications Table */
+    .specs-wrapper {
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.4s ease;
+    }
+
+    .specs-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .specs-table tr {
+      border-bottom: 1px solid var(--card-border);
+      transition: border-bottom-color 0.4s ease;
+    }
+
+    .specs-table tr:last-child {
+      border-bottom: none;
+    }
+
+    .specs-table td {
+      padding: 16px 24px;
+      font-size: 14px;
+    }
+
+    .specs-label {
+      font-weight: 600;
+      color: var(--text-heading);
+      width: 35%;
+      border-right: 1px solid var(--card-border);
+      transition: border-right-color 0.4s ease;
+    }
+
+    /* Footer */
+    footer {
+      padding: 60px 0 40px 0;
+      border-top: 1px solid var(--card-border);
+      text-align: center;
+      transition: border-top-color 0.4s ease;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-heading);
+    }
+
+    .copyright {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    /* Small screens navigation adjustments */
+    @media (max-width: 600px) {
+      header {
+        height: auto;
+        padding: 16px 0;
+      }
+      .nav-container {
+        flex-direction: column;
+        gap: 12px;
+      }
+      nav ul {
+        gap: 16px;
+      }
+      body {
+        padding-top: 130px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header>
+    <div class="container nav-container">
+      <a href="#" class="logo-link" id="logo">
+        <div class="logo-icon">I</div>
+        IdleDimmer
+      </a>
+      
+      <nav>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#oled-protection">OLED Protection</a></li>
+          <li><a href="#specs">Specifications</a></li>
+          <li><a href="privacy.html">Privacy</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-controls">
+        <div class="switch-container">
+          <span class="switch-label" id="theme-switch-txt">Dark Mode</span>
+          <label class="switch">
+            <input type="checkbox" id="theme-toggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="container">
+    <section class="hero" id="hero-sec" style="border: none;">
+      <div class="hero-glow"></div>
+      
+      <div class="badge">
+        <div class="badge-dot"></div>
+        <span>Now in Microsoft Store</span>
+      </div>
+
+      <h1>
+        Proactive <span>OLED Burn-In Protection</span>
+      </h1>
+      
+      <p class="hero-desc">
+        A free, ultra-lightweight (~150 KB), zero-telemetry per-monitor screen dimming utility for Windows 10 and 11. Overlays neutral black masks on your displays to prevent screen burn-in and minimize eye strain.
+      </p>
+
+      <div class="hero-actions">
+        <a href="https://apps.microsoft.com/" class="btn btn-primary" id="store-btn">
+          <!-- Microsoft Store Logo Icon SVG -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.5 3L2 4.3v7.9h9.5V3zm10.5 1.3L12.5 4v8.2H22V4.3zM2 13.2v7.9l9.5 1.3v-9.2H2zm10.5.1v9.2l9.5-1.3v-7.9h-9.5z"/>
+          </svg>
+          Get from Microsoft Store
+        </a>
+        <a href="https://github.com/UnDadFeated/IdleDimmer" class="btn btn-secondary" id="github-btn">
+          <!-- GitHub Logo Icon SVG -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.137 20.162 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+          </svg>
+          View on GitHub
+        </a>
+      </div>
+
+      <!-- Live Interactive Window Showcase -->
+      <div class="showcase">
+        <div class="device-mockup" id="device-frame">
+          <div class="device-header">
+            <div class="device-dot-btn"></div>
+            <div class="device-dot-btn"></div>
+            <div class="device-dot-btn"></div>
+            <div class="device-title">IdleDimmer Control Panel</div>
+          </div>
+          <div class="device-content-wrapper">
+            <!-- Simulated dimming overlay -->
+            <div class="dimmer-overlay" id="interactive-overlay"></div>
+            
+            <img src="assets/screenshot_dark.png" alt="IdleDimmer Settings Panel in Dark Mode" class="screenshot-img" id="screenshot-view">
+          </div>
+        </div>
+
+        <div class="control-interactive" id="slider-card">
+          <div class="slider-info">
+            <span>Simulate App Dimming</span>
+            <span id="slider-val">0%</span>
+          </div>
+          <input type="range" min="0" max="90" value="0" class="slider-range-control" id="dim-simulator-slider">
+          <div class="interactive-label">Drag the slider to test the overlay opacity rendering (0% to 90% dimming).</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Detailed Features Section -->
+    <section id="features">
+      <div class="section-title">
+        <h2>Tailored Features for Modern Displays</h2>
+        <p>A fully featured monitor management utility that works quietly in the background without getting in your way.</p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card" id="f-per-mon">
+          <div class="feature-icon">🖥️</div>
+          <h3>Per-Monitor Control</h3>
+          <p>Configure brightness offsets (0–90%) and toggles for each screen independently. Drag a slider to automatically enable dimming on that display.</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card" id="f-idle">
+          <div class="feature-icon">⏳</div>
+          <h3>Intelligent Idle Fade</h3>
+          <p>Fades screen overlays smoothly when no user inputs are detected. Prevents static burn-in by dimming down and hides your mouse cursor automatically.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card" id="f-video">
+          <div class="feature-icon">🎬</div>
+          <h3>Smart Video Bypass</h3>
+          <p>Automatically detects video playback or audio sessions from major media players and browsers (Chrome, Edge, Firefox). Bypasses dimming on active screens.</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card" id="f-fullscreen">
+          <div class="feature-icon">🎮</div>
+          <h3>Fullscreen & Game Mode</h3>
+          <p>Suspends dimming on monitors running fullscreen games or presentations. Zero interference during gameplay.</p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card" id="f-schedule">
+          <div class="feature-icon">⏰</div>
+          <h3>Automated Scheduling</h3>
+          <p>Schedule dimming times automatically using local 15-minute interval sliders. Ideal for overnight shifts or late-night study sessions.</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card" id="f-privacy">
+          <div class="feature-icon">🔒</div>
+          <h3>Zero Overhead & Privacy</h3>
+          <p>No telemetry, no tracking, and no internet access needed. Runs as a lightweight native binary (~150 KB, ~3 MB memory footprint).</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- OLED Protection Section & Simulator -->
+    <section id="oled-protection">
+      <div class="section-title">
+        <h2>Ultimate OLED Burn-In Prevention</h2>
+        <p>Prevent panel degradation and pixel wear with automated desktop dimming.</p>
+      </div>
+
+      <div class="simulator-container" id="sim-container">
+        <div class="sim-info">
+          <h3>Interactive Inactivity Simulator</h3>
+          <p>Static operating system elements (taskbars, title bars, and browser tabs) are the leading cause of OLED pixel wear. IdleDimmer safeguards your screen automatically.</p>
+          <p>Click the button below to simulate <strong>system inactivity</strong> inside the preview monitor. Watch how it fades to black and hides the cursor, then move your mouse over the screen to wake it up.</p>
+          
+          <button class="btn btn-primary" id="start-sim-btn">Simulate Inactivity (3s)</button>
+        </div>
+
+        <div class="sim-display" id="sim-screen">
+          <div class="sim-hud" id="sim-hud">STATUS: ACTIVE</div>
+          <div class="sim-desktop-bg" id="sim-bg">
+            <div class="sim-windows-container">
+              <div class="sim-window">
+                <div class="sim-window-header"></div>
+                <div class="sim-window-line"></div>
+                <div class="sim-window-line short"></div>
+              </div>
+              <div class="sim-window" style="width: 100px;">
+                <div class="sim-window-header" style="background:#4a90e2; width:20px;"></div>
+                <div class="sim-window-line"></div>
+              </div>
+            </div>
+            
+            <div class="sim-taskbar">
+              <div class="sim-start-button"></div>
+              <div style="width: 30px; height: 6px; background: #555; border-radius: 2px;"></div>
+              <div style="width: 20px; height: 6px; background: #555; border-radius: 2px;"></div>
+              <div class="sim-tray"></div>
+            </div>
+          </div>
+
+          <div class="sim-dimming-layer" id="sim-layer">
+            <span style="font-size: 11px; font-family: var(--font-mono); opacity: 0.7;">[ SCREEN DIMMED FOR PROTECTION ]</span>
+          </div>
+
+          <div class="sim-cursor" id="sim-cursor"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Specifications Section -->
+    <section id="specs">
+      <div class="section-title">
+        <h2>Specifications</h2>
+        <p>Built with efficiency and reliability in mind. Zero bloat.</p>
+      </div>
+
+      <div class="specs-wrapper">
+        <table class="specs-table">
+          <tr>
+            <td class="specs-label">Executable Size</td>
+            <td>~150 KB (standalone), ~140 KB (MSIX package)</td>
+          </tr>
+          <tr>
+            <td class="specs-label">Memory Footprint</td>
+            <td>~3 MB working set at idle</td>
+          </tr>
+          <tr>
+            <td class="specs-label">Runtime Dependencies</td>
+            <td>None. Statically linked Win32 binary.</td>
+          </tr>
+          <tr>
+            <td class="specs-label">Supported Systems</td>
+            <td>Windows 10 (1809+) and Windows 11 (x64)</td>
+          </tr>
+          <tr>
+            <td class="specs-label">Hardware Footprint</td>
+            <td>0% CPU load at idle (throttled monitoring ticks)</td>
+          </tr>
+          <tr>
+            <td class="specs-label">Installation Scope</td>
+            <td>Per-user local sandbox or standard Windows Program files (no Admin UAC required)</td>
+          </tr>
+          <tr>
+            <td class="specs-label">Licensing</td>
+            <td>GNU GPLv3 (Open Source)</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a href="https://github.com/UnDadFeated/IdleDimmer">GitHub Repository</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="https://github.com/UnDadFeated/IdleDimmer/issues">Support / Issues</a>
+        <a href="https://github.com/UnDadFeated/IdleDimmer/blob/master/LICENSE">GPLv3 License</a>
+      </div>
+      <p class="copyright">Designed by UnDadFeated. Copyright &copy; 2026. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Interactive Theme Swapper
+    const themeToggle = document.getElementById('theme-toggle');
+    const screenshotView = document.getElementById('screenshot-view');
+    const themeTxt = document.getElementById('theme-switch-txt');
+    const root = document.documentElement;
+
+    themeToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        // Switch to Dark mode
+        root.setAttribute('data-theme', 'dark');
+        screenshotView.src = 'assets/screenshot_dark.png';
+        screenshotView.alt = 'IdleDimmer Settings Panel in Dark Mode';
+        themeTxt.textContent = 'Dark Mode';
+      } else {
+        // Switch to Light mode
+        root.setAttribute('data-theme', 'light');
+        screenshotView.src = 'assets/screenshot_light.png';
+        screenshotView.alt = 'IdleDimmer Settings Panel in Light Mode';
+        themeTxt.textContent = 'Light Mode';
+      }
+    });
+
+    // Dimming Simulator Slider
+    const dimSlider = document.getElementById('dim-simulator-slider');
+    const valDisplay = document.getElementById('slider-val');
+    const overlay = document.getElementById('interactive-overlay');
+
+    dimSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      valDisplay.textContent = val + '%';
+      
+      // opacity calculations mapping (0 to 90) -> (0.0 to 0.9)
+      const opacity = val / 100.0;
+      overlay.style.opacity = opacity;
+    });
+
+    // OLED Inactivity Simulator Script
+    const startSimBtn = document.getElementById('start-sim-btn');
+    const simScreen = document.getElementById('sim-screen');
+    const simLayer = document.getElementById('sim-layer');
+    const simCursor = document.getElementById('sim-cursor');
+    const simHud = document.getElementById('sim-hud');
+    
+    let simTimer = null;
+    let isDimmed = false;
+
+    // Track simulated cursor inside the preview screen
+    simScreen.addEventListener('mousemove', (e) => {
+      const rect = simScreen.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Update cursor position inside simulator
+      simCursor.style.left = x + 'px';
+      simCursor.style.top = y + 'px';
+
+      // Wake up simulator if it is currently dimmed
+      if (isDimmed) {
+        wakeUpSim();
+      }
+    });
+
+    startSimBtn.addEventListener('click', () => {
+      if (simTimer) clearTimeout(simTimer);
+      
+      let count = 3;
+      startSimBtn.disabled = true;
+      simHud.textContent = `SYSTEM: IDLE IN ${count}s`;
+
+      const countdown = setInterval(() => {
+        count--;
+        if (count > 0) {
+          simHud.textContent = `SYSTEM: IDLE IN ${count}s`;
+        } else {
+          clearInterval(countdown);
+          dimDownSim();
+        }
+      }, 1000);
+    });
+
+    function dimDownSim() {
+      isDimmed = true;
+      simLayer.style.opacity = '0.9'; // dim to 90%
+      simCursor.style.opacity = '0';   // Hide cursor during idle dimming
+      simHud.textContent = 'SYSTEM: IDLE (PROTECTING)';
+      startSimBtn.textContent = 'Simulating Inactivity...';
+      startSimBtn.disabled = true;
+    }
+
+    function wakeUpSim() {
+      isDimmed = false;
+      simLayer.style.opacity = '0';
+      simCursor.style.opacity = '1';
+      simHud.textContent = 'SYSTEM: ACTIVE';
+      startSimBtn.disabled = false;
+      startSimBtn.textContent = 'Simulate Inactivity (3s)';
+    }
+  </script>
+</body>
+</html>
