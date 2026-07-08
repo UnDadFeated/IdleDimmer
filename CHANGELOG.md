@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [2.0.9] - 2026-07-07
+
+### Bug Fixes
+* **Paused Audio Detection Fix**: Checked the audio session state using `IAudioSessionControl::GetState` so that inactive/paused sessions are ignored. This prevents the dimming bypass status from getting stuck in the "Audio+Video Detected!" state when web browser media players (like Netflix in Chrome) are paused but remain open and visible on the primary monitor.
+
 ## [2.0.8] - 2026-07-04
 
 ### Updates

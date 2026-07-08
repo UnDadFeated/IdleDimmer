@@ -435,13 +435,16 @@ static void DoAudioCheckWork(
                                         if (isMediaApp) {
                                             bool isPlaying = false;
                                             
-                                            // Try IAudioMeterInformation peak value
-                                            ComPtr<IAudioMeterInformation> pMeter;
-                                            hr = pSessionControl->QueryInterface(IID_IAudioMeterInformation, &pMeter);
-                                            if (SUCCEEDED(hr) && pMeter) {
-                                                float peak = 0.0f;
-                                                if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
-                                                    isPlaying = true;
+                                            AudioSessionState state = AudioSessionStateInactive;
+                                            if (SUCCEEDED(pSessionControl->GetState(&state)) && state == AudioSessionStateActive) {
+                                                // Try IAudioMeterInformation peak value
+                                                ComPtr<IAudioMeterInformation> pMeter;
+                                                hr = pSessionControl->QueryInterface(IID_IAudioMeterInformation, &pMeter);
+                                                if (SUCCEEDED(hr) && pMeter) {
+                                                    float peak = 0.0f;
+                                                    if (SUCCEEDED(pMeter->GetPeakValue(&peak)) && peak > 0.0001f) {
+                                                        isPlaying = true;
+                                                    }
                                                 }
                                             }
 
