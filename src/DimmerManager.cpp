@@ -791,14 +791,14 @@ LRESULT CALLBACK DimmerManager::OverlayWndProc(HWND hwnd, UINT msg, WPARAM wp, L
                     target = 0;
                 } else if (DimmerManager::Instance().IsIdleState() && info->enabled) {
                     target = (std::max)(info->dimValue, DimmerManager::Instance().GetIdleDimLevel());
-                    if (target > 100) target = 100;
+                    if (target > 90) target = 90;
                 } else if (DimmerManager::Instance().IsScheduleActive() && info->enabled) {
                     // v1.6.5 (Todo 2): scheduled dimming. Use the schedule
                     // dim level if it is higher than the user-set per-monitor
                     // value (i.e. schedule can darken further, not lighten).
                     target = (std::max)(info->dimValue,
                                         DimmerManager::Instance().GetScheduleDimLevel());
-                    if (target > 100) target = 100;
+                    if (target > 90) target = 90;
                 } else if (DimmerManager::Instance().IsDimmingEnabled() && info->enabled) {
                     // Active dimming is enabled right now
                     target = info->dimValue;

@@ -54,7 +54,7 @@ void MainWindow::HandleMouseMove(int x, int y) {
             } else if (slider.isIdleMinutes) {
                 m_config.idleMinutes = static_cast<int>(slider.value * 59.0f) + 1;
             } else if (slider.isIdleDimLevel) {
-                m_config.idleDimLevel = static_cast<int>(slider.value * 100.0f);
+                m_config.idleDimLevel = static_cast<int>(slider.value * 90.0f);
                 if (DimmerManager::Instance().IsIdleState()) {
                     DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
                 }
@@ -203,8 +203,8 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 }
                 for (auto& sl : m_sliders) {
                     if (sl.monitorId == cb.monitorId) {
-                        // Slider is visually active only if monitor is enabled AND manual dimming is enabled
-                        sl.active = cb.checked && m_config.dimmingEnabled;
+                        // Slider is visually active only if monitor is enabled
+                        sl.active = cb.checked;
                         break;
                     }
                 }
@@ -220,8 +220,8 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 for (auto& sl : m_sliders) {
                     // Only update sliders that are not idle/schedule sliders
                     if (!sl.isIdleMinutes && !sl.isIdleDimLevel && !sl.isScheduleStart && !sl.isScheduleEnd) {
-                        // Slider is visually active only if master is enabled AND manual dimming is enabled
-                        sl.active = cb.checked && m_config.dimmingEnabled;
+                        // Slider is visually active only if master is enabled
+                        sl.active = cb.checked;
                     }
                 }
                 for (auto& otherCb : m_checkboxes) {
@@ -240,25 +240,6 @@ void MainWindow::HandleLButtonDown(int x, int y) {
                 UpdateLayout();
             } else if (cb.settingName == L"DimmingEnabled") {
                 DimmerManager::Instance().SetDimmingEnabled(cb.checked);
-                
-                // Update slider active states based on new dimmingEnabled state
-                for (auto& sl : m_sliders) {
-                    if (!sl.isIdleMinutes && !sl.isIdleDimLevel && !sl.isScheduleStart && !sl.isScheduleEnd) {
-                        // Slider is visually active only if corresponding monitor/master is enabled AND manual dimming is enabled
-                        bool monEnabled = true;
-                        if (sl.isMaster) {
-                            monEnabled = m_config.masterEnabled;
-                        } else if (!sl.monitorId.empty()) {
-                            for (const auto& monConf : m_config.monitors) {
-                                if (monConf.id == sl.monitorId) {
-                                    monEnabled = monConf.enabled;
-                                    break;
-                                }
-                            }
-                        }
-                        sl.active = monEnabled && cb.checked;
-                    }
-                }
             } else if (cb.settingName == L"ScheduleEnabled") {
                 // v1.6.5 (Todo 8): push to DimmerManager and re-layout so
                 // the start/end sliders appear or disappear.
@@ -339,7 +320,7 @@ void MainWindow::HandleMouseWheel(short delta, int x, int y) {
             } else if (slider.isIdleMinutes) {
                 m_config.idleMinutes = static_cast<int>(slider.value * 59.0f) + 1;
             } else if (slider.isIdleDimLevel) {
-                m_config.idleDimLevel = static_cast<int>(slider.value * 100.0f);
+                m_config.idleDimLevel = static_cast<int>(slider.value * 90.0f);
                 if (DimmerManager::Instance().IsIdleState()) {
                     DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
                 }
@@ -423,7 +404,7 @@ void MainWindow::HandleKeyDown(WPARAM key) {
                 } else if (slider.isIdleMinutes) {
                     m_config.idleMinutes = static_cast<int>(slider.value * 59.0f) + 1;
                 } else if (slider.isIdleDimLevel) {
-                    m_config.idleDimLevel = static_cast<int>(slider.value * 100.0f);
+                    m_config.idleDimLevel = static_cast<int>(slider.value * 90.0f);
                     if (DimmerManager::Instance().IsIdleState()) {
                         DimmerManager::Instance().SetIdleState(true, m_config.idleDimLevel);
                     }

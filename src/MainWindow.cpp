@@ -551,7 +551,7 @@ void MainWindow::UpdateLayout() {
         // Inactivity Dim Level Slider Card
         UISlider idleLvl;
         idleLvl.isIdleDimLevel = true;
-        idleLvl.value = m_config.idleDimLevel / 100.0f; // 0 to 100
+        idleLvl.value = m_config.idleDimLevel / 90.0f; // 0 to 90
         idleLvl.active = true;
         idleLvl.rect.left = 20;
         idleLvl.rect.top = idleMin.rect.bottom + 15;

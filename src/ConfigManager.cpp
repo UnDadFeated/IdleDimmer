@@ -89,7 +89,10 @@ AppConfig ConfigManager::LoadConfig(const std::wstring& filePath) {
     if (findValue(L"StartWithWindows", val)) config.startWithWindows = ParseBool(val);
     if (findValue(L"IdleDimEnabled", val)) config.idleDimEnabled = ParseBool(val);
     if (findValue(L"IdleMinutes", val)) config.idleMinutes = ParseInt(val);
-    if (findValue(L"IdleDimLevel", val)) config.idleDimLevel = ParseInt(val);
+    if (findValue(L"IdleDimLevel", val)) {
+        config.idleDimLevel = ParseInt(val);
+        if (config.idleDimLevel > 90) config.idleDimLevel = 90;
+    }
     if (findValue(L"MasterValue", val)) config.masterValue = ParseInt(val);
     if (findValue(L"MasterEnabled", val)) config.masterEnabled = ParseBool(val);
     if (findValue(L"LightMode", val)) config.lightMode = ParseBool(val);

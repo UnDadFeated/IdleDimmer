@@ -2,6 +2,12 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [2.1.1] - 2026-07-11
+
+### Bug Fixes
+* **Greyed-Out Slider Fix**: Fixed the Master Controller and individual monitor sliders appearing greyed out and undraggable after startup or layout rebuilds. The slider active state in `UpdateLayout()` was only checking if the monitor was enabled, not whether Manual Dimming was also enabled — causing an inconsistency with the checkbox toggle handlers.
+* **90% Maximum Dimming Safety Cap**: Capped all dimming paths (idle, schedule, manual) to a hard maximum of 90% opacity. Previously the idle dim level slider allowed 100%, which would make the screen completely black and unusable. The monitor sliders were already capped at 90 — now idle and schedule match.
+
 ## [2.1.0] - 2026-07-11
 
 ### New Features

@@ -81,7 +81,7 @@ void MainWindow::OnPaint() {
             wcscpy_s(pctStr, ARRAYSIZE(pctStr), std::format(L"{} min", mins).c_str());
         } else if (slider.isIdleDimLevel) {
             displayName = L"Inactivity Dim Level";
-            int lvl = static_cast<int>(slider.value * 100.0f);
+            int lvl = static_cast<int>(slider.value * 90.0f);
             wcscpy_s(pctStr, ARRAYSIZE(pctStr), std::format(L"{}%", lvl).c_str());
         } else if (slider.isScheduleStart || slider.isScheduleEnd) {
             // v1.6.5 (Todo 8): Time-of-day slider. Round to nearest 15 minutes
