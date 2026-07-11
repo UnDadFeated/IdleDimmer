@@ -2,6 +2,11 @@
 
 All notable changes to the IdleDimmer project are documented here.
 
+## [2.1.0] - 2026-07-11
+
+### New Features
+* **Manual Dimming God Mode**: When "Manual Dimming" is toggled ON, it now overrides all video and audio detection protections and dims immediately — no exceptions. The user is explicitly demanding to dim, so the app respects that. When Manual Dimming is OFF, all video/audio bypass behavior works exactly as before. If a monitor was already hidden by video bypass, toggling Manual Dimming ON instantly un-hides it and starts dimming.
+
 ## [2.0.9] - 2026-07-07
 
 ### Bug Fixes

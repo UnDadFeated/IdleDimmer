@@ -264,6 +264,15 @@ void DimmerManager::SetIdleState(bool idle, int idleLevel) {
 
 void DimmerManager::SetDimmingEnabled(bool enabled) {
     m_dimmingEnabled = enabled;
+    if (enabled) {
+        // "God mode": un-hide any overlays that were hidden by video bypass
+        for (auto& mon : m_monitors) {
+            if (mon.hasVideo && mon.hwndOverlay) {
+                mon.hasVideo = false;
+                ShowWindow(mon.hwndOverlay, SW_SHOWNOACTIVATE);
+            }
+        }
+    }
     for (auto& mon : m_monitors) {
         if (mon.hwndOverlay) {
             TriggerFade(mon.hwndOverlay);
@@ -638,7 +647,9 @@ void DimmerManager::CheckVideoPlayback() {
         mon.hasFullscreenVideo = (mon.hMonitor == hCurrentFullscreenMon);
 
         bool newHasVideo = mon.hasAudioVideo || mon.hasFullscreenVideo;
-        bool effectiveHasVideo = newHasVideo;  // bypass applies regardless of idle state
+        // When Manual Dimming is on, the user explicitly wants to dim NOW.
+        // Video bypass is subordinate to this explicit command.
+        bool effectiveHasVideo = m_dimmingEnabled ? false : newHasVideo;
         if (effectiveHasVideo != mon.hasVideo) {
             mon.hasVideo = effectiveHasVideo;
             if (mon.hwndOverlay) {
