@@ -147,12 +147,6 @@ Overlay style: `WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOO
 
 ---
 
-## For AI agents and contributors
-
-See [AGENTS.md](AGENTS.md) for the full project rules, build commands, removed features, Defender heuristics, theme tokens, layout rules, and headless release-publishing procedure.
-
----
-
 ## License
 
 IdleDimmer is licensed under the GNU General Public License v3.0 or later (GPLv3-or-later). See [LICENSE](LICENSE) for details.
